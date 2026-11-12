@@ -1,0 +1,512 @@
+<!-- templates/manage_teacher_permissions.html (updated with new output section and master checkboxes) -->
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-user-shield me-2"></i>Manage Teacher Permissions</h2>
+        <a href="{% url 'manage_teacher_permissions' %}" class="btn btn-outline-primary rounded-pill">
+            <i class="fas fa-refresh me-1"></i>Refresh
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="col-12 mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Teachers Table Section -->
+    <form method="POST" action="{% url 'update_teacher_permissions' %}" id="permissionsForm">
+        {% csrf_token %}
+        <div class="card shadow-sm mb-5">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Registered Teachers</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-light me-2" onclick="selectAllTeachers(true)">
+                        <i class="fas fa-check-square me-1"></i>Select All
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light" onclick="selectAllTeachers(false)">
+                        <i class="fas fa-square me-1"></i>Deselect All
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 5%;"><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll(this)"></th>
+                                <th scope="col" style="width: 5%;">#</th>
+                                <th scope="col" style="width: 30%;">Teacher Name</th>
+                                <th scope="col" class="text-center" style="width: 60%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for teacher in teachers %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">
+                                    <input type="checkbox" name="selected_teachers" value="{{ teacher.id }}" class="teacher-select">
+                                </td>
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ teacher.teacherName|default:teacher.user.username }}</strong>
+                                    {% if teacher.photo %}
+                                    <br><small class="text-muted"><i class="fas fa-image me-1"></i>Photo Available</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill me-1" onclick="selectSingleTeacher({{ teacher.id }})" title="Select This Teacher">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <a href="#" class="btn btn-outline-info btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#teacherDetailModal{{ teacher.id }}" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Quick Detail Modal for Single Teacher -->
+                            <div class="modal fade" id="teacherDetailModal{{ teacher.id }}" tabindex="-1" aria-labelledby="teacherDetailLabel{{ teacher.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="teacherDetailLabel{{ teacher.id }}">Permissions for {{ teacher.teacherName|default:teacher.user.username }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            {% with perm=teacher.userpermission %}
+                                            {% if perm %}
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6><i class="fas fa-users me-2"></i>Attendance</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li><small class="text-success">{% if perm.can_view_attendance %}✓{% else %}✗{% endif %}</small> View Attendance</li>
+                                                        <li><small class="text-success">{% if perm.can_open_staff_attendance %}✓{% else %}✗{% endif %}</small> Open Staff Attendance</li>
+                                                        <li><small class="text-success">{% if perm.can_open_student_attendance %}✓{% else %}✗{% endif %}</small> Open Student Attendance</li>
+                                                        <li><small class="text-success">{% if perm.can_search_student %}✓{% else %}✗{% endif %}</small> Search Student</li>
+                                                        <li><small class="text-success">{% if perm.can_retreve_student %}✓{% else %}✗{% endif %}</small> Retrieve Student</li>
+                                                    </ul>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6><i class="fas fa-cog me-2"></i>Settings</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li><small class="text-success">{% if perm.can_view_settings %}✓{% else %}✗{% endif %}</small> View Settings</li>
+                                                        <li><small class="text-success">{% if perm.can_view_output %}✓{% else %}✗{% endif %}</small> View Output</li>
+                                                        <li><small class="text-success">{% if perm.can_modify_grading_system %}✓{% else %}✗{% endif %}</small> Modify Grading System</li>
+                                                        <!-- Truncated for brevity; add others similarly -->
+                                                    </ul>
+                                                    <h6 class="mt-3"><i class="fas fa-chart-bar me-2"></i>Output</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li><small class="text-success">{% if perm.can_view_best_student %}✓{% else %}✗{% endif %}</small> View Best Student</li>
+                                                        <li><small class="text-success">{% if perm.can_view_results %}✓{% else %}✗{% endif %}</small> View Results</li>
+                                                        <li><small class="text-success">{% if perm.can_view_subject_analysis %}✓{% else %}✗{% endif %}</small> View Subject Analysis</li>
+                                                        <li><small class="text-success">{% if perm.can_view_grade_analysis %}✓{% else %}✗{% endif %}</small> View Grade Analysis</li>
+                                                        <li><small class="text-success">{% if perm.can_view_division_analysis %}✓{% else %}✗{% endif %}</small> View Division Analysis</li>
+                                                    </ul>
+                                                    <h6 class="mt-3"><i class="fas fa-edit me-2"></i>Registration</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li><small class="text-success">{% if perm.can_view_crm %}✓{% else %}✗{% endif %}</small> View CRM</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_home_enquiries %}✓{% else %}✗{% endif %}</small> Manage Home Enquiries</li>
+                                                        <li><small class="text-success">{% if perm.can_view_registration %}✓{% else %}✗{% endif %}</small> View Registration</li>
+                                                        <li><small class="text-success">{% if perm.can_modify_academic_year %}✓{% else %}✗{% endif %}</small> Modify Academic Year</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_student_applications %}✓{% else %}✗{% endif %}</small> Manage Student Applications</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_student_id %}✓{% else %}✗{% endif %}</small> Manage Student ID</li>
+                                                        <!-- Add more -->
+                                                    </ul>
+                                                    <h6 class="mt-3"><i class="fas fa-bus me-2"></i>Transport</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li><small class="text-success">{% if perm.can_view_transport %}✓{% else %}✗{% endif %}</small> View Transport Module</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_vehicle %}✓{% else %}✗{% endif %}</small> Manage Vehicles</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_route %}✓{% else %}✗{% endif %}</small> Manage Routes</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_fuel %}✓{% else %}✗{% endif %}</small> Manage Fuel</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_maintenance %}✓{% else %}✗{% endif %}</small> Manage Maintenance</li>
+                                                        <li><small class="text-success">{% if perm.can_manage_expense %}✓{% else %}✗{% endif %}</small> Manage Expenses</li>
+                                                        <li><small class="text-success">{% if perm.can_view_transport_dashboard %}✓{% else %}✗{% endif %}</small> View Transport Dashboard</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <p class="text-muted">No permissions set for this teacher.</p>
+                                            {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No teachers registered yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Permissions Settings Section (Bulk Apply) -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Set Permissions for Selected Teachers</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Configure permissions below. These will be applied to <strong>all selected teachers</strong> above.</p>
+
+                <!-- CRM Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_crm">
+                                <label class="form-check-label" for="allow_all_crm">Allow All CRM Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 crm-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_crm" id="can_view_crm">
+                                    <label class="form-check-label" for="can_view_crm">View CRM</label>
+                                </div>
+                                <div class="form-check mb-2 crm-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_home_enquiries" id="can_manage_home_enquiries">
+                                    <label class="form-check-label" for="can_manage_home_enquiries">Manage Home Enquiries</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Attendance Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_attendance">
+                                <label class="form-check-label" for="allow_all_attendance">Allow All Attendance Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 attendance-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_attendance" id="can_view_attendance">
+                                    <label class="form-check-label" for="can_view_attendance">View Attendance</label>
+                                </div>
+                                <div class="form-check mb-2 attendance-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_open_staff_attendance" id="can_open_staff_attendance">
+                                    <label class="form-check-label" for="can_open_staff_attendance">Open Staff Attendance</label>
+                                </div>
+                                <div class="form-check mb-2 attendance-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_open_student_attendance" id="can_open_student_attendance">
+                                    <label class="form-check-label" for="can_open_student_attendance">Open Student Attendance</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 attendance-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_search_student" id="can_search_student">
+                                    <label class="form-check-label" for="can_search_student">Search Student</label>
+                                </div>
+                                <div class="form-check mb-2 attendance-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_retreve_student" id="can_retreve_student">
+                                    <label class="form-check-label" for="can_retreve_student">Retrieve Student</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_registration">
+                                <label class="form-check-label" for="allow_all_registration">Allow All Registration Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_registration" id="can_view_registration">
+                                    <label class="form-check-label" for="can_view_registration">View Registration</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_academic_year" id="can_modify_academic_year">
+                                    <label class="form-check-label" for="can_modify_academic_year">Modify Academic Year</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_venue" id="can_modify_venue">
+                                    <label class="form-check-label" for="can_modify_venue">Modify Venue</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_examination" id="can_modify_examination">
+                                    <label class="form-check-label" for="can_modify_examination">Modify Examination</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_subjects" id="can_modify_subjects">
+                                    <label class="form-check-label" for="can_modify_subjects">Modify Subjects</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_students" id="can_modify_students">
+                                    <label class="form-check-label" for="can_modify_students">Modify Students</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_student_applications" id="can_manage_student_applications">
+                                    <label class="form-check-label" for="can_manage_student_applications">Manage Student Applications</label>
+                                </div>
+                                <div class="form-check mb-2 registration-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_staff" id="can_modify_staff">
+                                    <label class="form-check-label" for="can_modify_staff">Modify Staff</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_settings">
+                                <label class="form-check-label" for="allow_all_settings">Allow All Settings Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_settings" id="can_view_settings">
+                                    <label class="form-check-label" for="can_view_settings">View Settings</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_output" id="can_view_output">
+                                    <label class="form-check-label" for="can_view_output">View Output</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_grading_system" id="can_modify_grading_system">
+                                    <label class="form-check-label" for="can_modify_grading_system">Modify Grading System</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_display" id="can_modify_display">
+                                    <label class="form-check-label" for="can_modify_display">Modify Display</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_teacher_subject" id="can_modify_teacher_subject">
+                                    <label class="form-check-label" for="can_modify_teacher_subject">Modify Teacher Subject</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_student_subject" id="can_modify_student_subject">
+                                    <label class="form-check-label" for="can_modify_student_subject">Modify Student Subject</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_excluded_subject" id="can_modify_excluded_subject">
+                                    <label class="form-check-label" for="can_modify_excluded_subject">Modify Excluded Subject</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_subject_settings" id="can_modify_subject_settings">
+                                    <label class="form-check-label" for="can_modify_subject_settings">Modify Subject Settings</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_stamp_and_signature" id="can_modify_stamp_and_signature">
+                                    <label class="form-check-label" for="can_modify_stamp_and_signature">Modify Stamp & Signature</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_student_id" id="can_manage_student_id">
+                                    <label class="form-check-label" for="can_manage_student_id">Manage Student ID</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_comments" id="can_modify_comments">
+                                    <label class="form-check-label" for="can_modify_comments">Modify Comments</label>
+                                </div>
+                                <div class="form-check mb-2 settings-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_modify_composite_subject" id="can_modify_composite_subject">
+                                    <label class="form-check-label" for="can_modify_composite_subject">Modify Composite Subject</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transport Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_transport">
+                                <label class="form-check-label" for="allow_all_transport">Allow All Transport Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_transport" id="can_view_transport">
+                                    <label class="form-check-label" for="can_view_transport">View Transport Module</label>
+                                </div>
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_vehicle" id="can_manage_vehicle">
+                                    <label class="form-check-label" for="can_manage_vehicle">Manage Vehicles</label>
+                                </div>
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_route" id="can_manage_route">
+                                    <label class="form-check-label" for="can_manage_route">Manage Routes</label>
+                                </div>
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_fuel" id="can_manage_fuel">
+                                    <label class="form-check-label" for="can_manage_fuel">Manage Fuel</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_maintenance" id="can_manage_maintenance">
+                                    <label class="form-check-label" for="can_manage_maintenance">Manage Maintenance</label>
+                                </div>
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_manage_expense" id="can_manage_expense">
+                                    <label class="form-check-label" for="can_manage_expense">Manage Expenses</label>
+                                </div>
+                                <div class="form-check mb-2 transport-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_transport_dashboard" id="can_view_transport_dashboard">
+                                    <label class="form-check-label" for="can_view_transport_dashboard">View Transport Dashboard</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Permissions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="fw-bold text-primary mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="allow_all_output">
+                                <label class="form-check-label" for="allow_all_output">Allow All Output Permissions</label>
+                            </div>
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 output-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_best_student" id="can_view_best_student">
+                                    <label class="form-check-label" for="can_view_best_student">View Best Student</label>
+                                </div>
+                                <div class="form-check mb-2 output-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_results" id="can_view_results">
+                                    <label class="form-check-label" for="can_view_results">View Results</label>
+                                </div>
+                                <div class="form-check mb-2 output-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_subject_analysis" id="can_view_subject_analysis">
+                                    <label class="form-check-label" for="can_view_subject_analysis">View Subject Analysis</label>
+                                </div>
+                                <div class="form-check mb-2 output-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_grade_analysis" id="can_view_subject_analysis">
+                                    <label class="form-check-label" for="can_view_grade_analysis">View grade Analysis</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2 output-perms">
+                                    <input class="form-check-input" type="checkbox" name="can_view_division_analysis" id="can_view_division_analysis">
+                                    <label class="form-check-label" for="can_view_division_analysis">View Division Analysis</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid d-md-flex justify-content-md-end mt-4">
+                    <button class="btn btn-success rounded-pill px-4" type="submit" id="submitButton">
+                        <i class="fas fa-save me-2"></i>Apply Permissions to Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Include Font Awesome and Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    // Master Checkbox Functionality
+    function setupMasterCheckbox(masterId, groupClass) {
+        document.getElementById(masterId).addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.' + groupClass);
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+
+        // Optional: Update master based on children (if all checked, master checked)
+        const groupCheckboxes = document.querySelectorAll('.' + groupClass);
+        groupCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const master = document.getElementById(masterId);
+                const allChecked = Array.from(groupCheckboxes).every(c => c.checked);
+                const someChecked = Array.from(groupCheckboxes).some(c => c.checked);
+                master.checked = allChecked;
+                master.indeterminate = someChecked && !allChecked;
+            });
+        });
+    }
+
+    // Initialize masters
+    setupMasterCheckbox('allow_all_attendance', 'attendance-perms');
+    setupMasterCheckbox('allow_all_crm', 'crm-perms');
+    setupMasterCheckbox('allow_all_registration', 'registration-perms');
+    setupMasterCheckbox('allow_all_settings', 'settings-perms');
+    setupMasterCheckbox('allow_all_transport', 'transport-perms');
+    setupMasterCheckbox('allow_all_output', 'output-perms');
+
+    // Select All Functionality for Teachers
+    function toggleSelectAll(headerCheckbox) {
+        const checkboxes = document.querySelectorAll('.teacher-select');
+        checkboxes.forEach(cb => cb.checked = headerCheckbox.checked);
+    }
+
+    function selectAllTeachers(select) {
+        const headerCheckbox = document.getElementById('selectAllHeader');
+        headerCheckbox.checked = select;
+        toggleSelectAll(headerCheckbox);
+    }
+
+    function selectSingleTeacher(teacherId) {
+        const checkbox = document.querySelector(`input[value="${teacherId}"]`);
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+        }
+    }
+
+    // Form Submission with Loading
+    document.getElementById('permissionsForm').addEventListener('submit', function(event) {
+        const selectedCount = document.querySelectorAll('.teacher-select:checked').length;
+        if (selectedCount === 0) {
+            event.preventDefault();
+            alert('Please select at least one teacher.');
+            return;
+        }
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Applying...';
+    });
+
+    // Hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

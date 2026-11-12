@@ -1,0 +1,1282 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-file-pdf me-2"></i>Generate Student Reports</h2>
+    </div>
+
+    <!-- Report Generation Form Card -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <!-- Message Area -->
+            <div id="messageArea" class="mb-3">
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Report Generation Form -->
+            <form method="POST" id="pdfForm" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12 col-md-4">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select class="form-select rounded-end" id="class_id" name="class_id" required>
+                            <option value="" disabled selected>Select Class</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">
+                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="grade_id" class="form-label fw-semibold"><i class="fas fa-graduation-cap me-2"></i>Grading System</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select class="form-select rounded-end" id="grade_id" name="grade_id" required>
+                            <option value="" disabled selected>Select Grading</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}">
+                                {% if grade.is_primary %}Primary{% elif grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-file-alt me-2"></i>Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-list"></i></span>
+                        <select class="form-select rounded-end" id="examination_id" name="examination_id">
+                            <option value="" disabled selected>Select Exam</option>
+                            {% for exam in examination_names %}
+                            <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Buttons Section: Organized into Categorized Rows -->
+                <div class="col-12">
+                    <!-- Row 1: Basic Academic Reports -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-12">
+                            <h6 class="fw-bold text-muted mb-2"><i class="fas fa-graduation-cap me-2"></i>Basic Academic Reports</h6>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-primary rounded-pill w-100" type="submit" id="submitButton">
+                                <i class="fas fa-file-download me-2"></i>
+                                <span class="button-text">Academic Results</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="loadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-warning rounded-pill w-100" type="button" id="caResultButton">
+                                <i class="fas fa-chart-line me-2"></i>
+                                <span class="button-text">CA Based Result</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="caLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-dark rounded-pill w-100" type="button" id="finalResultButton">
+                                <i class="fas fa-award me-2"></i>
+                                <span class="button-text">Final Result</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="finalLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-success rounded-pill w-100" type="button" id="fullReportButton">
+                                <i class="fas fa-folder-open me-2"></i>
+                                <span class="button-text">All Exams & Financial</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="fullReportLoadingSpinner"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Financial Included Reports -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-12">
+                            <h6 class="fw-bold text-muted mb-2"><i class="fas fa-dollar-sign me-2"></i>Financial Included Reports</h6>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <button class="btn btn-success rounded-pill w-100" type="button" id="combinedButton">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>
+                                <span class="button-text">Exam & Financial</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="combinedLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <button class="btn btn-warning rounded-pill w-100" type="button" id="caResultFinancialButton">
+                                <i class="fas fa-calculator me-2"></i>
+                                <span class="button-text">CA Result + Financial</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="caResultFinancialLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <button class="btn btn-dark rounded-pill w-100" type="button" id="finalResultFinancialButton">
+                                <i class="fas fa-trophy me-2"></i>
+                                <span class="button-text">Final Result + Financial</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="finalResultFinancialLoadingSpinner"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Merged Reports -->
+                    <div class="row g-2 mb-4">
+                        <div class="col-12">
+                            <h6 class="fw-bold text-muted mb-2"><i class="fas fa-layer-group me-2"></i>Merged Reports</h6>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-primary rounded-pill w-100" type="button" id="mergedResultButton">
+                                <i class="fas fa-layer-group me-2"></i>
+                                <span class="button-text">Merged Result</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-secondary rounded-pill w-100" type="button" id="mergedCombinedButton">
+                                <i class="fas fa-layer-group me-2"></i>
+                                <span class="button-text">Merged Combined Report</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedCombinedLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-success rounded-pill w-100" type="button" id="mergedFinalFinancialButton">
+                                <i class="fas fa-layer-group me-2"></i>
+                                <span class="button-text">Merged Final + Financial</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedFinalFinancialLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-purple rounded-pill w-100" type="button" id="mergedFinalResultButton">
+                                <i class="fas fa-file-alt me-2"></i>
+                                <span class="button-text">Merged Final Result</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedFinalResultLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-warning rounded-pill w-100" type="button" id="mergedCaResultButton">
+                                <i class="fas fa-layer-group me-2"></i>
+                                <span class="button-text">Merged CA Result</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedCaLoadingSpinner"></span>
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-success rounded-pill w-100" type="button" id="mergedFullReportButton">
+                                <i class="fas fa-folder-open me-2"></i>
+                                <span class="button-text">Merged Full Report</span>
+                                <span class="spinner-border spinner-border-sm d-none" id="mergedFullReportLoadingSpinner"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- New Modal for Merged Combined Report -->
+            <div class="modal fade" id="mergedCombinedModal" tabindex="-1" aria-labelledby="mergedCombinedModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form id="mergedCombinedForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedCombinedModalLabel"><i class="fas fa-layer-group me-2"></i>Select Classes for Merged Combined Report</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="mergedCombinedClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                        <select class="form-select rounded-end" id="mergedCombinedClasses" name="class_ids" multiple size="8" required>
+                                            {% for class in classes %}
+                                            <option value="{{ class.id }}">
+                                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                </div>
+                                <!-- Ensure grading and exam are included -->
+                                <input type="hidden" name="grade_id" id="mergedCombinedGradeId" value="">
+                                <input type="hidden" name="examination_id" id="mergedCombinedExamId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-outline-secondary rounded-pill" id="mergedCombinedSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged Combined Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Modal for Merged Result -->
+            <div class="modal fade" id="mergedModal" tabindex="-1" aria-labelledby="mergedModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form id="mergedForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedModalLabel"><i class="fas fa-layer-group me-2"></i>Select Classes for Merged Result</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="mergedClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                        <select class="form-select rounded-end" id="mergedClasses" name="class_ids" multiple size="8" required>
+                                            {% for class in classes %}
+                                            <option value="{{ class.id }}">
+                                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                </div>
+                                <!-- Ensure grading and exam are included -->
+                                <input type="hidden" name="grade_id" id="mergedGradeId" value="">
+                                <input type="hidden" name="examination_id" id="mergedExamId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-primary rounded-pill" id="mergedSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Modal for Merged Final Financial -->
+            <div class="modal fade" id="mergedFinalFinancialModal" tabindex="-1" aria-labelledby="mergedFinalFinancialModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="mergedFinalFinancialForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedFinalFinancialModalLabel"><i class="fas fa-layer-group me-2"></i>Select Classes and Examinations for Merged Final + Financial</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFinalClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFinalClasses" name="class_ids" multiple size="8" required>
+                                                {% for class in classes %}
+                                                <option value="{{ class.id }}">
+                                                    {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFinalExams" class="form-label fw-semibold"><i class="fas fa-clipboard-list me-2"></i>Select Examinations</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFinalExams" name="exams" multiple size="8" required>
+                                                {% for exam in examination_names %}
+                                                <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple exams.</small>
+                                    </div>
+                                </div>
+                                <!-- Hidden grade_id -->
+                                <input type="hidden" name="grade_id" id="mergedFinalGradeId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-outline-success rounded-pill" id="mergedFinalFinancialSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Modal for Merged Final Result -->
+            <div class="modal fade" id="mergedFinalResultModal" tabindex="-1" aria-labelledby="mergedFinalResultModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="mergedFinalResultForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedFinalResultModalLabel"><i class="fas fa-layer-group me-2"></i>Select Classes and Examinations for Merged Final Result</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFinalResultClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFinalResultClasses" name="class_ids" multiple size="8" required>
+                                                {% for class in classes %}
+                                                <option value="{{ class.id }}">
+                                                    {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFinalResultExams" class="form-label fw-semibold"><i class="fas fa-clipboard-list me-2"></i>Select Examinations</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFinalResultExams" name="exams" multiple size="8" required>
+                                                {% for exam in examination_names %}
+                                                <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple exams.</small>
+                                    </div>
+                                </div>
+                                <!-- Hidden grade_id -->
+                                <input type="hidden" name="grade_id" id="mergedFinalResultGradeId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-primary rounded-pill" id="mergedFinalResultSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Modal for Merged CA Result -->
+            <div class="modal fade" id="mergedCaResultModal" tabindex="-1" aria-labelledby="mergedCaResultModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="mergedCaResultForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedCaResultModalLabel"><i class="fas fa-layer-group me-2"></i>Select Classes and Examinations for Merged CA Result</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedCaClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                            <select class="form-select rounded-end" id="mergedCaClasses" name="class_ids" multiple size="8" required>
+                                                {% for class in classes %}
+                                                <option value="{{ class.id }}">
+                                                    {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedCaExams" class="form-label fw-semibold"><i class="fas fa-clipboard-list me-2"></i>Select Examinations</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                                            <select class="form-select rounded-end" id="mergedCaExams" name="exams" multiple size="8" required>
+                                                {% for exam in examination_names %}
+                                                <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple exams.</small>
+                                    </div>
+                                </div>
+                                <!-- Hidden grade_id -->
+                                <input type="hidden" name="grade_id" id="mergedCaGradeId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-warning rounded-pill" id="mergedCaSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged CA Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Modal for Merged Full Report -->
+            <div class="modal fade" id="mergedFullReportModal" tabindex="-1" aria-labelledby="mergedFullReportModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="mergedFullReportForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="mergedFullReportModalLabel"><i class="fas fa-folder-open me-2"></i>Select Classes and Examinations for Merged Full Report</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFullClasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFullClasses" name="class_ids" multiple size="8" required>
+                                                {% for class in classes %}
+                                                <option value="{{ class.id }}">
+                                                    {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="mergedFullExams" class="form-label fw-semibold"><i class="fas fa-clipboard-list me-2"></i>Select Examinations</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                                            <select class="form-select rounded-end" id="mergedFullExams" name="exams" multiple size="8" required>
+                                                {% for exam in examination_names %}
+                                                <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple exams.</small>
+                                    </div>
+                                </div>
+                                <!-- Hidden grade_id -->
+                                <input type="hidden" name="grade_id" id="mergedFullGradeId" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-success rounded-pill" id="mergedFullReportSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate Merged Full Report</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CA/Final/Full Report Modal -->
+            <div class="modal fade" id="caFinalModal" tabindex="-1" aria-labelledby="caFinalModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form id="caFinalForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="caFinalModalLabel"><i class="fas fa-list-ul me-2"></i>Select Examinations</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="caFinalExams" class="form-label fw-semibold"><i class="fas fa-clipboard-list me-2"></i>Select Examinations</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                                        <select class="form-select rounded-end" id="caFinalExams" name="exams" multiple size="5" required>
+                                            {% for exam in examination_names %}
+                                            <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple exams.</small>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                                <button type="submit" class="btn btn-primary rounded-pill" id="caFinalSubmitBtn"><i class="fas fa-check-circle me-2"></i>Generate</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- CSS for btn-purple -->
+<style>
+.btn-purple {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+.btn-purple:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const pdfForm = document.getElementById('pdfForm');
+    const submitButton = document.getElementById('submitButton');
+    const combinedButton = document.getElementById('combinedButton');
+    const fullReportButton = document.getElementById('fullReportButton');
+    const caResultButton = document.getElementById('caResultButton');
+    const finalResultButton = document.getElementById('finalResultButton');
+    const caResultFinancialButton = document.getElementById('caResultFinancialButton');
+    const finalResultFinancialButton = document.getElementById('finalResultFinancialButton');
+    const caFinalModal = new bootstrap.Modal(document.getElementById('caFinalModal'), { keyboard: true });
+    const caFinalForm = document.getElementById('caFinalForm');
+    const caFinalExams = document.getElementById('caFinalExams');
+    const caFinalSubmitBtn = document.getElementById('caFinalSubmitBtn');
+    const classSelect = document.getElementById('class_id');
+    const gradeSelect = document.getElementById('grade_id');
+    const examSelect = document.getElementById('examination_id');
+    let caFinalType = null;
+
+    // Merged modal elements
+    const mergedButton = document.getElementById('mergedResultButton');
+    const mergedModal = new bootstrap.Modal(document.getElementById('mergedModal'), { keyboard: true });
+    const mergedForm = document.getElementById('mergedForm');
+    const mergedClasses = document.getElementById('mergedClasses');
+    const mergedSubmitBtn = document.getElementById('mergedSubmitBtn');
+
+    // Merged Combined elements
+    const mergedCombinedButton = document.getElementById('mergedCombinedButton');
+    const mergedCombinedModal = new bootstrap.Modal(document.getElementById('mergedCombinedModal'), { keyboard: true });
+    const mergedCombinedForm = document.getElementById('mergedCombinedForm');
+    const mergedCombinedClasses = document.getElementById('mergedCombinedClasses');
+    const mergedCombinedSubmitBtn = document.getElementById('mergedCombinedSubmitBtn');
+
+    // Merged Final Financial elements
+    const mergedFinalFinancialButton = document.getElementById('mergedFinalFinancialButton');
+    const mergedFinalFinancialModal = new bootstrap.Modal(document.getElementById('mergedFinalFinancialModal'), { keyboard: true });
+    const mergedFinalFinancialForm = document.getElementById('mergedFinalFinancialForm');
+    const mergedFinalClasses = document.getElementById('mergedFinalClasses');
+    const mergedFinalExams = document.getElementById('mergedFinalExams');
+    const mergedFinalFinancialSubmitBtn = document.getElementById('mergedFinalFinancialSubmitBtn');
+
+    // Merged Final Result elements
+    const mergedFinalResultButton = document.getElementById('mergedFinalResultButton');
+    const mergedFinalResultModal = new bootstrap.Modal(document.getElementById('mergedFinalResultModal'), { keyboard: true });
+    const mergedFinalResultForm = document.getElementById('mergedFinalResultForm');
+    const mergedFinalResultClasses = document.getElementById('mergedFinalResultClasses');
+    const mergedFinalResultExams = document.getElementById('mergedFinalResultExams');
+    const mergedFinalResultSubmitBtn = document.getElementById('mergedFinalResultSubmitBtn');
+
+    // Merged CA Result elements
+    const mergedCaButton = document.getElementById('mergedCaResultButton');
+    const mergedCaModal = new bootstrap.Modal(document.getElementById('mergedCaResultModal'), { keyboard: true });
+    const mergedCaForm = document.getElementById('mergedCaResultForm');
+    const mergedCaClasses = document.getElementById('mergedCaClasses');
+    const mergedCaExams = document.getElementById('mergedCaExams');
+    const mergedCaSubmitBtn = document.getElementById('mergedCaSubmitBtn');
+
+    // Merged Full Report elements
+    const mergedFullReportButton = document.getElementById('mergedFullReportButton');
+    const mergedFullReportModal = new bootstrap.Modal(document.getElementById('mergedFullReportModal'), { keyboard: true });
+    const mergedFullReportForm = document.getElementById('mergedFullReportForm');
+    const mergedFullClasses = document.getElementById('mergedFullClasses');
+    const mergedFullExams = document.getElementById('mergedFullExams');
+    const mergedFullReportSubmitBtn = document.getElementById('mergedFullReportSubmitBtn');
+
+    // Toast notification
+    function showToast(type, message) {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3 animate__animated animate__fadeIn`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body"><i class="fas fa-info-circle me-2"></i>${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    // Reset button state
+    function resetButtonState(button, spinner, text) {
+        button.disabled = false;
+        if (spinner) spinner.classList.add('d-none');
+        button.querySelector('.button-text').textContent = text;
+    }
+
+    // Reset modal button state
+    function resetModalButtonState() {
+        caFinalSubmitBtn.disabled = false;
+        caFinalSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate';
+    }
+
+    // Form submission handling
+    pdfForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        if (!classSelect.value || !gradeSelect.value || !examSelect.value) {
+            showToast('danger', 'Please select class, grading system, and examination.');
+            return;
+        }
+        submitButton.disabled = true;
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.classList.remove('d-none');
+        submitButton.querySelector('.button-text').textContent = 'Processing...';
+    });
+
+    caFinalForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        caFinalSubmitBtn.disabled = true;
+        caFinalSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    // Add hover effect for buttons
+    document.querySelectorAll('.btn').forEach(button => {
+        button.addEventListener('mouseenter', () => {
+            button.classList.add('shadow-sm');
+        });
+        button.addEventListener('mouseleave', () => {
+            button.classList.remove('shadow-sm');
+        });
+    });
+
+    // Academic Results Submission
+    pdfForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (!classSelect.value || !gradeSelect.value || !examSelect.value) {
+            showToast('danger', 'Please select class, grading system, and examination.');
+            return;
+        }
+        submitButton.disabled = true;
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.classList.remove('d-none');
+        submitButton.querySelector('.button-text').textContent = 'Processing...';
+        try {
+            const baseUrl = "{% url 'download_pdf' class_id=0 grade_id=0 examination_name_id=0 %}";
+            const url = baseUrl
+                .replace(/\/0\//g, `/${classSelect.value}/`)
+                .replace(/\/0\//, `/${gradeSelect.value}/`)
+                .replace(/\/0\//, `/${examSelect.value}/`);
+            const formData = new FormData(pdfForm);
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+            });
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `academic_results_${classSelect.value}_${examSelect.value}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast('success', 'Academic results generated successfully!');
+            } else {
+                showToast('danger', 'Failed to generate academic results.');
+            }
+        } catch (error) {
+            showToast('danger', 'Error: ' + error.message);
+        } finally {
+            resetButtonState(submitButton, spinner, 'Academic Results');
+        }
+    });
+
+    // Combined Report Submission
+    if (combinedButton) {
+        combinedButton.addEventListener('click', async function() {
+            if (!classSelect.value || !gradeSelect.value || !examSelect.value) {
+                showToast('danger', 'Please select class, grading system, and examination.');
+                return;
+            }
+            combinedButton.disabled = true;
+            const spinner = document.getElementById('combinedLoadingSpinner');
+            spinner.classList.remove('d-none');
+            combinedButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const baseUrl = "{% url 'download_combined_pdf' class_id=0 grade_id=0 examination_name_id=0 %}";
+                const url = baseUrl
+                    .replace(/\/0\//g, `/${classSelect.value}/`)
+                    .replace(/\/0\//, `/${gradeSelect.value}/`)
+                    .replace(/\/0\//, `/${examSelect.value}/`);
+                const formData = new FormData(pdfForm);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `combined_report_${classSelect.value}_${examSelect.value}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Exam & financial report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate combined report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                resetButtonState(combinedButton, spinner, 'Exam & Financial');
+            }
+        });
+    }
+
+    // Full Report Submission
+    if (fullReportButton) {
+        fullReportButton.addEventListener('click', function() {
+            caFinalType = 'full';
+            document.getElementById('caFinalModalLabel').textContent = 'Select Examinations for All Exams & Financial Report';
+            caFinalModal.show();
+        });
+    }
+
+    // CA and Final Result Modal Handling
+    caResultButton.addEventListener('click', function() {
+        caFinalType = 'ca';
+        document.getElementById('caFinalModalLabel').textContent = 'Select Examinations for CA Based Result';
+        caFinalModal.show();
+    });
+
+    finalResultButton.addEventListener('click', function() {
+        caFinalType = 'final';
+        document.getElementById('caFinalModalLabel').textContent = 'Select Examinations for Final Result';
+        caFinalModal.show();
+    });
+
+    // CA Result + Financial Button
+    if (caResultFinancialButton) {
+        caResultFinancialButton.addEventListener('click', function() {
+            caFinalType = 'ca_financial';
+            document.getElementById('caFinalModalLabel').textContent = 'Select Examinations for CA Result + Financial';
+            caFinalModal.show();
+        });
+    }
+
+    // Final Result + Financial Button
+    if (finalResultFinancialButton) {
+        finalResultFinancialButton.addEventListener('click', function() {
+            caFinalType = 'final_financial';
+            document.getElementById('caFinalModalLabel').textContent = 'Select Examinations for Final Result + Financial';
+            caFinalModal.show();
+        });
+    }
+
+    caFinalForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const selectedExams = Array.from(caFinalExams.selectedOptions).map(opt => opt.value);
+        if (!selectedExams.length) {
+            showToast('danger', 'Please select at least one examination.');
+            resetModalButtonState();
+            return;
+        }
+        if (!classSelect.value || !gradeSelect.value) {
+            showToast('danger', 'Please select class and grading system.');
+            caFinalModal.hide();
+            resetModalButtonState();
+            return;
+        }
+        let button, spinner, text, url;
+        switch (caFinalType) {
+            case 'ca':
+                button = caResultButton;
+                spinner = document.getElementById('caLoadingSpinner');
+                text = 'CA Based Result';
+                url = `{% url 'download_ca_result_pdf' class_id=0 grade_id=0 %}`.replace('/0/', `/${classSelect.value}/`).replace('/0/', `/${gradeSelect.value}/`);
+                break;
+            case 'final':
+                button = finalResultButton;
+                spinner = document.getElementById('finalLoadingSpinner');
+                text = 'Final Result';
+                url = `{% url 'download_final_result_pdf' class_id=0 grade_id=0 %}`.replace('/0/', `/${classSelect.value}/`).replace('/0/', `/${gradeSelect.value}/`);
+                break;
+            case 'ca_financial':
+                button = caResultFinancialButton;
+                spinner = document.getElementById('caResultFinancialLoadingSpinner');
+                text = 'CA Result + Financial';
+                url = `{% url 'download_ca_result_financial_pdf' class_id=0 grade_id=0 %}`.replace('/0/', `/${classSelect.value}/`).replace('/0/', `/${gradeSelect.value}/`);
+                break;
+            case 'final_financial':
+                button = finalResultFinancialButton;
+                spinner = document.getElementById('finalResultFinancialLoadingSpinner');
+                text = 'Final Result + Financial';
+                url = `{% url 'download_final_result_financial_pdf' class_id=0 grade_id=0 %}`.replace('/0/', `/${classSelect.value}/`).replace('/0/', `/${gradeSelect.value}/`);
+                break;
+            case 'full':
+                button = fullReportButton;
+                spinner = document.getElementById('fullReportLoadingSpinner');
+                text = 'All Exams & Financial';
+                url = `{% url 'download_full_report' class_id=0 grade_id=0 %}`.replace('/0/', `/${classSelect.value}/`).replace('/0/', `/${gradeSelect.value}/`);
+                break;
+            default:
+                showToast('danger', 'Invalid report type.');
+                resetModalButtonState();
+                return;
+        }
+        button.disabled = true;
+        spinner.classList.remove('d-none');
+        button.querySelector('.button-text').textContent = 'Processing...';
+        try {
+            const formData = new FormData();
+            selectedExams.forEach(examId => formData.append('exams', examId));
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+            });
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = caFinalType === 'ca' ? `ca_result_${classSelect.value}.pdf` :
+                            caFinalType === 'final' ? `final_result_${classSelect.value}.pdf` :
+                            caFinalType === 'ca_financial' ? `ca_result_financial_${classSelect.value}.pdf` :
+                            caFinalType === 'final_financial' ? `final_result_financial_${classSelect.value}.pdf` :
+                            `full_report_${classSelect.value}_selected_exams.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast('success', `${text} generated successfully!`);
+            } else {
+                showToast('danger', `Failed to generate ${text.toLowerCase()}.`);
+            }
+        } catch (error) {
+            showToast('danger', 'Error: ' + error.message);
+        } finally {
+            resetButtonState(button, spinner, text);
+            resetModalButtonState();
+            caFinalModal.hide();
+        }
+    });
+
+    // Merged Result Button Click
+    if (mergedButton) {
+        mergedButton.addEventListener('click', function() {
+            // Populate hidden fields with current selections
+            document.getElementById('mergedGradeId').value = gradeSelect.value;
+            document.getElementById('mergedExamId').value = examSelect.value;
+            if (!gradeSelect.value || !examSelect.value) {
+                showToast('danger', 'Please select grading system and examination first.');
+                return;
+            }
+            mergedModal.show();
+        });
+    }
+
+    // Merged Form Submission
+    if (mergedForm) {
+        mergedForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedClasses.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!document.getElementById('mergedGradeId').value || !document.getElementById('mergedExamId').value) {
+                showToast('danger', 'Grading system and examination are required.');
+                mergedModal.hide();
+                return;
+            }
+            mergedSubmitBtn.disabled = true;
+            mergedSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedButton.disabled = true;
+            const spinner = document.getElementById('mergedLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedForm);
+                const response = await fetch("{% url 'download_merged_pdf' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_result_${selectedClasses.join('_')}_${document.getElementById('mergedExamId').value}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged result generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged result.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedSubmitBtn.disabled = false;
+                mergedSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged Report';
+                mergedButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedButton.querySelector('.button-text').textContent = 'Merged Result';
+                mergedModal.hide();
+            }
+        });
+    }
+
+    // Merged Combined Button Click
+    if (mergedCombinedButton) {
+        mergedCombinedButton.addEventListener('click', function() {
+            // Populate hidden fields with current selections
+            document.getElementById('mergedCombinedGradeId').value = gradeSelect.value;
+            document.getElementById('mergedCombinedExamId').value = examSelect.value;
+            if (!gradeSelect.value || !examSelect.value) {
+                showToast('danger', 'Please select grading system and examination first.');
+                return;
+            }
+            mergedCombinedModal.show();
+        });
+    }
+
+    // Merged Combined Form Submission
+    if (mergedCombinedForm) {
+        mergedCombinedForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedCombinedClasses.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!document.getElementById('mergedCombinedGradeId').value || !document.getElementById('mergedCombinedExamId').value) {
+                showToast('danger', 'Grading system and examination are required.');
+                mergedCombinedModal.hide();
+                return;
+            }
+            mergedCombinedSubmitBtn.disabled = true;
+            mergedCombinedSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedCombinedButton.disabled = true;
+            const spinner = document.getElementById('mergedCombinedLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedCombinedButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedCombinedForm);
+                const response = await fetch("{% url 'download_merged_combined_pdf' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_combined_report_${selectedClasses.join('_')}_${document.getElementById('mergedCombinedExamId').value}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged combined report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged combined report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedCombinedSubmitBtn.disabled = false;
+                mergedCombinedSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged Combined Report';
+                mergedCombinedButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedCombinedButton.querySelector('.button-text').textContent = 'Merged Combined Report';
+                mergedCombinedModal.hide();
+            }
+        });
+    }
+
+    // Merged Final Financial Button Click
+    if (mergedFinalFinancialButton) {
+        mergedFinalFinancialButton.addEventListener('click', function() {
+            // Populate hidden grade_id
+            document.getElementById('mergedFinalGradeId').value = gradeSelect.value;
+            if (!gradeSelect.value) {
+                showToast('danger', 'Please select grading system first.');
+                return;
+            }
+            mergedFinalFinancialModal.show();
+        });
+    }
+
+    // Merged Final Financial Form Submission
+    if (mergedFinalFinancialForm) {
+        mergedFinalFinancialForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedFinalClasses.selectedOptions).map(opt => opt.value);
+            const selectedExams = Array.from(mergedFinalExams.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!selectedExams.length) {
+                showToast('danger', 'Please select at least one examination.');
+                return;
+            }
+            if (!document.getElementById('mergedFinalGradeId').value) {
+                showToast('danger', 'Grading system is required.');
+                mergedFinalFinancialModal.hide();
+                return;
+            }
+            mergedFinalFinancialSubmitBtn.disabled = true;
+            mergedFinalFinancialSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedFinalFinancialButton.disabled = true;
+            const spinner = document.getElementById('mergedFinalFinancialLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedFinalFinancialButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedFinalFinancialForm);
+                const response = await fetch("{% url 'download_merged_final_financial_pdf' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_final_financial_${selectedClasses.join('_')}_${selectedExams.join('_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged Final + Financial report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged final financial report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedFinalFinancialSubmitBtn.disabled = false;
+                mergedFinalFinancialSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged Report';
+                mergedFinalFinancialButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedFinalFinancialButton.querySelector('.button-text').textContent = 'Merged Final + Financial';
+                mergedFinalFinancialModal.hide();
+            }
+        });
+    }
+
+    // Merged Final Result Button Click
+    if (mergedFinalResultButton) {
+        mergedFinalResultButton.addEventListener('click', function() {
+            // Populate hidden grade_id
+            document.getElementById('mergedFinalResultGradeId').value = gradeSelect.value;
+            if (!gradeSelect.value) {
+                showToast('danger', 'Please select grading system first.');
+                return;
+            }
+            mergedFinalResultModal.show();
+        });
+    }
+
+    // Merged Final Result Form Submission
+    if (mergedFinalResultForm) {
+        mergedFinalResultForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedFinalResultClasses.selectedOptions).map(opt => opt.value);
+            const selectedExams = Array.from(mergedFinalResultExams.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!selectedExams.length) {
+                showToast('danger', 'Please select at least one examination.');
+                return;
+            }
+            if (!document.getElementById('mergedFinalResultGradeId').value) {
+                showToast('danger', 'Grading system is required.');
+                mergedFinalResultModal.hide();
+                return;
+            }
+            mergedFinalResultSubmitBtn.disabled = true;
+            mergedFinalResultSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedFinalResultButton.disabled = true;
+            const spinner = document.getElementById('mergedFinalResultLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedFinalResultButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedFinalResultForm);
+                const response = await fetch("{% url 'download_merged_final_result_pdf' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_final_result_${selectedClasses.join('_')}_${selectedExams.join('_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged final result report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged final result report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedFinalResultSubmitBtn.disabled = false;
+                mergedFinalResultSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged Report';
+                mergedFinalResultButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedFinalResultButton.querySelector('.button-text').textContent = 'Merged Final Result';
+                mergedFinalResultModal.hide();
+            }
+        });
+    }
+
+    // Merged CA Result Button Click
+    if (mergedCaButton) {
+        mergedCaButton.addEventListener('click', function() {
+            // Populate hidden grade_id
+            document.getElementById('mergedCaGradeId').value = gradeSelect.value;
+            if (!gradeSelect.value) {
+                showToast('danger', 'Please select grading system first.');
+                return;
+            }
+            mergedCaModal.show();
+        });
+    }
+
+    // Merged CA Result Form Submission
+    if (mergedCaForm) {
+        mergedCaForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedCaClasses.selectedOptions).map(opt => opt.value);
+            const selectedExams = Array.from(mergedCaExams.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!selectedExams.length) {
+                showToast('danger', 'Please select at least one examination.');
+                return;
+            }
+            if (!document.getElementById('mergedCaGradeId').value) {
+                showToast('danger', 'Grading system is required.');
+                mergedCaModal.hide();
+                return;
+            }
+            mergedCaSubmitBtn.disabled = true;
+            mergedCaSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedCaButton.disabled = true;
+            const spinner = document.getElementById('mergedCaLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedCaButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedCaForm);
+                const response = await fetch("{% url 'download_merged_ca_result_pdf' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_ca_result_${selectedClasses.join('_')}_${selectedExams.join('_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged CA result report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged CA result report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedCaSubmitBtn.disabled = false;
+                mergedCaSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged CA Report';
+                mergedCaButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedCaButton.querySelector('.button-text').textContent = 'Merged CA Result';
+                mergedCaModal.hide();
+            }
+        });
+    }
+
+    // Merged Full Report Button Click
+    if (mergedFullReportButton) {
+        mergedFullReportButton.addEventListener('click', function() {
+            // Populate hidden grade_id
+            document.getElementById('mergedFullGradeId').value = gradeSelect.value;
+            if (!gradeSelect.value) {
+                showToast('danger', 'Please select grading system first.');
+                return;
+            }
+            mergedFullReportModal.show();
+        });
+    }
+
+    // Merged Full Report Form Submission
+    if (mergedFullReportForm) {
+        mergedFullReportForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const selectedClasses = Array.from(mergedFullClasses.selectedOptions).map(opt => opt.value);
+            const selectedExams = Array.from(mergedFullExams.selectedOptions).map(opt => opt.value);
+            if (!selectedClasses.length) {
+                showToast('danger', 'Please select at least one class.');
+                return;
+            }
+            if (!selectedExams.length) {
+                showToast('danger', 'Please select at least one examination.');
+                return;
+            }
+            if (!document.getElementById('mergedFullGradeId').value) {
+                showToast('danger', 'Grading system is required.');
+                mergedFullReportModal.hide();
+                return;
+            }
+            mergedFullReportSubmitBtn.disabled = true;
+            mergedFullReportSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            mergedFullReportButton.disabled = true;
+            const spinner = document.getElementById('mergedFullReportLoadingSpinner');
+            spinner.classList.remove('d-none');
+            mergedFullReportButton.querySelector('.button-text').textContent = 'Processing...';
+            try {
+                const formData = new FormData(mergedFullReportForm);
+                const response = await fetch("{% url 'download_merged_full_report' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `merged_full_report_${selectedClasses.join('_')}_${selectedExams.join('_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('success', 'Merged full report generated successfully!');
+                } else {
+                    showToast('danger', 'Failed to generate merged full report.');
+                }
+            } catch (error) {
+                showToast('danger', 'Error: ' + error.message);
+            } finally {
+                mergedFullReportSubmitBtn.disabled = false;
+                mergedFullReportSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Generate Merged Full Report';
+                mergedFullReportButton.disabled = false;
+                spinner.classList.add('d-none');
+                mergedFullReportButton.querySelector('.button-text').textContent = 'Merged Full Report';
+                mergedFullReportModal.hide();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% load custom_filters %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-primary text-white text-center rounded-top-4">
+                    <h3 class="mb-0 fw-bold">Update Student Information</h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Messages -->
+                    {% if message %}
+                        <div class="alert alert-info alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+
+                    <!-- Update Student Form -->
+                    <form action="{% url 'update_student' st.id %}" id="updatestudentForm" method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label fw-medium text-muted">Full Name:</label>
+                            <input type="text" name="fullName" id="fullName" class="form-control rounded-pill shadow-sm" value="{{ st.fullName }}" required>
+                            <div class="invalid-feedback">
+                                Please enter the full name.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contact" class="form-label fw-medium text-muted">Contact:</label>
+                            <input type="number" name="contact" id="contact" class="form-control rounded-pill shadow-sm" value="{{ st.contact }}" required>
+                            <div class="invalid-feedback">
+                                Please enter the full name.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="sex" class="form-label fw-medium text-muted">Sex:</label>
+                            <select name="sex" id="sex" class="form-select rounded-pill shadow-sm" required>
+                                <option value="" disabled {% if not st.sex %}selected{% endif %}>Select Sex</option>
+                                <option value="M" {% if st.sex == 'M' %}selected{% endif %}>Male</option>
+                                <option value="F" {% if st.sex == 'F' %}selected{% endif %}>Female</option>
+                                <option value="O" {% if st.sex == 'O' %}selected{% endif %}>Other</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select a sex.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="indexNumber" class="form-label fw-medium text-muted">Index Number:</label>
+                            <input type="text" name="indexNumber" id="indexNumber" class="form-control rounded-pill shadow-sm" value="{{ st.indexNumber }}" required>
+                            <div class="invalid-feedback">
+                                Please enter an index number.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="teacherclass" class="form-label fw-medium text-muted">Class:</label>
+                            <select name="teacherclass" id="teacherclass" class="form-select rounded-pill shadow-sm" required>
+                                <option value="" disabled {% if not st.teacherclass %}selected{% endif %}>Select Class</option>
+                                {% for tc in teacher_classes %}
+                                    <option value="{{ tc.id }}" {% if st.teacherclass.id == tc.id %}selected{% endif %}>
+                                        {{ tc.ClassName|default:"Unnamed Class" }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select a class.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="academic_level" class="form-label fw-medium text-muted">Academic Level:</label>
+                            <select name="academic_level" id="academic_level" class="form-select rounded-pill shadow-sm" required>
+                                <option value="" disabled {% if not st.academic_information.academic_level %}selected{% endif %}>Select Academic Level</option>
+                                {% for value, label in academic_level_choices %}
+                                    <option value="{{ value }}" {% if st.academic_information.academic_level == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select an academic level.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-outline-primary rounded-pill w-100 shadow-sm fw-medium" id="submitButton">
+                            <span class="spinner-border spinner-border-sm d-none" id="loadingSpinner" role="status" aria-hidden="true"></span>
+                            Update
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const updateStudentForm = document.getElementById('updatestudentForm');
+        const submitButton = document.getElementById('submitButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        if (updateStudentForm) {
+            updateStudentForm.addEventListener('submit', function(event) {
+                if (!this.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                } else {
+                    submitButton.disabled = true;
+                    loadingSpinner.classList.remove('d-none');
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Wait...';
+                }
+                this.classList.add('was-validated');
+            });
+        }
+    });
+</script>
+{% endblock %}

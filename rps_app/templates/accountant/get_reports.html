@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Reports{% endblock %}
+
+{% block content %}
+<style>
+  .modern-card { border: 0; border-radius: 1rem; overflow: hidden; }
+  .modern-card .card-header { background: linear-gradient(135deg, #f8fbff, #eef6ff); border-bottom: 1px solid #e9f0fa; }
+</style>
+
+<div class="container my-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary mb-0">Get Reports</h2>
+  </div>
+
+  <div class="card shadow-sm modern-card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-file-pdf me-2"></i>Generate Fee Reports</h5>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Teacher Class</label>
+          <select class="form-select" name="class_id" id="classSelect" required>
+            <option value="">Select a class</option>
+            {% for tc in teacher_classes %}
+              <option value="{{ tc.id }}" {% if selected_class_id == tc.id %}selected{% endif %}>
+                {{ tc.ClassName.class_name|default:"Unnamed Class" }}
+                {% if tc.academicclassyear %} ({{ tc.academicclassyear.academic_year_name }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fee</label>
+          <select class="form-select" name="fee_id" id="feeSelect">
+            <option value="">Select fee</option>
+            {% for fee in fees %}
+              <option value="{{ fee.id }}" {% if selected_fee_id == fee.id %}selected{% endif %}>{{ fee.fee_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-outline-primary w-100">
+            <i class="fas fa-filter me-2"></i>Load Fees
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-4 d-flex flex-wrap gap-2">
+        <a
+          class="btn btn-primary {% if not selected_class_id or not selected_fee_id %}disabled{% endif %}"
+          href="{% if selected_class_id and selected_fee_id %}{% url 'finance:download_student_fee_pdf' selected_class_id selected_fee_id %}{% else %}#{% endif %}">
+          <i class="fas fa-file-pdf me-2"></i>Download Fee Report
+        </a>
+        <a
+          class="btn btn-outline-secondary {% if not selected_class_id %}disabled{% endif %}"
+          href="{% if selected_class_id %}{% url 'finance:download_general_student_fee_pdf' selected_class_id %}{% else %}#{% endif %}">
+          <i class="fas fa-layer-group me-2"></i>Download Class Report (All Fees)
+        </a>
+      </div>
+      <p class="text-muted mt-3 mb-0 small">
+        Fee reports include bill pay numbers and completion status for the selected class.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const classSelect = document.getElementById('classSelect');
+    const feeSelect = document.getElementById('feeSelect');
+    const feesBase = "{% url 'finance:fees_for_class' 999999 %}".replace('999999/', '');
+
+    async function fetchJSON(url) {
+      const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!response.ok) throw new Error('Failed to load fees.');
+      return response.json();
+    }
+
+    classSelect?.addEventListener('change', async () => {
+      feeSelect.innerHTML = '<option value="">Select fee</option>';
+      if (!classSelect.value) return;
+      try {
+        const data = await fetchJSON(`${feesBase}${classSelect.value}/`);
+        (data.fees || []).forEach((fee) => {
+          const opt = document.createElement('option');
+          opt.value = fee.id;
+          opt.textContent = fee.fee_name;
+          feeSelect.appendChild(opt);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+{% load custom_filters %}
+<div class="container py-5">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm border-0 rounded-4 p-4 bg-light">
+        <h3 class="text-center fw-bold text-dark mb-4">Merge Term Marks PDFs</h3>
+        <form method="post" id="mergeForm">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="class_id" class="form-label fw-medium text-muted">Select Class</label>
+                <select class="form-select rounded-pill shadow-sm" id="class_id" name="class_id" required>
+                    <option value="" disabled {% if not teacherclass %}selected{% endif %}>Choose a Class</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}" {% if class.id == teacherclass.id %}selected{% endif %}>{{ class.ClassName }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="grade_id" class="form-label fw-medium text-muted">Select Grading System</label>
+                <select class="form-select rounded-pill shadow-sm" id="grade_id" name="grade_id" required>
+                    <option value="" disabled {% if not selected_grade_id %}selected{% endif %}>Choose a Grading System</option>
+                    {% for grade in grades %}
+                        <option value="{{ grade.id }}" {% if grade.id == selected_grade_id %}selected{% endif %}>
+                            {% if grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success rounded-pill w-100 shadow-sm fw-medium" id="mergeButton">
+                <span class="spinner-border spinner-border-sm d-none" id="mergeSpinner" role="status" aria-hidden="true"></span>
+                Merge and Generate PDF
+            </button>
+        </form>
+        <a href="{% url 'upload_term_marks' %}" class="btn btn-link mt-3">Go to Upload Term Marks</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const mergeForm = document.getElementById('mergeForm');
+        const mergeButton = document.getElementById('mergeButton');
+        const mergeSpinner = document.getElementById('mergeSpinner');
+
+        mergeForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            mergeButton.disabled = true;
+            mergeSpinner.classList.remove('d-none');
+            mergeButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Merging...';
+
+            const formData = new FormData(mergeForm);
+
+            fetch(mergeForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.ok && response.headers.get('Content-Type') === 'application/pdf') {
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    });
+                } else {
+                    return response.text().then(text => {
+                        document.open();
+                        document.write(text);
+                        document.close();
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                mergeButton.disabled = false;
+                mergeSpinner.classList.add('d-none');
+                mergeButton.innerHTML = 'Merge and Generate PDF';
+            });
+        });
+    });
+</script>
+{% endblock %}

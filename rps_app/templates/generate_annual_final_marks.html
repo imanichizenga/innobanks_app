@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+{% load custom_filters %}
+<div class="container py-5">
+    <!-- Dedicated Message Area -->
+    <div id="messageArea" class="mb-4"></div>
+
+    <div class="card shadow-sm border-0 rounded-4 p-4 bg-light">
+        <h3 class="text-center fw-bold text-dark mb-4">Generate Annual Final Marks</h3>
+        <form method="post" id="generateForm">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="class_id" class="form-label fw-medium text-muted">Select Class</label>
+                <select class="form-select rounded-pill shadow-sm" id="class_id" name="class_id" required>
+                    <option value="" disabled {% if not teacherclass %}selected{% endif %}>Choose a Class</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}" {% if class.id == teacherclass.id %}selected{% endif %}>{{ class.ClassName }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="grade_id" class="form-label fw-medium text-muted">Select Grading System</label>
+                <select class="form-select rounded-pill shadow-sm" id="grade_id" name="grade_id" required>
+                    <option value="" disabled {% if not selected_grade_id %}selected{% endif %}>Choose a Grading System</option>
+                    {% for grade in grades %}
+                        <option value="{{ grade.id }}" {% if grade.id == selected_grade_id %}selected{% endif %}>
+                            {% if grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success rounded-pill w-100 shadow-sm fw-medium" id="generateButton">
+                <span class="spinner-border spinner-border-sm d-none" id="generateSpinner" role="status" aria-hidden="true"></span>
+                Generate Annual Marks
+            </button>
+        </form>
+        <a href="{% url 'upload_term_marks' %}" class="btn btn-link mt-3">Go to Upload Term Marks</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const generateForm = document.getElementById('generateForm');
+        const generateButton = document.getElementById('generateButton');
+        const generateSpinner = document.getElementById('generateSpinner');
+        const messageArea = document.getElementById('messageArea');
+
+        // Reset button state function
+        function resetButtonState() {
+            generateButton.disabled = false;
+            generateSpinner.classList.add('d-none');
+            generateButton.innerHTML = 'Generate Annual Marks';
+        }
+
+        // Show message function
+        function showMessage(message, type = 'success') {
+            messageArea.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        }
+
+        generateForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            // Show loader
+            generateButton.disabled = true;
+            generateSpinner.classList.remove('d-none');
+            generateButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+
+            const formData = new FormData(generateForm);
+
+            fetch(generateForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest' // Optional, for potential future enhancements
+                }
+            })
+            .then(response => {
+                if (response.ok && response.headers.get('Content-Type') === 'application/pdf') {
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.headers.get('Content-Disposition').split('filename=')[1].replace(/"/g, '');
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        // Show success message
+                        showMessage('Your process was successful. Kindly check your downloads on your device.');
+                    });
+                } else {
+                    return response.text().then(text => {
+                        // If it's an error page, display it
+                        document.open();
+                        document.write(text);
+                        document.close();
+                    });
+                }
+            })
+            .catch(error => {
+                showMessage('An error occurred while generating the PDF.', 'danger');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Always reset the button state
+                resetButtonState();
+            });
+        });
+
+        // Reset on page load to ensure clean state
+        resetButtonState();
+    });
+</script>
+
+<style>
+    #messageArea .alert {
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}

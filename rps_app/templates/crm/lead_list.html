@@ -1,0 +1,945 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-3 crm-page">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card border mb-3 crm-hero-card">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div>
+        <h4 class="mb-1 fw-bold">CRM</h4>
+        <p class="text-muted mb-0">Create and manage leads with searchable and filterable records.</p>
+      </div>
+
+      <button
+        class="btn btn-primary btn-sm rounded-pill px-3 crm-add-btn"
+        data-bs-toggle="collapse"
+        data-bs-target="#crmLeadCreateForm"
+        aria-expanded="false"
+      >
+        <i class="bi bi-person-plus-fill me-1"></i>Add New Lead
+      </button>
+    </div>
+  </div>
+
+  <div class="collapse {% if form.errors %}show{% endif %}" id="crmLeadCreateForm">
+    <div class="card border-0 shadow-sm mb-3 crm-form-card">
+      <div class="card-header bg-white">
+        <strong>Create Lead</strong>
+      </div>
+
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Name</label>
+            {{ form.name }}
+            {% for e in form.name.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Phone</label>
+            {{ form.phone }}
+            {% for e in form.phone.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Email</label>
+            {{ form.email }}
+            {% for e in form.email.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Address</label>
+            {{ form.address }}
+            {% for e in form.address.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Student First Name</label>
+            {{ form.student_first_name }}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Student Middle Name</label>
+            {{ form.student_middle_name }}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Student Last Name</label>
+            {{ form.student_last_name }}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Academic Class</label>
+            {{ form.academic_class }}
+            {% for e in form.academic_class.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Focus</label>
+            {{ form.focus }}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Source</label>
+            {{ form.source }}
+            {% for e in form.source.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">How Did You Know Us</label>
+            {{ form.how_did_you_know_us }}
+            {% for e in form.how_did_you_know_us.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6 col-xl-3">
+            <label class="form-label">Status</label>
+            {{ form.status }}
+            {% for e in form.status.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            {{ form.description }}
+          </div>
+
+          <div class="col-12 d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+              data-bs-toggle="collapse"
+              data-bs-target="#crmLeadCreateForm"
+            >
+              Cancel
+            </button>
+
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">
+              Save Lead
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3 crm-summary-grid">
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-primary-subtle text-primary"><i class="bi bi-people-fill"></i></div>
+        <div class="crm-summary-label">Total Leads</div>
+        <div class="crm-summary-value">{{ total_leads }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-info-subtle text-info"><i class="bi bi-calendar-check-fill"></i></div>
+        <div class="crm-summary-label">Today</div>
+        <div class="crm-summary-value">{{ today_leads }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-success-subtle text-success"><i class="bi bi-check-circle-fill"></i></div>
+        <div class="crm-summary-label">Enrolled</div>
+        <div class="crm-summary-value">{{ enrolled_leads }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+        <div class="crm-summary-label">Active Follow Ups</div>
+        <div class="crm-summary-value">{{ active_followups }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle-fill"></i></div>
+        <div class="crm-summary-label">Lost</div>
+        <div class="crm-summary-value">{{ lost_leads }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+      <div class="crm-summary-card">
+        <div class="crm-summary-icon bg-secondary-subtle text-secondary"><i class="bi bi-graph-up-arrow"></i></div>
+        <div class="crm-summary-label">Conversion Rate</div>
+        <div class="crm-summary-value">{{ conversion_rate|floatformat:1 }}%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-xl-7">
+      <div class="card border-0 shadow-sm crm-analytics-card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div>
+            <strong>Staff Performance</strong>
+            <span class="text-muted small ms-1">customers served in this view</span>
+          </div>
+          {% if top_served_user and top_served_user.served_by %}
+            <span class="badge crm-top-badge crm-top-performer">
+              <i class="bi bi-trophy-fill me-1"></i>Top Performer
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="card-body">
+          {% if served_user_stats %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0 crm-staff-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th class="text-end">Served</th>
+                    <th style="width: 42%;">Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in served_user_stats %}
+                    <tr class="{% if row.served_by and top_served_user.served_by == row.served_by %}crm-top-row{% endif %}">
+                      <td>
+                        <span class="crm-staff-name {% if row.served_by and top_served_user.served_by == row.served_by %}crm-top-performer{% endif %}">
+                          {% if row.served_by and top_served_user.served_by == row.served_by %}
+                            <i class="bi bi-trophy-fill me-1"></i>
+                          {% endif %}
+                          {{ row.display_name }}
+                        </span>
+                        {% if row.served_by and top_served_user.served_by == row.served_by %}
+                          <span class="badge crm-top-badge ms-2">Top Performer</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end fw-bold">{{ row.count }}</td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="progress crm-progress flex-grow-1">
+                            <div
+                              class="progress-bar {% if row.served_by and top_served_user.served_by == row.served_by %}crm-progress-top{% endif %}"
+                              role="progressbar"
+                              style="width: {{ row.percentage|floatformat:0 }}%;"
+                              aria-valuenow="{{ row.percentage|floatformat:0 }}"
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            ></div>
+                          </div>
+                          <span class="small text-muted crm-share-text">{{ row.percentage|floatformat:1 }}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted small py-3">No served customer data for the current filters.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <div class="card border-0 shadow-sm crm-analytics-card">
+        <div class="card-header bg-white">
+          <strong>Lead Breakdown</strong>
+          <span class="text-muted small ms-1">source, status and class</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="crm-breakdown-title">Source</div>
+              {% for row in source_stats|slice:":5" %}
+                <div class="crm-breakdown-item"><span>{{ row.source|default:"Unknown" }}</span><strong>{{ row.count }}</strong></div>
+              {% empty %}
+                <div class="small text-muted">No data</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              <div class="crm-breakdown-title">Status</div>
+              {% for row in status_stats|slice:":5" %}
+                <div class="crm-breakdown-item"><span>{{ row.status|default:"Unknown" }}</span><strong>{{ row.count }}</strong></div>
+              {% empty %}
+                <div class="small text-muted">No data</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              <div class="crm-breakdown-title">Class</div>
+              {% for row in class_stats|slice:":5" %}
+                <div class="crm-breakdown-item"><span>{{ row.academic_class|default:"Unknown" }}</span><strong>{{ row.count }}</strong></div>
+              {% empty %}
+                <div class="small text-muted">No data</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3 crm-filter-card">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-center">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+
+        <div class="col-12 col-md-4">
+          <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="form-control"
+            placeholder="Search lead, phone, email, student or served by"
+          >
+        </div>
+
+        <div class="col-6 col-md-2">
+          <select name="academic_class" class="form-select">
+            <option value="">All classes</option>
+            {% for v, l in academic_class_choices %}
+              <option value="{{ v }}" {% if selected_academic_class == v %}selected{% endif %}>
+                {{ l }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-6 col-md-2">
+          <select name="status" class="form-select">
+            <option value="">All status</option>
+            {% for v, l in status_choices %}
+              <option value="{{ v }}" {% if selected_status == v %}selected{% endif %}>
+                {{ l }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-6 col-md-2">
+          <select name="source" class="form-select">
+            <option value="">All source</option>
+            {% for v, l in source_choices %}
+              <option value="{{ v }}" {% if selected_source == v %}selected{% endif %}>
+                {{ l }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-6 col-md-2 d-flex gap-2">
+          <button class="btn btn-outline-secondary w-100 rounded-pill" type="submit">
+            Filter
+          </button>
+
+          <a href="{% url 'crm_lead_list' %}" class="btn btn-outline-light border w-100 rounded-pill">
+            Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm crm-table-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div>
+        <strong>Leads</strong>
+        <span class="text-muted small ms-1">CRM records overview</span>
+      </div>
+
+      <span class="badge bg-primary rounded-pill">
+        {{ paginator.count }}
+      </span>
+    </div>
+
+    <div class="card-body">
+      <div class="table-responsive crm-table-wrap">
+        <table class="table table-hover table-bordered table-sm align-middle mb-0" id="crmTable">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Student Name</th>
+              <th>Academic Class</th>
+              <th>Focus</th>
+              <th>Source</th>
+              <th>How Did You Know Us</th>
+              <th>Status</th>
+              <th>Served By</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for lead in leads %}
+              <tr>
+                <td class="text-muted fw-semibold">
+                  {{ page_obj.start_index|add:forloop.counter0 }}
+                </td>
+
+                <td>
+                  <div class="fw-semibold text-dark">
+                    {{ lead.name }}
+                  </div>
+
+                  {% if lead.email %}
+                    <div class="small text-muted">
+                      {{ lead.email }}
+                    </div>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ lead.phone }}
+                </td>
+
+                <td class="student-name-cell">
+                  {{ lead.student_first_name }} {{ lead.student_middle_name }} {{ lead.student_last_name }}
+                </td>
+
+                <td>
+                  <span class="badge rounded-pill bg-light text-dark border">
+                    {{ lead.academic_class }}
+                  </span>
+                </td>
+
+                <td>
+                  {{ lead.focus|default:'-' }}
+                </td>
+
+                <td>
+                  {{ lead.source }}
+                </td>
+
+                <td class="know-us-cell">
+                  {{ lead.how_did_you_know_us }}
+                </td>
+
+                <td>
+                  <span class="badge bg-light text-dark border status-badge">
+                    {{ lead.status }}
+                  </span>
+                </td>
+
+                <td>
+                  {% if lead.served_by %}
+                    <span class="served-by-pill {% if top_served_user and top_served_user.served_by and lead.served_by_id == top_served_user.served_by %}crm-top-performer served-by-top{% endif %}">
+                      <span class="served-by-avatar">
+                        {% if top_served_user and top_served_user.served_by and lead.served_by_id == top_served_user.served_by %}
+                          <i class="bi bi-trophy-fill"></i>
+                        {% else %}
+                          <i class="bi bi-person-check-fill"></i>
+                        {% endif %}
+                      </span>
+                      <span class="served-by-text">{{ lead.served_by_name }}</span>
+                    </span>
+                    <div class="small text-muted mt-1">Owner: {{ lead.owner_name }}</div>
+                  {% else %}
+                    <span class="badge rounded-pill bg-light text-muted border">Not tracked</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <span class="created-date">
+                    {{ lead.created_at|date:'Y-m-d H:i' }}
+                  </span>
+                </td>
+
+                <td>
+                  <div class="btn-group btn-group-sm action-buttons">
+                    <a href="{% url 'crm_lead_update' lead.id %}" class="btn btn-outline-primary">
+                      <i class="bi bi-pencil-square me-1"></i>Edit
+                    </a>
+
+                    <a href="{% url 'crm_lead_delete' lead.id %}" class="btn btn-outline-danger">
+                      <i class="bi bi-trash me-1"></i>Delete
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="12" class="text-center text-muted py-4">
+                  No CRM leads found.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if paginator.count > 0 %}
+        <div class="crm-pagination-wrap d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mt-3">
+          <div class="small text-muted">
+            Showing
+            <strong>{{ page_obj.start_index }}</strong>
+            to
+            <strong>{{ page_obj.end_index }}</strong>
+            of
+            <strong>{{ paginator.count }}</strong>
+            leads
+          </div>
+
+          <form method="get" class="d-flex align-items-center gap-2 crm-per-page-form">
+            <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="academic_class" value="{{ selected_academic_class }}">
+            <input type="hidden" name="status" value="{{ selected_status }}">
+            <input type="hidden" name="source" value="{{ selected_source }}">
+            <input type="hidden" name="page" value="1">
+
+            <label class="small text-muted mb-0">Rows:</label>
+
+            <select
+              name="per_page"
+              class="form-select form-select-sm crm-per-page-select"
+              onchange="this.form.submit()"
+            >
+              {% for size in allowed_per_page %}
+                <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>
+                  {{ size }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+
+          <nav aria-label="CRM leads pagination">
+            <ul class="pagination pagination-sm mb-0 crm-pagination">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="?q={{ q }}&academic_class={{ selected_academic_class }}&status={{ selected_status }}&source={{ selected_source }}&per_page={{ per_page }}&page=1"
+                  >
+                    First
+                  </a>
+                </li>
+
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="?q={{ q }}&academic_class={{ selected_academic_class }}&status={{ selected_status }}&source={{ selected_source }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}"
+                  >
+                    Previous
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link">First</span>
+                </li>
+
+                <li class="page-item disabled">
+                  <span class="page-link">Previous</span>
+                </li>
+              {% endif %}
+
+              {% for num in paginator.page_range %}
+                {% if num == page_obj.number %}
+                  <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                  </li>
+                {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                  <li class="page-item">
+                    <a
+                      class="page-link"
+                      href="?q={{ q }}&academic_class={{ selected_academic_class }}&status={{ selected_status }}&source={{ selected_source }}&per_page={{ per_page }}&page={{ num }}"
+                    >
+                      {{ num }}
+                    </a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="?q={{ q }}&academic_class={{ selected_academic_class }}&status={{ selected_status }}&source={{ selected_source }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}"
+                  >
+                    Next
+                  </a>
+                </li>
+
+                <li class="page-item">
+                  <a
+                    class="page-link"
+                    href="?q={{ q }}&academic_class={{ selected_academic_class }}&status={{ selected_status }}&source={{ selected_source }}&per_page={{ per_page }}&page={{ paginator.num_pages }}"
+                  >
+                    Last
+                  </a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link">Next</span>
+                </li>
+
+                <li class="page-item disabled">
+                  <span class="page-link">Last</span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.crm-page {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding-left: .35rem;
+  padding-right: .35rem;
+}
+
+.crm-hero-card {
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f7faff 100%);
+}
+
+.crm-add-btn {
+  box-shadow: 0 6px 18px rgba(13, 110, 253, .18);
+}
+
+.crm-form-card,
+.crm-filter-card,
+.crm-table-card,
+.crm-analytics-card {
+  border-radius: 16px;
+}
+
+.crm-summary-card {
+  height: 100%;
+  padding: 1rem;
+  border: 1px solid #e8eef6;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+.crm-summary-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  margin-bottom: .7rem;
+}
+
+.crm-summary-label {
+  color: #667085;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+}
+
+.crm-summary-value {
+  color: #182230;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: .2rem;
+}
+
+.crm-analytics-card {
+  height: 100%;
+  overflow: hidden;
+}
+
+.crm-staff-table thead th {
+  color: #667085;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  border-bottom-color: #e7edf5;
+}
+
+.crm-top-row {
+  background: linear-gradient(90deg, rgba(255, 193, 7, .16), rgba(13, 110, 253, .05));
+}
+
+.crm-staff-name {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  max-width: 230px;
+  color: #253244;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .2rem .45rem;
+}
+
+.crm-top-badge {
+  color: #6b4500;
+  background: linear-gradient(135deg, #fff3cd, #ffd766);
+  border: 1px solid rgba(255, 193, 7, .45);
+  box-shadow: 0 6px 18px rgba(255, 193, 7, .22);
+}
+
+.crm-progress {
+  height: .55rem;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.crm-progress .progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0d6efd, #20c997);
+}
+
+.crm-progress .crm-progress-top {
+  background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.crm-share-text {
+  width: 44px;
+  text-align: right;
+}
+
+.crm-breakdown-title {
+  color: #667085;
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  margin-bottom: .5rem;
+}
+
+.crm-breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .42rem 0;
+  border-bottom: 1px solid #eef2f7;
+  color: #344054;
+  font-size: .82rem;
+}
+
+.crm-breakdown-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-breakdown-item strong {
+  color: #182230;
+}
+
+@keyframes crmChampionGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(255, 193, 7, 0);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(255, 193, 7, .45);
+    transform: translateY(-1px);
+  }
+}
+
+.crm-top-performer {
+  animation: crmChampionGlow 1.8s ease-in-out infinite;
+}
+
+.crm-table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+#crmTable {
+  min-width: 1380px;
+  font-size: .84rem;
+}
+
+#crmTable th,
+#crmTable td {
+  padding: .5rem .55rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+#crmTable thead th {
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  color: #5f6b7a;
+  font-weight: 700;
+  background: #f8fafc;
+  border-bottom: 1px solid #e7edf5;
+}
+
+#crmTable tbody tr {
+  transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+#crmTable tbody tr:hover {
+  background-color: #f8fbff;
+}
+
+.student-name-cell {
+  max-width: 190px;
+  white-space: normal !important;
+  line-height: 1.25;
+}
+
+.know-us-cell {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-badge {
+  font-weight: 600;
+  padding: .42rem .62rem;
+}
+
+.served-by-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  max-width: 210px;
+  padding: .28rem .55rem .28rem .32rem;
+  border: 1px solid #e5eaf1;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .04);
+}
+
+.served-by-top {
+  color: #6b4500;
+  border-color: rgba(255, 193, 7, .6);
+  background: linear-gradient(135deg, #fff8e1, #fff1b8);
+}
+
+.served-by-avatar {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #0d6efd;
+  background: #eaf2ff;
+  font-size: .78rem;
+}
+
+.served-by-top .served-by-avatar {
+  color: #7a4b00;
+  background: #ffd766;
+}
+
+.served-by-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #253244;
+  font-weight: 600;
+  font-size: .8rem;
+}
+
+.created-date {
+  color: #667085;
+  font-size: .8rem;
+}
+
+.action-buttons .btn {
+  border-radius: 999px !important;
+  margin-right: .25rem;
+}
+
+.action-buttons .btn:last-child {
+  margin-right: 0;
+}
+
+.crm-pagination-wrap {
+  padding-top: .4rem;
+}
+
+.crm-pagination {
+  flex-wrap: wrap;
+  gap: .2rem;
+}
+
+.crm-pagination .page-link {
+  border-radius: 999px;
+  border: 1px solid #e5eaf1;
+  color: #344054;
+  font-weight: 600;
+  min-width: 34px;
+  text-align: center;
+}
+
+.crm-pagination .page-item.active .page-link {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(13, 110, 253, .2);
+}
+
+.crm-pagination .page-item.disabled .page-link {
+  color: #98a2b3;
+  background: #f8fafc;
+}
+
+.crm-per-page-select {
+  width: 82px;
+  border-radius: 999px;
+}
+
+@media (max-width: 991px) {
+  .crm-page {
+    padding-left: .15rem;
+    padding-right: .15rem;
+  }
+
+  #crmTable {
+    min-width: 1180px;
+  }
+
+  .crm-pagination-wrap {
+    align-items: flex-start !important;
+  }
+
+  .crm-summary-value {
+    font-size: 1.28rem;
+  }
+
+  .crm-summary-card {
+    padding: .85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-top-performer {
+    animation: none;
+  }
+}
+</style>
+{% endblock %}

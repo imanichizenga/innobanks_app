@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-chart-pie me-2"></i>Summary Report</h2>
+    </div>
+
+    <!-- Messages Section -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Summary Table Section -->
+    {% if summary_data %}
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>{% if summary_type == 'division_counts' %}Division Distribution{% else %}Subject Average Marks{% endif %} for Selected Classes ({{ level|default:"Unknown Level" }} - {{ examination.exam_name }})</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#summaryTable" aria-expanded="false" aria-controls="summaryTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="summaryTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered" id="summaryTable">
+                        <thead class="table-dark">
+                            {% if summary_type == 'division_counts' %}
+                            <tr>
+                                <th>Division</th>
+                                <th class="text-center">Number of Students</th>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <th>Subject</th>
+                                <th class="text-center">Average Mark</th>
+                            </tr>
+                            {% endif %}
+                        </thead>
+                        <tbody>
+                            {% if summary_type == 'division_counts' %}
+                                {% for div in division_list %}
+                                <tr class="animate__animated animate__fadeIn">
+                                    <td>{{ div }}</td>
+                                    <td class="text-center">{{ summary_data|get_item:div }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-4">
+                                        <i class="fas fa-exclamation-circle me-2"></i>No students or marks found for selected classes at {{ level|default:"the selected level" }}.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <!-- Summary Row -->
+                                {% if summary_data.total_students > 0 %}
+                                <tr class="table-info fw-bold animate__animated animate__fadeIn">
+                                    <td>Total Students</td>
+                                    <td class="text-center">{{ summary_data.total_students }}</td>
+                                </tr>
+                                {% endif %}
+                            {% else %}
+                                {% for sub, avg in summary_data.items %}
+                                <tr class="animate__animated animate__fadeIn">
+                                    <td>{{ sub }}</td>
+                                    <td class="text-center">{{ avg }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-4">
+                                        <i class="fas fa-exclamation-circle me-2"></i>No subjects or marks found for selected classes at {{ level|default:"the selected level" }}.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <!-- Summary Row -->
+                                {% if subjects %}
+                                <tr class="table-info fw-bold animate__animated animate__fadeIn">
+                                    <td>Total Subjects</td>
+                                    <td class="text-center">{{ subjects|length }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selected Classes Display -->
+    {% if selected_classes %}
+    <div class="alert alert-info mb-4">
+        <h6 class="alert-heading"><i class="fas fa-chalkboard me-2"></i>Selected Classes:</h6>
+        <ul class="mb-0">
+            {% for cls in selected_classes %}
+            <li>{{ cls.ClassName.class_name|default:"Unnamed Class" }}{% if cls.academicclassyear %} ({{ cls.academicclassyear.academic_year_name }}){% endif %}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Division Summary Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form method="POST" action="{% url 'division_summary' %}" class="row g-3" id="divisionSummaryForm">
+                {% csrf_token %}
+                <div class="col-12 col-md-6">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes (Multiple)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select class="form-select rounded-end" id="class_id" name="class_id" multiple required size="5">
+                            <option value="" disabled>Select classes</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}" {% if selected_class_ids and class.id|stringformat:"s" in selected_class_ids.split|join:"," %}selected{% endif %}>
+                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <small class="form-text text-muted">Hold Ctrl (or Cmd on Mac) to select multiple classes.</small>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="grade_id" class="form-label fw-semibold"><i class="fas fa-graduation-cap me-2"></i>Select Grading System</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select class="form-select rounded-end" id="grade_id" name="grade_id" required>
+                            <option value="" disabled {% if not grading_system %}selected{% endif %}>Select a grading system</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}" {% if grading_system.id == grade.id %}selected{% endif %}>
+                                {% if grade.is_primary %}Primary{% elif grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-file-alt me-2"></i>Select Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                        <select class="form-select rounded-end" id="examination_id" name="examination_id" required>
+                            <option value="" disabled {% if not examination %}selected{% endif %}>Select an examination</option>
+                            {% for exam in examinations %}
+                            <option value="{{ exam.id }}" {% if examination.id == exam.id %}selected{% endif %}>{{ exam.exam_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-search me-2"></i>View Summary
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Buttons Section -->
+    <div class="text-center mb-4">
+        <a href="{% url 'division_summary' %}" class="btn btn-secondary rounded-pill fw-medium px-4 me-2"><i class="fas fa-arrow-left me-2"></i>Back to Selection</a>
+        {% if selected_class_ids and grading_system and examination %}
+        <button type="button" 
+                class="btn btn-primary rounded-pill fw-medium px-4 me-2" id="downloadBtn"
+                data-class-ids="{{ selected_class_ids }}"
+                data-grade-id="{{ grading_system.id }}"
+                data-exam-id="{{ examination.id }}">
+            <span class="btn-text"><i class="fas fa-download me-2"></i>Get PDF</span>
+            <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" id="downloadSpinner"></span>
+        </button>
+        <a href="{% url 'subject_grade_distribution' %}" class="btn btn-info rounded-pill fw-medium px-4 me-2"><i class="fas fa-chart-bar me-2"></i>View Grade Distribution</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const divisionSummaryForm = document.getElementById('divisionSummaryForm');
+        const submitButton = document.getElementById('submitButton');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const downloadSpinner = document.getElementById('downloadSpinner');
+        const btnText = downloadBtn ? downloadBtn.querySelector('.btn-text') : null;
+
+        if (divisionSummaryForm) {
+            divisionSummaryForm.addEventListener('submit', function() {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            });
+        }
+
+        if (downloadBtn) {
+            // Set dynamic href using data attributes
+            const classIds = downloadBtn.dataset.classIds;
+            const gradeId = downloadBtn.dataset.gradeId;
+            const examId = downloadBtn.dataset.examId;
+            // Fixed: Add URL encoding for safety
+            const downloadUrl = `/download_division_summary_pdf/${encodeURIComponent(classIds)}/${gradeId}/${examId}/`;
+            downloadBtn.href = downloadUrl;
+
+            downloadBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                // Disable the button and show spinner
+                downloadBtn.disabled = true;
+                downloadSpinner.classList.remove('d-none');
+                if (btnText) btnText.classList.add('d-none');
+                downloadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generating PDF...';
+
+                // Use window.location.href for direct download since it's a PDF response
+                window.location.href = downloadUrl;
+
+                // Re-enable button after a delay (since it's a direct download, no fetch needed)
+                setTimeout(() => {
+                    downloadBtn.disabled = false;
+                    downloadSpinner.classList.add('d-none');
+                    if (btnText) btnText.classList.remove('d-none');
+                    downloadBtn.innerHTML = '<span class="btn-text"><i class="fas fa-download me-2"></i>Get PDF</span>';
+                }, 1000);
+            });
+        }
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+{% endblock %}

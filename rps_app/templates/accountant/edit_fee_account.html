@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-money-check-alt me-2"></i>Edit Fee Account</h2>
+    </div>
+
+    <!-- Edit Fee Account Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'finance:update_fee_account' fee_account.id %}" method="POST" class="row g-3" id="feeAccountForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="teacherclass" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select name="teacherclass" class="form-select rounded-end" id="teacherclass" required onchange="updateFees()">
+                            <option value="" disabled>Select a class</option>
+                            {% for tc in teacher_classes %}
+                            <option value="{{ tc.id }}" {% if tc.id == fee_account.teacherclass.id %}selected{% endif %}>{{ tc.ClassName.class_name }} ({{ tc.academicclassyear.academic_year_name|default:"No Academic Year" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="fee" class="form-label fw-semibold"><i class="fas fa-money-bill me-2"></i>Select Fee</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-money-bill-wave"></i></span>
+                        <select name="fee" class="form-select rounded-end" id="fee" required>
+                            <option value="" disabled>Select a fee</option>
+                            {% for fee in fees %}
+                            <option value="{{ fee.id }}" {% if fee.id == fee_account.fee.id %}selected{% endif %}>{{ fee.fee_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="account_number" class="form-label fw-semibold"><i class="fas fa-credit-card me-2"></i>Account Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-hashtag"></i></span>
+                        <input type="text" name="account_number" class="form-control rounded-end" id="account_number" value="{{ fee_account.account_number }}" placeholder="Enter account number" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="account_name" class="form-label fw-semibold"><i class="fas fa-user me-2"></i>Account Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user-circle"></i></span>
+                        <input type="text" name="account_name" class="form-control rounded-end" id="account_name" value="{{ fee_account.account_name }}" placeholder="Enter account name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="is_active" class="form-label fw-semibold"><i class="fas fa-toggle-on me-2"></i>Active Status</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-check-circle"></i></span>
+                        <select name="is_active" class="form-select rounded-end" id="is_active" required>
+                            <option value="true" {% if fee_account.is_active %}selected{% endif %}>Active</option>
+                            <option value="false" {% if not fee_account.is_active %}selected{% endif %}>Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-save me-2"></i>Update Fee Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.getElementById('feeAccountForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    function updateFees() {
+        const teacherClassId = document.getElementById('teacherclass').value;
+        const feeSelect = document.getElementById('fee');
+        feeSelect.innerHTML = '<option value="" disabled selected>Loading fees...</option>';
+
+        if (teacherClassId) {
+            fetch(`{% url 'finance:get_fees_for_class' class_id=0 %}`.replace('0', teacherClassId), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'  // Ensure Django recognizes this as an AJAX request
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    feeSelect.innerHTML = '<option value="" disabled selected>Select a fee</option>';
+                    if (data.fees && Array.isArray(data.fees)) {
+                        data.fees.forEach(fee => {
+                            const option = document.createElement('option');
+                            option.value = fee.id;
+                            option.textContent = fee.fee_name;
+                            feeSelect.appendChild(option);
+                        });
+                    } else {
+                        feeSelect.innerHTML = '<option value="" disabled selected>No fees available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching fees:', error);
+                    feeSelect.innerHTML = '<option value="" disabled selected>Error loading fees</option>';
+                });
+        } else {
+            feeSelect.innerHTML = '<option value="" disabled selected>Select a class first</option>';
+        }
+    }
+
+    // Add hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

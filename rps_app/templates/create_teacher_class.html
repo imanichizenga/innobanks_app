@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-chalkboard-teacher me-2"></i>Manage Classes</h2>
+    </div>
+
+    <!-- Create Class Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'create_teacher_class' %}" method="POST" class="row g-3" id="classForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="ClassName" class="form-label fw-semibold"><i class="fas fa-book me-2"></i>Class Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book-open"></i></span>
+                        <input type="text" name="ClassName" class="form-control rounded-end" id="ClassName" placeholder="Enter class name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-plus-circle me-2"></i>Add Class
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Academic Year Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'assign_academic_year' %}" method="POST" class="row g-3" id="assignYearForm">
+                {% csrf_token %}
+                <div class="col-12 col-md-6">
+                    <label for="selected_register_class" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select name="selected_register_class" class="form-select rounded-end" id="selected_register_class" required>
+                            <option value="" disabled selected>Select a class</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">{{ class.class_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="academicclassyear" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-2"></i>Academic Year</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar"></i></span>
+                        <select name="academicclassyear" class="form-select rounded-end" id="academicclassyear" required>
+                            <option value="" disabled selected>Select an active academic year</option>
+                            {% for year in active_years %}
+                            <option value="{{ year.id }}">{{ year.academic_year_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="assignButton">
+                        <i class="fas fa-check-circle me-2"></i>Assign Academic Year
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Stream Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'create_teacher_stream' %}" method="POST" class="row g-3" id="streamCreateForm">
+                {% csrf_token %}
+                <div class="col-12">
+                    <h6 class="fw-bold text-primary mb-3"><i class="fas fa-stream me-2"></i>Create New Stream</h6>
+                </div>
+                <div class="col-12 col-md-5">
+                    <label for="stream_name" class="form-label fw-semibold"><i class="fas fa-tag me-2"></i>Stream Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-tag"></i></span>
+                        <input type="text" name="stream_name" class="form-control rounded-end" id="stream_name" placeholder="Enter stream name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-5">
+                    <label for="teacherclasses" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Assign Classes (Hold Ctrl/Cmd to select multiple)</label>
+                    <select name="teacherclasses" multiple class="form-select" id="teacherclasses" size="6">
+                        {% for tc in teacher_classes %}
+                        <option value="{{ tc.id }}">{{ tc }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit">
+                        <i class="fas fa-plus-circle me-2"></i>Add Stream
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Streams Table Section -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-streams me-2"></i>Teacher Class Streams</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#streamsTable" aria-expanded="false" aria-controls="streamsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="streamsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 30%;">Stream Name</th>
+                                <th scope="col" style="width: 40%;">Assigned Classes</th>
+                                <th scope="col" class="text-center" style="width: 20%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stream in streams %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ stream.stream_name|default:"Unnamed Stream" }}</td>
+                                <td>
+                                    {% if stream.teacherclass.exists %}
+                                        {% for tc in stream.teacherclass.all %}
+                                            {{ tc.ClassName.class_name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">No classes assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-primary btn-sm rounded-pill me-2" data-bs-toggle="modal" data-bs-target="#editStreamModal{{ stream.id }}">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </button>
+                                    <a href="{% url 'delete_teacher_stream' stream.id %}" class="btn btn-danger btn-sm rounded-pill" onclick="return confirm('Are you sure you want to delete this stream?')">
+                                        <i class="fas fa-trash-alt me-1"></i>Delete
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Modal -->
+                            <div class="modal fade" id="editStreamModal{{ stream.id }}" tabindex="-1" aria-labelledby="editStreamModalLabel{{ stream.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="editStreamModalLabel{{ stream.id }}">Edit Stream: {{ stream.stream_name|default:"Unnamed Stream" }}</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{% url 'update_teacher_stream' %}" method="POST" id="editForm{{ stream.id }}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="stream_id" value="{{ stream.id }}">
+                                            <div class="modal-body">
+                                                <div class="row g-3">
+                                                    <div class="col-12">
+                                                        <label for="edit_stream_name_{{ stream.id }}" class="form-label fw-semibold"><i class="fas fa-tag me-2"></i>Stream Name</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light"><i class="fas fa-tag"></i></span>
+                                                            <input type="text" name="stream_name" class="form-control rounded-end" id="edit_stream_name_{{ stream.id }}" value="{{ stream.stream_name|default:'' }}" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label for="edit_teacherclasses_{{ stream.id }}" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Assign Classes (Hold Ctrl/Cmd to select multiple)</label>
+                                                        <select name="teacherclasses" multiple class="form-select" id="edit_teacherclasses_{{ stream.id }}" size="8">
+                                                            {% for tc in teacher_classes %}
+                                                            <option value="{{ tc.id }}" {% if tc in stream.teacherclass.all %}selected{% endif %}>{{ tc }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Update Stream</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No streams created yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Classes Table Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Registered Classes (Active Years)</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#classesTable" aria-expanded="false" aria-controls="classesTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="classesTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 35%;">Class Name</th>
+                                <th scope="col" style="width: 25%;">Academic Year</th>
+                                <th scope="col" class="text-center" style="width: 30%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in teacher_classes %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ c.ClassName.class_name }}</td>
+                                <td>{{ c.academicclassyear.academic_year_name|default:"Not Assigned" }}</td>
+                                <td class="text-center">
+                                    <div class="d-inline-flex gap-2 flex-wrap justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#editClassModal{{ c.id }}">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </button>
+                                        <a href="{% url 'delete_class' c.id %}" class="btn btn-danger btn-sm rounded-pill">
+                                            <i class="fas fa-trash-alt me-1"></i>Delete
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Class Modal -->
+                            <div class="modal fade" id="editClassModal{{ c.id }}" tabindex="-1" aria-labelledby="editClassModalLabel{{ c.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="editClassModalLabel{{ c.id }}">Edit Class: {{ c.ClassName.class_name|default:"Unnamed Class" }}</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{% url 'edit_class' c.id %}" method="POST" id="editClassForm{{ c.id }}">
+                                            {% csrf_token %}
+                                            <div class="modal-body">
+                                                <div class="row g-3">
+                                                    <div class="col-12">
+                                                        <label for="edit_class_name_{{ c.id }}" class="form-label fw-semibold"><i class="fas fa-book me-2"></i>Class Name</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light"><i class="fas fa-book-open"></i></span>
+                                                            <input type="text" name="ClassName" class="form-control rounded-end" id="edit_class_name_{{ c.id }}" value="{{ c.ClassName.class_name|default:'' }}" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label for="edit_academicclassyear_{{ c.id }}" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-2"></i>Academic Year</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text bg-light"><i class="fas fa-calendar"></i></span>
+                                                            <select name="academicclassyear" class="form-select rounded-end" id="edit_academicclassyear_{{ c.id }}" required>
+                                                                {% for year in active_years %}
+                                                                <option value="{{ year.id }}" {% if year.id == c.academicclassyear.id %}selected{% endif %}>{{ year.academic_year_name }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save me-1"></i>Update Class
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No classes with active academic years registered yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Class form submit handler
+        document.getElementById('classForm').addEventListener('submit', function(event) {
+            const button = document.getElementById('submitButton');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        });
+
+        // Assign year form submit handler
+        document.getElementById('assignYearForm').addEventListener('submit', function(event) {
+            const button = document.getElementById('assignButton');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        });
+
+        // Stream create form submit handler
+        document.getElementById('streamCreateForm').addEventListener('submit', function(event) {
+            const button = this.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Adding...';
+        });
+
+        // Edit forms submit handler (event delegation for modals)
+        document.addEventListener('submit', function(event) {
+            if (event.target.matches('form[id^="editForm"], form[id^="editClassForm"]')) {
+                const button = event.target.querySelector('button[type="submit"]:not(:disabled)');
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Updating...';
+                }
+            }
+        });
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+{% endblock %}

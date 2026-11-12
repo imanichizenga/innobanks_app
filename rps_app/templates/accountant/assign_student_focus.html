@@ -1,0 +1,761 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Assign Student Focus - {{ teacherclass.ClassName|default:"Unnamed Class" }}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-book-reader me-2"></i>Assign Student Focus</h2>
+        <div>
+            <a href="{% url 'finance:student_fee_list' class_id=class_id|default:0 %}" class="btn btn-outline-secondary btn-pill">
+                <i class="fas fa-arrow-left me-2"></i>Back to Fee List
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="mb-4" id="message-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="mb-4" id="message-container"></div>
+    {% endif %}
+
+    <!-- Form Errors -->
+    {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>Please correct the following errors:
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>{{ field|title }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+
+    <!-- No Students Warning -->
+    <div id="no-students-warning" class="alert alert-warning alert-dismissible fade show d-none rounded-3" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>No students available for the selected class.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Date Range Filter -->
+    <div class="mb-4">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label for="date_range_start" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-2"></i>Joined Date Range</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fas fa-calendar-day"></i></span>
+                    <input type="date" id="date_range_start" class="form-control" placeholder="Start Date">
+                    <span class="input-group-text bg-light">to</span>
+                    <input type="date" id="date_range_end" class="form-control" placeholder="End Date">
+                    <button class="btn btn-outline-secondary" type="button" id="clear_date_filter"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Focus Form -->
+    <div class="card shadow-sm mb-5 border-0 rounded-4">
+        <div class="card-body p-4">
+            <form method="POST" id="assignFocusForm" action="{% url 'finance:assign_student_focus_with_class' class_id=class_id|default:0 %}" class="row g-3">
+                {% csrf_token %}
+                <!-- Teacher Class Selection -->
+                <div class="col-12 col-md-6">
+                    <label for="class_select" class="form-label fw-medium"><i class="fas fa-chalkboard me-2"></i>Select Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select id="class_select" name="class_id" class="form-select rounded-end" required>
+                            <option value="" disabled {% if not class_id %}selected{% endif %}>-- Select a Class --</option>
+                            {% for tc in teacher_classes %}
+                                <option value="{{ tc.id }}" {% if tc.id|stringformat:"s" == class_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ tc.ClassName|default:"Unnamed Class" }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Please select a class.</div>
+                    </div>
+                </div>
+                <!-- Focus Selection -->
+                <div class="col-12 col-md-6">
+                    <label for="id_focus" class="form-label fw-medium"><i class="fas fa-book me-2"></i>Select Focus</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book-reader"></i></span>
+                        {{ form.focus }}
+                        {% if form.focus.errors %}
+                            <div class="invalid-feedback d-block">{{ form.focus.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <!-- Students Selection -->
+                <div class="col-12">
+                    <label for="student_search" class="form-label fw-medium"><i class="fas fa-users me-2"></i>Students</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                        <input type="text" id="student_search" class="form-control rounded-end" placeholder="Search students...">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="select_all">
+                        <label class="form-check-label" for="select_all">Select All Students</label>
+                    </div>
+                    <div class="student-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px;">
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">S/No</th>
+                                    <th style="width: 90%;">Student Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in form.student %}
+                                    <tr class="student-item" data-joined-date="{% with reg=student.instance.studentfocus_set.first.student_fcs.first %}{{ reg.joined_date|date:'Y-m-d'|default:'Not registered' }}{% endwith %}">
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            <div class="form-check">
+                                                {{ student.tag }}
+                                                <label class="form-check-label" for="{{ student.id_for_label }}">
+                                                    {{ student.choice_label|default:"Unnamed Student" }}
+                                                </label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if form.student.errors %}
+                            <div class="invalid-feedback d-block">{{ form.student.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <!-- Submit and Back Buttons -->
+                <div class="col-12 col-md-6 d-flex align-items-end">
+                    <button class="btn btn-outline-primary btn-pill w-100" type="submit" id="submitButton">
+                        <i class="fas fa-check-circle me-2"></i>Assign Focus
+                    </button>
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-end">
+                    <a href="{% url 'finance:student_fee_list' class_id=class_id|default:0 %}" class="btn btn-outline-secondary btn-pill w-100">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Fee List
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Focus Status Table -->
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Focus Status for Students</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#focusStatusTable" aria-expanded="true" aria-controls="focusStatusTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="focusStatusTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered" id="focus_status_table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%; cursor: pointer;" onclick="sortTable(0, 'number')">#</th>
+                                <th scope="col" style="width: 40%; cursor: pointer;" onclick="sortTable(1, 'text')">Student Name - Joined</th>
+                                <th scope="col" style="width: 30%; cursor: pointer;" onclick="sortTable(2, 'text')">Focus</th>
+                                <th scope="col" style="width: 20%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="focusStatusTableBody">
+                            {% for item in all_students_data %}
+                                <tr class="animate__animated animate__fadeIn" data-student-name="{{ item.student_name|lower }}" data-joined-date="{{ item.joined_date }}">
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td>{{ item.student_name }} - {{ item.joined_date|default:"Not registered" }}</td>
+                                    <td>
+                                        {% if item.focus != 'Not assigned' %}
+                                            <a href="#" class="focus-link" data-student-id="{{ item.student_id }}" data-student-name="{{ item.student_name }}" data-focus="{{ item.focus }}">
+                                                {{ item.focus }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">No focus assigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.focus != 'Not assigned' %}
+                                            <button class="btn btn-sm btn-danger focus-action" data-action="delete" data-student-id="{{ item.student_id }}" data-student-name="{{ item.student_name }}" data-focus="{{ item.focus }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary focus-action" data-action="update" data-student-id="{{ item.student_id }}" data-student-name="{{ item.student_name }}" data-focus="{{ item.focus }}" data-class-id="{{ class_id|default:0 }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>No student focus data available for this class.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Focus Action Modal -->
+    <div class="modal fade" id="focusActionModal" tabindex="-1" aria-labelledby="focusActionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="focusActionModalLabel"><i class="fas fa-cog me-2"></i>Focus Actions for <span id="actionStudentName"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Focus: <strong><span id="actionFocusName"></span></strong></p>
+                    <p>Please select an action for this focus assignment:</p>
+                    <div class="d-flex gap-3">
+                        <button type="button" id="deleteFocusButton" class="btn btn-danger btn-pill w-50"><i class="fas fa-trash me-2"></i>Delete</button>
+                        <button type="button" id="updateFocusButton" class="btn btn-primary btn-pill w-50"><i class="fas fa-edit me-2"></i>Update</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Focus Modal -->
+    <div class="modal fade" id="updateFocusModal" tabindex="-1" aria-labelledby="updateFocusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="updateFocusModalLabel"><i class="fas fa-edit me-2"></i>Update Focus Assignment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="updateFocusForm" method="POST" action="">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="update_focus" class="form-label fw-medium"><i class="fas fa-book me-2"></i>Focus</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-book-reader"></i></span>
+                                <select name="focus" id="update_focus" class="form-select" required>
+                                    {% for value, label in form.focus.field.choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">Please select a focus.</div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="class_id" id="update_class_id" value="{{ class_id|default:0 }}">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-pill"><i class="fas fa-check-circle me-2"></i>Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    .form-select, .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    .btn-pill {
+        border-radius: 50rem;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+    }
+    .btn-pill:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .table-dark {
+        background-color: #343a40;
+    }
+    .student-list {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    .student-item {
+        padding: 8px 0;
+        margin-bottom: 8px;
+    }
+    .student-item:last-child {
+        margin-bottom: 0;
+    }
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.85rem;
+    }
+    .d-none {
+        display: none;
+    }
+    .focus-link {
+        color: #007bff;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .focus-link:hover {
+        color: #0056b3;
+        text-decoration: none;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const assignForm = document.getElementById('assignFocusForm');
+    const submitButton = document.getElementById('submitButton');
+    const studentSearch = document.getElementById('student_search');
+    const selectAllCheckbox = document.getElementById('select_all');
+    const focusSelect = document.getElementById('id_focus');
+    const classSelect = document.getElementById('class_select');
+    const dateRangeStart = document.getElementById('date_range_start');
+    const dateRangeEnd = document.getElementById('date_range_end');
+    const clearDateFilter = document.getElementById('clear_date_filter');
+    const noStudentsWarning = document.getElementById('no-students-warning');
+    const studentList = document.querySelector('.student-list');
+    const focusStatusTableBody = document.getElementById('focusStatusTableBody');
+    const messageContainer = document.getElementById('message-container');
+    const focusActionModal = new bootstrap.Modal(document.getElementById('focusActionModal'));
+    const updateFocusModal = new bootstrap.Modal(document.getElementById('updateFocusModal'));
+    const updateFocusForm = document.getElementById('updateFocusForm');
+    const deleteFocusButton = document.getElementById('deleteFocusButton');
+
+    let originalCheckboxStates = new Map();
+
+    function storeOriginalStates() {
+        const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+        studentCheckboxes.forEach(checkbox => {
+            originalCheckboxStates.set(checkbox.id, checkbox.checked);
+        });
+    }
+
+    function restoreHiddenCheckboxStates() {
+        document.querySelectorAll('.student-item').forEach(item => {
+            if (item.style.display === 'none') {
+                const checkbox = item.querySelector('.student-checkbox');
+                if (checkbox) {
+                    checkbox.checked = originalCheckboxStates.get(checkbox.id) || false;
+                }
+            }
+        });
+    }
+
+    function updateSelectAllState() {
+        if (!selectAllCheckbox) return;
+
+        const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+        const visibleCheckboxes = Array.from(studentCheckboxes).filter(checkbox => {
+            return checkbox.closest('.student-item').style.display !== 'none';
+        });
+
+        if (visibleCheckboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+
+        const allChecked = visibleCheckboxes.every(checkbox => checkbox.checked);
+        const someChecked = visibleCheckboxes.some(checkbox => checkbox.checked);
+
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+
+    function updateSubmitButton() {
+        if (!submitButton) return;
+
+        const classSelected = classSelect.value !== '';
+        const focusSelected = focusSelect.value !== '';
+        const studentsChecked = document.querySelectorAll('.student-checkbox:checked').length > 0;
+
+        submitButton.disabled = !(classSelected && focusSelected && studentsChecked);
+    }
+
+    function filterByDateRange(startDate, endDate) {
+        const rows = document.querySelectorAll('#focusStatusTableBody tr');
+        const studentItems = document.querySelectorAll('.student-item');
+
+        if (!startDate && !endDate) {
+            rows.forEach(row => row.style.display = '');
+            studentItems.forEach(item => item.style.display = '');
+            return;
+        }
+
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+
+        rows.forEach(row => {
+            const joinedDateStr = row.getAttribute('data-joined-date');
+            let display = true;
+            if (joinedDateStr && joinedDateStr !== 'Not registered') {
+                const joinedDate = new Date(joinedDateStr);
+                if (start && joinedDate < start) display = false;
+                if (end && joinedDate > end) display = false;
+            } else if (start || end) {
+                display = false;
+            }
+            row.style.display = display ? '' : 'none';
+        });
+
+        studentItems.forEach(item => {
+            const joinedDateStr = item.getAttribute('data-joined-date');
+            let display = true;
+            if (joinedDateStr && joinedDateStr !== 'Not registered') {
+                const joinedDate = new Date(joinedDateStr);
+                if (start && joinedDate < start) display = false;
+                if (end && joinedDate > end) display = false;
+            } else if (start || end) {
+                display = false;
+            }
+            item.style.display = display ? '' : 'none';
+        });
+
+        restoreHiddenCheckboxStates();
+        updateSelectAllState();
+        updateSubmitButton();
+    }
+
+    function sortTable(columnIndex, type) {
+        const table = document.getElementById('focus_status_table');
+        const tbody = document.getElementById('focusStatusTableBody');
+        const rows = Array.from(tbody.getElementsByTagName('tr'));
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+
+        rows.sort((a, b) => {
+            let aValue = a.cells[columnIndex].textContent.trim();
+            let bValue = b.cells[columnIndex].textContent.trim();
+            if (type === 'number') {
+                aValue = parseFloat(aValue) || 0;
+                bValue = parseFloat(bValue) || 0;
+            } else {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+            return isAscending ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+        });
+
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    function updateStudentAndFocusFields(classId) {
+        if (!classId) {
+            studentList.innerHTML = '';
+            focusStatusTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>Please select a class to view focus status.</td></tr>';
+            noStudentsWarning.classList.add('d-none');
+            updateSubmitButton();
+            return;
+        }
+
+        fetch(`{% url 'finance:get_student_focus_for_class' class_id=0 %}`.replace('/0/', `/${classId}/`), {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            studentList.innerHTML = '';
+            noStudentsWarning.classList.add('d-none');
+
+            if (data.success) {
+                // Update student list
+                if (data.student_focus_data.length > 0) {
+                    let studentTableBody = '<table class="table table-sm table-borderless"><thead><tr><th style="width: 10%;">S/No</th><th style="width: 90%;">Student Name</th></tr></thead><tbody>';
+                    data.student_focus_data.forEach((student, index) => {
+                        studentTableBody += `
+                            <tr class="student-item" data-joined-date="${student.joined_date || 'Not registered'}">
+                                <td>${index + 1}</td>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input student-checkbox" type="checkbox" name="student" value="${student.student_id}" id="id_student_${index}">
+                                        <label class="form-check-label" for="id_student_${index}">
+                                            ${student.student_name}
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    studentTableBody += '</tbody></table>';
+                    studentList.innerHTML = studentTableBody;
+                } else {
+                    noStudentsWarning.classList.remove('d-none');
+                }
+
+                // Update focus status table
+                focusStatusTableBody.innerHTML = '';
+                if (data.student_focus_data.length > 0) {
+                    data.student_focus_data.forEach((item, index) => {
+                        const row = document.createElement('tr');
+                        row.classList.add('animate__animated', 'animate__fadeIn');
+                        row.setAttribute('data-student-name', item.student_name.toLowerCase());
+                        row.setAttribute('data-joined-date', item.joined_date || 'Not registered');
+
+                        const focusHtml = item.focus !== 'Not assigned'
+                            ? `<a href="#" class="focus-link" data-student-id="${item.student_id}" data-student-name="${item.student_name}" data-focus="${item.focus}">${item.focus}</a>`
+                            : '<span class="text-muted">No focus assigned</span>';
+
+                        const actionsHtml = item.focus !== 'Not assigned'
+                            ? `
+                                <button class="btn btn-sm btn-danger focus-action" data-action="delete" data-student-id="${item.student_id}" data-student-name="${item.student_name}" data-focus="${item.focus}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary focus-action" data-action="update" data-student-id="${item.student_id}" data-student-name="${item.student_name}" data-focus="${item.focus}" data-class-id="${classId}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            `
+                            : '<span class="text-muted">N/A</span>';
+
+                        row.innerHTML = `
+                            <td class="text-center">${index + 1}</td>
+                            <td>${item.student_name} - ${item.joined_date || 'Not registered'}</td>
+                            <td>${focusHtml}</td>
+                            <td>${actionsHtml}</td>
+                        `;
+                        focusStatusTableBody.appendChild(row);
+                    });
+
+                    // Attach event listeners for focus links and action buttons
+                    document.querySelectorAll('.focus-link, .focus-action').forEach(element => {
+                        element.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const studentId = this.getAttribute('data-student-id');
+                            const studentName = this.getAttribute('data-student-name');
+                            const focus = this.getAttribute('data-focus');
+                            const classId = this.getAttribute('data-class-id') || '{{ class_id|default:0 }}';
+                            const action = this.classList.contains('focus-link') ? 'show' : this.getAttribute('data-action');
+
+                            // Populate action modal
+                            document.getElementById('actionFocusName').textContent = focus;
+                            document.getElementById('actionStudentName').textContent = studentName;
+                            const deleteUrl = `{% url 'finance:delete_student_focus' student_id=0 %}`.replace('/0/', `/${studentId}/`);
+                            const updateUrl = `{% url 'finance:update_student_focus' student_id=0 %}`.replace('/0/', `/${studentId}/`);
+                            deleteFocusButton.setAttribute('data-url', deleteUrl);
+                            document.getElementById('updateFocusButton').setAttribute('data-url', updateUrl);
+                            document.getElementById('updateFocusButton').setAttribute('data-focus', focus);
+                            document.getElementById('updateFocusButton').setAttribute('data-class-id', classId);
+
+                            if (action === 'delete') {
+                                fetch(deleteUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRFToken': '{{ csrf_token }}',
+                                        'Accept': 'application/json'
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        updateStudentAndFocusFields(classSelect.value);
+                                        const alertDiv = document.createElement('div');
+                                        alertDiv.className = 'alert alert-success alert-dismissible fade show rounded-3';
+                                        alertDiv.setAttribute('role', 'alert');
+                                        alertDiv.innerHTML = `
+                                            <i class="fas fa-check-circle me-2"></i>${data.message}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        `;
+                                        messageContainer.appendChild(alertDiv);
+                                    } else {
+                                        const alertDiv = document.createElement('div');
+                                        alertDiv.className = 'alert alert-danger alert-dismissible fade show rounded-3';
+                                        alertDiv.setAttribute('role', 'alert');
+                                        alertDiv.innerHTML = `
+                                            <i class="fas fa-exclamation-circle me-2"></i>Error: ${data.error}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        `;
+                                        messageContainer.appendChild(alertDiv);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Delete error:', error);
+                                    const alertDiv = document.createElement('div');
+                                    alertDiv.className = 'alert alert-danger alert-dismissible fade show rounded-3';
+                                    alertDiv.setAttribute('role', 'alert');
+                                    alertDiv.innerHTML = `
+                                        <i class="fas fa-exclamation-circle me-2"></i>Error deleting focus. Please try again.
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    `;
+                                    messageContainer.appendChild(alertDiv);
+                                });
+                            } else if (action === 'update') {
+                                document.getElementById('update_focus').value = focus;
+                                document.getElementById('update_class_id').value = classId;
+                                updateFocusForm.setAttribute('action', updateUrl);
+                                updateFocusModal.show();
+                            } else {
+                                focusActionModal.show();
+                            }
+                        });
+                    });
+                } else {
+                    focusStatusTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>No student focus data available for this class.</td></tr>';
+                }
+
+                // Reattach event listeners to new student checkboxes
+                document.querySelectorAll('.student-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        originalCheckboxStates.set(this.id, this.checked);
+                        updateSelectAllState();
+                        updateSubmitButton();
+                    });
+                });
+
+                updateSelectAllState();
+                updateSubmitButton();
+                filterByDateRange(dateRangeStart.value, dateRangeEnd.value);
+            } else {
+                console.error('Error fetching student focus data:', data.error);
+                noStudentsWarning.classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            focusStatusTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>Error loading focus status. Please try again.</td></tr>';
+        });
+    }
+
+    if (classSelect) {
+        classSelect.addEventListener('change', function() {
+            const classId = this.value;
+            updateStudentAndFocusFields(classId);
+            const baseUrl = "{% url 'finance:assign_student_focus_with_class' class_id=0 %}".replace('/0/', '/');
+            assignForm.action = classId ? baseUrl + classId + '/' : baseUrl + '0/';
+        });
+
+        if (classSelect.value) {
+            updateStudentAndFocusFields(classSelect.value);
+        } else {
+            focusStatusTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>Please select a class to view focus status.</td></tr>';
+        }
+    }
+
+    if (assignForm) {
+        assignForm.addEventListener('submit', function(event) {
+            let hasError = false;
+            if (!focusSelect.value) {
+                focusSelect.classList.add('is-invalid');
+                hasError = true;
+            }
+            if (!document.querySelector('.student-checkbox:checked')) {
+                document.querySelector('.student-list').insertAdjacentHTML('afterend', '<div class="invalid-feedback d-block">At least one student must be selected.</div>');
+                hasError = true;
+            }
+
+            if (hasError) {
+                event.preventDefault();
+            } else if (!submitButton.disabled) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            }
+        });
+    }
+
+    if (studentSearch) {
+        storeOriginalStates();
+        studentSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+
+            document.querySelectorAll('.student-item').forEach(item => {
+                const studentName = item.querySelector('label').textContent.toLowerCase();
+                const isDateMatch = item.style.display !== 'none';
+                item.style.display = isDateMatch && studentName.includes(searchTerm) ? '' : 'none';
+            });
+
+            restoreHiddenCheckboxStates();
+            updateSelectAllState();
+            updateSubmitButton();
+        });
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+
+            document.querySelectorAll('.student-item').forEach(item => {
+                if (item.style.display !== 'none') {
+                    const checkbox = item.querySelector('.student-checkbox');
+                    checkbox.checked = isChecked;
+                    originalCheckboxStates.set(checkbox.id, isChecked);
+                }
+            });
+
+            updateSubmitButton();
+        });
+    }
+
+    if (focusSelect) {
+        focusSelect.addEventListener('change', function() {
+            this.classList.remove('is-invalid');
+            const studentListError = document.querySelector('.student-list + .invalid-feedback');
+            if (studentListError) studentListError.remove();
+            updateSubmitButton();
+        });
+    }
+
+    if (dateRangeStart && dateRangeEnd) {
+        [dateRangeStart, dateRangeEnd].forEach(input => {
+            input.addEventListener('change', function() {
+                filterByDateRange(dateRangeStart.value, dateRangeEnd.value);
+            });
+        });
+    }
+
+    if (clearDateFilter) {
+        clearDateFilter.addEventListener('click', function() {
+            dateRangeStart.value = '';
+            dateRangeEnd.value = '';
+            filterByDateRange('', '');
+        });
+    }
+
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+
+    updateSelectAllState();
+    updateSubmitButton();
+});
+</script>
+{% endblock %}

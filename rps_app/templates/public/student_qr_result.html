@@ -1,0 +1,98 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Result Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0">Public Student Result Portal</h5></div>
+    <div class="card-body">
+      {% if message %}<div class="alert alert-warning">{{ message }}</div>{% endif %}
+      {% if student %}
+      <div class="card border-primary-subtle bg-primary-subtle mb-3">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+            <h6 class="mb-0 text-primary">{{ school_name|default:'School' }}</h6>
+            <span class="badge bg-primary">QR Verified Student</span>
+          </div>
+          <h5 class="mb-1">{{ student.fullName|default:'Unnamed Student' }}</h5>
+          <div class="small text-muted">
+            <strong>Class:</strong> {{ student.teacherclass.ClassName.class_name|default:'-' }}
+            {% if student.teacherclass.academicclassyear %} ({{ student.teacherclass.academicclassyear.academic_year_name }}){% endif %}
+          </div>
+          <div class="small mt-1">
+            <strong>Index:</strong> {{ student.indexNumber|default:'-' }} ·
+            <strong>Registration:</strong> {{ registration_number|default:'-' }}
+          </div>
+        </div>
+      </div>
+      <form method="get" class="row g-2 align-items-end">
+        <input type="hidden" name="token" value="{{ token }}">
+        <div class="col-md-4">
+          <label class="form-label">Class</label>
+          <select name="class_id" class="form-select" required>
+            {% for candidate in class_options %}
+              <option value="{{ candidate.teacherclass_id }}" {% if selected_class_id == candidate.teacherclass_id %}selected{% endif %}>{{ candidate.teacherclass.ClassName.class_name }}{% if candidate.teacherclass.academicclassyear %} ({{ candidate.teacherclass.academicclassyear.academic_year_name }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Examination</label>
+          <select name="examination_id" class="form-select" required>
+            <option value="">Select examination</option>
+            {% for exam in exam_options %}
+              <option value="{{ exam.id }}" {% if selected_exam_id == exam.id %}selected{% endif %}>{{ exam.exam_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Grading System</label>
+          <select name="grade_id" class="form-select" required>
+            <option value="">Select grading</option>
+            {% for grade in grade_options %}
+              <option value="{{ grade.id }}" {% if selected_grade_id == grade.id %}selected{% endif %}>{{ grade }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary">Show Result</button>
+          {% if download_url %}<a href="{{ download_url }}" class="btn btn-outline-success">Download Report PDF</a>{% endif %}
+        </div>
+      </form>
+
+      {% if student_marks %}
+      <hr>
+      <div class="mb-2">
+        <span class="badge bg-secondary">{{ selected_exam.exam_name }}</span>
+        <span class="badge bg-info text-dark">{{ selected_grade }}</span>
+        <span class="badge bg-dark">Position {{ student_position }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle">
+          <thead class="table-light"><tr><th>Subject</th><th class="text-end">Mark</th><th class="text-end">Grade</th></tr></thead>
+          <tbody>
+            {% for row in student_marks %}
+            <tr {% if row.is_excluded %}class="text-muted text-decoration-line-through"{% endif %}>
+              <td>{{ row.subject_name }}</td><td class="text-end">{{ row.mark|default:'-' }}</td><td class="text-end fw-bold">{{ row.grade }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="row">
+        <div class="col-md-3"><strong>Total:</strong> {{ total_marks }}</div>
+        <div class="col-md-3"><strong>Average:</strong> {{ average_marks }} ({{ overall_grade }})</div>
+        {% if not is_primary %}<div class="col-md-3"><strong>Division:</strong> {{ division }}</div><div class="col-md-3"><strong>Points:</strong> {{ total_points }}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="form-container">
+        <form method="POST" class="needs-validation" id="teachervalidationForm" action="{% url 'teacher_validation' %}" validate>
+            {% csrf_token %}
+            {% if message %}
+            <div class="alert alert-info" role="alert">{{ message }}</div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="teacher_id" class="form-label">Username</label>
+                <input type="number" class="form-control rounded-pill" id="teacher_id" placeholder="Id Required" name="teacher_id" required>
+                <br>
+                <br>
+                <label for="teacher_key" class="form-label">Password</label>
+                <input type="password" class="form-control rounded-pill" id="teacher_key" placeholder="Key required" name="teacher_key" required>
+                <div class="invalid-feedback">
+                    Please provide a teacher ID.
+                </div>
+            </div>
+            <button class="btn btn-outline-primary rounded-pill" type="submit" id="submitButton">
+                Login
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Disable the submit button and show a spinner while waiting for the form to process
+    document.getElementById('teachervalidationForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Wait...';
+    });
+</script>
+
+<script>
+    // Bootstrap form validation script
+    (function () {
+        'use strict'
+        // Fetch all the forms we want to apply custom Bootstrap validation styles to
+        var forms = document.querySelectorAll('.needs-validation');
+        // Loop over them and prevent submission if invalid
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}

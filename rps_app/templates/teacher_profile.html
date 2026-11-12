@@ -1,0 +1,408 @@
+<!-- templates/teacher_profile.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Teacher Profile{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show d-flex align-items-center mb-4">
+                        <i class="bi {% if message.tags == 'error' %}bi-exclamation-circle-fill{% else %}bi-check-circle-fill{% endif %} me-2"></i>
+                        <div>{{ message }}</div>
+                        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Teacher Header Card -->
+            <div class="card shadow-sm border-0 mb-4" style="border-radius: 16px; overflow: hidden;">
+                <!-- Cover Image -->
+                {% if display and display.image %}
+                    <div class="position-relative" style="height: 180px;">
+                        <img src="{{ display.image.url }}" alt="Cover" class="w-100 h-100" style="object-fit: cover;">
+                        <div class="position-absolute top-0 start-0 end-0 bottom-0" style="background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%);"></div>
+                    </div>
+                {% else %}
+                    <div class="bg-primary text-white text-center py-5" style="background: linear-gradient(135deg, #3a7bd5, #00d2ff);">
+                        <h1 class="display-6 fw-bold mb-0">Teacher Profile</h1>
+                    </div>
+                {% endif %}
+
+                <div class="card-body pt-5 pb-4">
+                    <div class="row align-items-end">
+                        <!-- Profile Photo -->
+                        <div class="col-auto position-relative" style="margin-top: -80px;">
+                            <div class="text-center">
+                                {% if teacher.photo %}
+                                    <img src="{{ teacher.photo.url }}" alt="{{ teacher.teacherName }}" class="rounded-circle border border-4 border-white shadow-lg" style="width: 130px; height: 130px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-4 border-white shadow-lg" style="width: 130px; height: 130px; font-size: 3rem;">
+                                        {{ teacher.teacherName|first|upper }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Name & Details -->
+                        <div class="col">
+                            <h2 class="mb-1 fw-bold text-dark">{{ teacher.teacherName|default:teacher.user.username }}</h2>
+                            <p class="text-muted mb-1 small">
+                                <i class="bi bi-key me-1"></i> Key: <code>{{ teacher.teacher_key }}</code>
+                            </p>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                {% if is_verified %}
+                                    <span class="badge bg-success rounded-pill px-3 py-2">
+                                        <i class="bi bi-shield-check me-1"></i> Verified
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+                                        <i class="bi bi-shield-exclamation me-1"></i> Unverified
+                                    </span>
+                                {% endif %}
+                                {% if teacher_position and total_teachers_in_class %}
+                                    <span class="badge bg-info rounded-pill px-3 py-2">
+                                        <i class="bi bi-trophy me-1"></i> Rank: {{ teacher_position }}/{{ total_teachers_in_class }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Chat Button -->
+                        <div class="col-auto text-end">
+                            <a href="{% url 'chat_list' %}" class="btn btn-primary rounded-pill px-4 py-2 d-flex align-items-center shadow-sm position-relative" id="chat-btn">
+                                <i class="bi bi-chat-dots me-2"></i>
+                                <span id="btnText">Messages</span>
+                                <span id="chat-loader" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                                {% if unread_count > 0 %}
+                                    <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill" id="unread-badge">{{ unread_count }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill d-none" id="unread-badge">0</span>
+                                {% endif %}
+                            </a>
+                            <p class="text-muted small mt-2 mb-0">Chat with students & colleagues</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <form method="GET" class="card shadow-sm border-0 p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted">Class</label>
+                        <select class="form-select form-select-sm" name="class_filter">
+                            <option value="">All Classes</option>
+                            {% for cls in assigned_classes %}
+                                <option value="{{ cls.id }}" {% if class_filter == cls.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ cls.ClassName.class_name }} ({{ cls.academicclassyear.academic_year_name }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted">Level</label>
+                        <select class="form-select form-select-sm" name="grading_filter">
+                            <option value="">All Levels</option>
+                            {% for level in unique_levels %}
+                                <option value="{{ level }}" {% if grading_filter == level %}selected{% endif %}>{{ level }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted">Examination</label>
+                        <select class="form-select form-select-sm" name="examination_filter">
+                            <option value="">All Exams</option>
+                            {% for exam in exams %}
+                                <option value="{{ exam.id }}" {% if examination_filter == exam.id|stringformat:"s" %}selected{% endif %}>{{ exam.exam_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted">Rank By</label>
+                        <select class="form-select form-select-sm" name="rank_by">
+                            <option value="class" {% if rank_by == 'class' %}selected{% endif %}>Class</option>
+                            <option value="stream" {% if rank_by == 'stream' %}selected{% endif %}>Stream</option>
+                            <option value="all" {% if rank_by == 'all' %}selected{% endif %}>All Streams</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm">
+                        <i class="bi bi-funnel me-2"></i> Apply Filters
+                    </button>
+                </div>
+            </form>
+
+            <div class="row g-4">
+                <!-- Sidebar: Subjects -->
+                <div class="col-md-4 col-lg-3">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-light border-bottom">
+                            <h6 class="mb-0 fw-bold">
+                                <i class="bi bi-book-fill text-primary me-2"></i> Assigned Subjects
+                            </h6>
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            {% for ts in teacher_subjects %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                    <div>
+                                        <div class="fw-medium">{{ ts.subject.nameSubject }}</div>
+                                        <div class="text-muted small">{{ ts.teacherclass.ClassName.class_name }}</div>
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">{{ ts.enrolled_count }}</span>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-3"></i>
+                                    <div class="small mt-2">No subjects assigned</div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="col-md-8 col-lg-9">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="profileTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#performance">
+                                <i class="bi bi-graph-up me-2"></i> Performance
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#attendance">
+                                <i class="bi bi-calendar-check me-2"></i> Attendance
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Performance -->
+                        <div class="tab-pane fade show active" id="performance">
+                            <!-- Chart -->
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-body">
+                                    <canvas id="gpaChart" height="100"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Subjects Table -->
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0 fw-bold">Subject Performance</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Subject</th>
+                                                    <th>Class</th>
+                                                    <th>Enrolled</th>
+                                                    <th class="text-center">{{ performance_label }}</th>
+                                                    <th>Grades</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for ts in teacher_subjects %}
+                                                <tr>
+                                                    <td class="fw-medium">{{ ts.subject.nameSubject }}</td>
+                                                    <td><small class="text-muted">{{ ts.teacherclass.ClassName.class_name }}</small></td>
+                                                    <td><span class="badge bg-secondary">{{ ts.enrolled_count }}</span></td>
+                                                    <td class="text-center fw-bold text-primary">
+                                                        {% if is_primary %}{{ ts.average_marks|floatformat:1 }}{% else %}{{ ts.gpa|floatformat:2 }}{% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% for grade, count in ts.grade_counts.items %}
+                                                            {% if count > 0 %}
+                                                                <span class="badge bg-light text-dark me-1">{{ grade }}:{{ count }}</span>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted py-4">
+                                                        <i class="bi bi-bar-chart-line"></i> No performance data
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Summary Cards -->
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0 text-center">
+                                        <div class="card-body py-4">
+                                            <h5 class="fw-bold text-primary">{{ exam_average|default:"N/A" }}</h5>
+                                            <small class="text-muted">Exam Average</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0 text-center">
+                                        <div class="card-body py-4">
+                                            <h5 class="fw-bold text-primary">{{ exam_average_gpa|default:"N/A" }}</h5>
+                                            <small class="text-muted">Exam GPA</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0 text-center">
+                                        <div class="card-body py-4">
+                                            <h5 class="fw-bold text-primary">{{ all_exams_average|default:"N/A" }}</h5>
+                                            <small class="text-muted">All Exams Avg</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attendance -->
+                        <div class="tab-pane fade" id="attendance">
+                            {% for month in monthly_attendance %}
+                                <div class="card shadow-sm border-0 mb-4">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold">
+                                            <i class="bi bi-calendar3 me-2"></i> {{ month.month_str }}
+                                        </h6>
+                                        <span class="badge bg-success rounded-pill">
+                                            {{ month.present }} / {{ month.total }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        {% for day in month.days %}
+                                                            <th class="text-center small">{{ day.day }}</th>
+                                                        {% endfor %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        {% for day in month.days %}
+                                                            <td class="text-center small fw-bold {% if day.status == 'present' %}text-success{% elif day.status == 'absent' %}text-danger{% else %}text-muted{% endif %}">
+                                                                {{ day.status|capfirst }}
+                                                            </td>
+                                                        {% endfor %}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-calendar-x fs-1"></i>
+                                    <p class="mt-3">No attendance recorded yet.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Chart
+    const ctx = document.getElementById('gpaChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ gpa_chart.labels|safe }},
+            datasets: [{
+                label: '{{ performance_label }}',
+                data: {{ gpa_chart.data|safe }},
+                backgroundColor: 'rgba(58, 123, 213, 0.15)',
+                borderColor: '#3a7bd5',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Chat Button Loader
+    const chatBtn = document.getElementById('chat-btn');
+    const btnText = document.getElementById('btnText');
+    const loader = document.getElementById('chat-loader');
+
+    chatBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        chatBtn.disabled = true;
+        loader.style.display = 'inline-block';
+        btnText.textContent = 'Loading...';
+
+        setTimeout(() => {
+            window.location.href = chatBtn.getAttribute('href');
+        }, 800);
+    });
+
+    // WebSocket for real-time unread count
+    let notifSocket = null;
+    function connectWS() {
+        const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        notifSocket = new WebSocket(wsScheme + window.location.host + '/ws/notifications/');
+
+        notifSocket.onopen = () => console.log('Notif WS connected');
+        notifSocket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.type === 'new_message_notification') {
+                const badge = document.getElementById('unread-badge');
+                let count = parseInt(badge.textContent) || 0;
+                count++;
+                badge.textContent = count;
+                badge.classList.remove('d-none');
+                new Audio('{% static "notification.mp3" %}').play().catch(() => {});
+            }
+        };
+        notifSocket.onclose = () => setTimeout(connectWS, 3000);
+    }
+    connectWS();
+});
+</script>
+
+<!-- Styles -->
+<style>
+    .card { transition: all 0.2s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .nav-tabs .nav-link { border-radius: 0.5rem 0.5rem 0 0; }
+    .nav-tabs .nav-link.active { background-color: #3a7bd5; color: white; border-color: #3a7bd5; }
+    .table-hover tbody tr:hover { background-color: rgba(58,123,213,0.05); }
+    .badge { font-size: 0.8rem; }
+    @media (max-width: 768px) {
+        .display-6 { font-size: 1.8rem; }
+        .card-body h2 { font-size: 1.4rem; }
+    }
+</style>
+{% endblock %}

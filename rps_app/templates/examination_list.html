@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h4 fw-bold text-primary mb-1">
+                <i class="bi bi-journal-bookmark-fill me-2"></i>My Examinations
+            </h1>
+            <p class="text-muted small mb-0">Manage your examination records</p>
+        </div>
+        <a href="{% url 'examination_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-plus-circle me-2"></i> Add New
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        {% if examinations %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4 py-3 fw-semibold text-dark">
+                                <i class="bi bi-card-heading me-2"></i> Examination Name
+                            </th>
+                            <th class="text-end pe-4 py-3 fw-semibold text-dark">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exam in examinations %}
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-journal-text me-3 text-primary"></i>
+                                    <span class="fw-medium">{{ exam.exam_name }}</span>
+                                </div>
+                            </td>
+                            <td class="text-end pe-4 py-3">
+                                <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#updateModal{{ exam.pk }}" title="Edit">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ exam.pk }}" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                <h5 class="text-muted mb-3">No examinations found</h5>
+                <p class="text-muted mb-4">Get started by creating your first examination</p>
+                <a href="{% url 'examination_create' %}" class="btn btn-primary rounded-pill px-4">
+                    <i class="bi bi-plus-circle me-2"></i> Create Examination
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Update Modals -->
+{% for exam in examinations %}
+<div class="modal fade" id="updateModal{{ exam.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3a7bd5, #00d2ff); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>Update Examination
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form method="POST" action="{% url 'examination_update' exam.pk %}" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">
+                            <i class="bi bi-card-heading me-1"></i> Examination Name
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-pencil-square"></i>
+                            </span>
+                            <input type="text" name="exam_name" class="form-control rounded-end border-start-0" value="{{ exam.exam_name }}" required>
+                            <div class="invalid-feedback mt-1">
+                                <i class="bi bi-exclamation-circle me-1"></i> Please enter a valid name.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle me-2"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary rounded-pill">
+                            <i class="bi bi-save me-2"></i> Update
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Delete Modals -->
+{% for exam in examinations %}
+<div class="modal fade" id="deleteModal{{ exam.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-exclamation-octagon-fill text-danger fs-3 me-3"></i>
+                    <div>
+                        <h5 class="mb-2">Delete "{{ exam.exam_name }}"?</h5>
+                        <p class="text-muted mb-0">This action cannot be undone.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i> Cancel
+                </button>
+                <form method="POST" action="{% url 'examination_delete' exam.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger rounded-pill">
+                        <i class="bi bi-trash me-2"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Custom Styles -->
+<style>
+    .card { border-radius: 16px; overflow: hidden; }
+    .table th, .table td { vertical-align: middle; }
+    .btn-primary {
+        background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+        border: none;
+    }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .modal-header { border-radius: 16px 16px 0 0; }
+    .form-control:focus { border-color: #3a7bd5; box-shadow: 0 0 0 0.2rem rgba(58, 123, 213, 0.15); }
+    .input-group .form-control { font-size: 0.95rem; }
+</style>
+
+<!-- Tooltip & Validation -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Tooltips
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+
+        // Modal form validation
+        document.querySelectorAll('.modal .needs-validation').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        });
+    });
+</script>
+{% endblock %}

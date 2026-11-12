@@ -1,0 +1,246 @@
+{% load static %}
+{% load pwa %}
+<!doctype html>
+<html lang="en">
+<head>
+  {% progressive_web_app_meta %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="author" content="Untree.co">
+  <link rel="shortcut icon" href="{% static 'british_icon.png' %}">
+
+  <meta name="description" content="" />
+  <meta name="keywords" content="bootstrap, bootstrap4" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Display+Playfair:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+
+  <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
+
+  <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/animate.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/jquery.fancybox.min.css' %}">
+  <link rel="stylesheet" href="{% static 'fonts/icomoon/style.css' %}">
+  <link rel="stylesheet" href="{% static 'fonts/flaticon/font/flaticon.css' %}">
+  <link rel="stylesheet" href="{% static 'css/aos.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+  <title>Login</title>
+</head>
+
+<body>
+
+  <div class="site-mobile-menu">
+    <div class="site-mobile-menu-header">
+      <div class="site-mobile-menu-close">
+        <span class="icofont-close js-menu-toggle"></span>
+      </div>
+    </div>
+    <div class="site-mobile-menu-body"></div>
+  </div>
+
+
+  
+  <nav class="site-nav mb-5">
+    <div class="pb-2 top-bar mb-3">
+      <div class="container">
+        <div class="row align-items-center">
+
+         <div class="col-6 col-lg-9">
+  <a href="https://wa.me/{{ top.contact }}" class="small mr-3">
+    <span class="icon-question-circle-o mr-2"></span>
+    <span class="d-none d-lg-inline-block">{{ top.question }}</span>
+  </a> 
+
+  <a href="tel:{{ top.contact }}" class="small mr-3">
+    <span class="icon-phone mr-2"></span>
+    <span class="d-none d-lg-inline-block">{{ top.contact }}</span>
+  </a> 
+
+  <a href="mailto:{{ top.email }}" class="small mr-3">
+    <span class="icon-envelope mr-2"></span>
+    <span class="d-none d-lg-inline-block">{{ top.email }}</span>
+  </a> 
+</div>
+
+
+          <div class="col-6 col-lg-3 text-right">
+            <a href="{% url 'login_view' %}" class="small mr-3">
+              <span class="icon-lock"></span>
+              Log In
+            </a>
+           
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="sticky-nav js-sticky-header">
+      <div class="container position-relative">
+        <div class="site-navigation text-center">
+     {% if top and top.icon_required %}
+    <a class="logo position-absolute start-0 top-50 translate-middle-y pl-3" href="#">
+        <img src="{{ top.icon_required.url }}" alt="British Icon Brand"
+             style="width: 40px; height: 40px; border-radius: 40%; margin-right: 10px;">
+    </a>
+{% else %}
+    <div class="logo position-absolute start-0 top-50 translate-middle-y pl-3" style="color: #999;">
+        No icon
+    </div>
+{% endif %}
+
+
+          <ul class="js-clone-nav d-none d-lg-inline-block site-menu">
+           
+            <!-- <li class="has-children">
+              <a href="#">Dropdown</a>
+              <ul class="dropdown">
+                <li><a href="{% url 'site:elements' %}">Elements</a></li>
+                <li class="has-children">
+                  <a href="#">Menu Two</a>
+                  <ul class="dropdown">
+                    <li><a href="#">Sub Menu One</a></li>
+                    <li><a href="#">Sub Menu Two</a></li>
+                    <li><a href="#">Sub Menu Three</a></li>
+                  </ul>
+                </li>
+                <li><a href="#">Menu Three</a></li>
+              </ul>
+            </li> -->
+            <li><a href="{% url 'site:staff' %}">Our Staff</a></li>
+            
+            <!-- <li><a href="{% url 'site:gallery' %}">Gallery</a></li>
+            <li><a href="{% url 'site:about_data' %}">About</a></li> -->
+            <li class="active"><a href="{% url 'site:contact' %}">Contact</a></li>
+          </ul>
+
+          <a href="#" class="btn-book btn btn-secondary btn-sm menu-absolute">Join Us</a>
+
+          <a href="#" class="burger ml-auto float-right site-menu-toggle js-menu-toggle d-inline-block d-lg-none light" data-toggle="collapse" data-target="#main-navbar">
+            <span></span>
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </nav>
+  
+<div class="untree_co-hero overlay" 
+     style="background-image: url('{{ top.icon_required.url }}');
+            background-size: contain;    
+            background-repeat: no-repeat;
+            background-position: center;
+            width: 100%;                
+            height: 30vh;               
+            max-height: 300px;
+            display: flex;
+            justify-content: flex-start;    /* start from top */
+            align-items: center;            /* horizontal centering */
+            text-align: center;
+            padding-top: 100px;">            <!-- top spacing for navbar -->
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-12 text-center">
+
+                {% block login %}
+                {% endblock %}
+
+                {% block content %}
+                {% endblock %}
+
+            </div>
+        </div>
+    </div>
+
+</div> <!-- /.untree_co-hero -->
+
+
+  <div class="site-footer">
+
+
+   <div class="container">
+
+      <div class="row">
+        <div class="col-lg-3 mr-auto">
+          <div class="widget">
+            <h3>About Us<span class="text-primary">.</span> </h3>
+
+            <p>{{ about.about_us_description }}</p>
+       
+          </div> <div class="widget">
+            <h3>Connect</h3>
+            <ul class="list-unstyled social">
+              <li><a href="#"><span class="icon-instagram"></span></a></li>
+              <li><a href="#"><span class="icon-twitter"></span></a></li>
+              <li><a href="#"><span class="icon-facebook"></span></a></li>
+              <li><a href="#"><span class="icon-linkedin"></span></a></li>
+              <li><a href="#"><span class="icon-pinterest"></span></a></li>
+              <li><a href="#"><span class="icon-dribbble"></span></a></li>
+            </ul>
+          </div> </div> <div class="col-lg-2 ml-auto">
+          <div class="widget">
+            <h3>Projects</h3>
+            {% for s in service %}
+            <ul class="list-unstyled float-left links">
+              <li><a href="#">{{ s.service_name }}</a></li>
+            </ul>
+            {% endfor %}
+          </div> </div> <div class="col-lg-3">
+          <div class="widget">
+            <h3>Galleries</h3>
+           {% for galleries in gallery %}
+  <ul class="instafeed instagram-gallery list-unstyled">
+    {% if galleries and galleries.all_gallery %}
+        <li style="display: inline-block; margin: 5px;">
+            <a class="instagram-item" href="{{ galleries.all_gallery.url }}">
+                <img src="{{ galleries.all_gallery.url }}" alt="Gallery Image" width="72" height="72">
+            </a>
+        </li>
+    {% else %}
+        <li style="display: inline-block; margin: 5px; color: #999;">
+            No gallery image
+        </li>
+    {% endif %}
+</ul>
+
+{% endfor %}
+
+
+          </div> </div> <div class="col-lg-3">
+          <div class="widget">
+            <h3>Contact</h3>
+            <address>Mwenge, Dar-es-salaam</address>
+            {% for c in contact %}
+            <ul class="list-unstyled links mb-4">
+              <li><a href="tel://{{ c.school_contact }}">{{ c.school_contact }}</a></li>
+            </ul>
+            {% endfor %}
+          </div> </div> </div> <div class="row mt-5">
+        <div class="col-12 text-center">
+          <p class="copyright">Copyright &copy;<script>document.write(new Date().getFullYear());</script>. {{ copyright.description }}</div>
+        </div>
+      </div>
+
+    <div id="overlayer"></div>
+    <div class="loader">
+      <div class="spinner-border" role="status">
+        <span class="sr-only">Loading...</span>
+      </div>
+    </div>
+
+  <script src="{% static 'js/jquery-3.4.1.min.js' %}"></script>
+    <script src="{% static 'js/popper.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/owl.carousel.min.js' %}"></script>
+    <script src="{% static 'js/jquery.animateNumber.min.js' %}"></script>
+    <script src="{% static 'js/jquery.waypoints.min.js' %}"></script>
+    <script src="{% static 'js/jquery.fancybox.min.js' %}"></script>
+    <script src="{% static 'js/jquery.sticky.js' %}"></script>
+    <script src="{% static 'js/aos.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}"></script>
+  </body>
+
+  </html>

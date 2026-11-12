@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-collection me-2"></i>Attendance Dashboard</h5>
+        </div>
+        <div class="card-body">
+            {% if classes %}
+            <div class="row">
+                {% for class in classes %}
+                <div class="col-md-4 mb-3">
+                    <a href="{% url 'attendance:class_attendance' class.id %}" class="text-decoration-none">
+                        <div class="card class-card hover-shadow">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">
+                                    <i class="bi bi-people-fill me-2"></i>{{ class.ClassName|default:"Unnamed" }}
+                                </h5>
+                                <span class="badge bg-primary rounded-pill">
+                                    {{ class.student_set.count }} students
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>You have no classes assigned.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

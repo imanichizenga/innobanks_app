@@ -1,0 +1,438 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+{% load custom_filters %}
+
+<div class="container my-5">
+    <h2 class="fw-bold text-primary mb-4"><i class="fas fa-users"></i> Manage Staff</h2>
+
+    <!-- ==== ADD FORM ==== -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+
+            {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+            <div class="alert 
+                {% if message.tags == 'error' %}alert-danger
+                {% elif message.tags == 'success' %}alert-success
+                {% else %}alert-info{% endif %}
+                alert-dismissible fade show">
+                
+                {{ message }}
+                
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+            <form method="POST" enctype="multipart/form-data" id="addTeacherForm">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4"><input type="text" name="username" class="form-control" placeholder="Username *" required></div>
+                    <div class="col-md-4"><input type="text" name="teacherName" class="form-control" placeholder="Full Name *" required></div>
+                    <div class="col-md-4"><input type="email" name="email" class="form-control" placeholder="Email *" required></div>
+
+                    <div class="col-md-4"><input type="password" name="password" class="form-control" placeholder="Password *" required></div>
+                    <div class="col-md-4"><input type="password" name="confirmPassword" class="form-control" placeholder="Confirm Password *" required></div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Role</label>
+                        <select name="role" class="form-select" required>
+                            <option value="">Select Role</option>
+                            {% for value, label in role_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Staff Photo</label>
+                        <input type="hidden" name="captured_photo_data" id="teacherCapturedPhotoData">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="file" name="photo" id="teacherPhotoInput" class="form-control" accept="image/*">
+                                <small class="text-muted">Upload a file or capture a live photo with the webcam.</small>
+                                <div class="ratio ratio-4x3 bg-dark rounded overflow-hidden mt-3">
+                                    <video id="teacherCameraPreview" class="w-100 h-100 object-fit-cover d-none" autoplay playsinline muted></video>
+                                    <div id="teacherCameraPlaceholder" class="d-flex align-items-center justify-content-center text-white-50">Camera preview</div>
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="teacherStartCamera">Open Camera</button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" id="teacherCaptureCamera" disabled>Capture</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="teacherStopCamera" disabled>Close</button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="ratio ratio-4x3 bg-light border rounded overflow-hidden">
+                                    <img id="teacherPhotoPreview" class="w-100 h-100 object-fit-cover d-none" alt="Staff preview">
+                                    <div id="teacherPreviewPlaceholder" class="d-flex align-items-center justify-content-center text-muted">Preview appears here</div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Add Staff</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <h6 class="fw-bold mb-3"><i class="bi bi-database-add me-2"></i>Import Additional Teacher Information</h6>
+            <form action="{% url 'import_teacher_information' 'academic' %}" method="POST" enctype="multipart/form-data" id="importTeacherInfoForm" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-4">
+                    <label class="form-label small">Information Type</label>
+                    <select class="form-select form-select-sm" id="teacherImportType">
+                        <option value="academic">Academic Information</option>
+                        <option value="personal">Personal Information</option>
+                        <option value="emergency">Emergency Contacts</option>
+                        <option value="medical">Medical Information</option>
+                        <option value="passport">Passport Photo</option>
+                        <option value="bank">Bank Information</option>
+                        <option value="contract">Contracts</option>
+                        <option value="document">Documents</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Upload CSV/XLS/XLSX (must include username)</label>
+                    <input type="file" class="form-control form-control-sm" name="file" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 btn-sm"><i class="bi bi-upload me-1"></i>Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==== STAFF TABLE ==== -->
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="staffTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Photo</th>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in teachers %}
+                        <tr>
+                            <td>
+                                {% if teacher.photo %}
+                                    <img src="{{ teacher.photo.url }}" class="rounded-circle" width="40" height="40" alt="photo">
+                                {% else %}
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                         style="width:40px;height:40px;font-size:18px;">
+                                        {{ teacher.user.username.0|upper }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>{{ teacher.user.username }}</td>
+                            <td>{{ teacher.teacherName|default:"-" }}</td>
+                            <td>{{ teacher.user.email }}</td>
+                            <td>
+                                <span class="badge bg-{{ role_badges|get_item:teacher.teacher_role|default:'secondary' }}">
+                                    {{ teacher.teacher_role|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info me-1" onclick="openTeacherInfoModal({{ teacher.id }}, 'view')" title="View Information">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success me-1" onclick="openTeacherInfoModal({{ teacher.id }}, 'edit')" title="Add More Information">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary me-1" onclick="editStaff({{ teacher.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteStaff({{ teacher.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ==== TEACHER EXTRA INFO MODAL ==== -->
+<div class="modal fade" id="teacherInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Teacher Information</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="teacherInfoModalBody">
+                <div class="text-center text-muted py-5">Select a teacher to load information.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==== EDIT MODAL ==== -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Staff</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit_teacher_id">
+
+                    <div class="mb-3"><label>Username</label><input type="text" id="edit_username" class="form-control" required></div>
+                    <div class="mb-3"><label>Full Name</label><input type="text" id="edit_teacherName" class="form-control" required></div>
+                    <div class="mb-3"><label>Email</label><input type="email" id="edit_email" class="form-control" required></div>
+                    <div class="mb-3"><label>New Password (leave blank to keep current)</label>
+                        <input type="password" id="edit_password" class="form-control"></div>
+
+                    <div class="mb-3">
+                        <label>Role</label>
+                        <select id="edit_role" class="form-select" required>
+                            {% for value, label in role_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3"><label>Photo</label><input type="file" id="edit_photo" class="form-control" accept="image/*"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+
+function setupCameraCapture(config) {
+    const fileInput = document.getElementById(config.fileInputId);
+    const hiddenInput = document.getElementById(config.hiddenInputId);
+    const previewImage = document.getElementById(config.previewImageId);
+    const previewPlaceholder = document.getElementById(config.previewPlaceholderId);
+    const video = document.getElementById(config.videoId);
+    const videoPlaceholder = document.getElementById(config.videoPlaceholderId);
+    const startBtn = document.getElementById(config.startButtonId);
+    const captureBtn = document.getElementById(config.captureButtonId);
+    const stopBtn = document.getElementById(config.stopButtonId);
+    let stream = null;
+
+    if (!fileInput || !hiddenInput || !previewImage || !video) return;
+
+    const showPreview = (src) => {
+        previewImage.src = src;
+        previewImage.classList.remove('d-none');
+        previewPlaceholder.classList.add('d-none');
+    };
+
+    const stopStream = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        video.classList.add('d-none');
+        videoPlaceholder.classList.remove('d-none');
+        captureBtn.disabled = true;
+        stopBtn.disabled = true;
+    };
+
+    fileInput.addEventListener('change', function () {
+        hiddenInput.value = '';
+        const [file] = this.files;
+        if (file) {
+            showPreview(URL.createObjectURL(file));
+        }
+    });
+
+    startBtn.addEventListener('click', async function () {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera access is not supported in this browser.');
+            return;
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.classList.remove('d-none');
+            videoPlaceholder.classList.add('d-none');
+            captureBtn.disabled = false;
+            stopBtn.disabled = false;
+        } catch (error) {
+            alert('Unable to access camera. Please check permissions and try again.');
+        }
+    });
+
+    captureBtn.addEventListener('click', function () {
+        if (!stream) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        hiddenInput.value = dataUrl;
+        fileInput.value = '';
+        showPreview(dataUrl);
+        stopStream();
+    });
+
+    stopBtn.addEventListener('click', stopStream);
+    window.addEventListener('beforeunload', stopStream);
+}
+
+setupCameraCapture({
+    fileInputId: 'teacherPhotoInput',
+    hiddenInputId: 'teacherCapturedPhotoData',
+    previewImageId: 'teacherPhotoPreview',
+    previewPlaceholderId: 'teacherPreviewPlaceholder',
+    videoId: 'teacherCameraPreview',
+    videoPlaceholderId: 'teacherCameraPlaceholder',
+    startButtonId: 'teacherStartCamera',
+    captureButtonId: 'teacherCaptureCamera',
+    stopButtonId: 'teacherStopCamera'
+});
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+}
+
+function openTeacherInfoModal(teacherId, mode) {
+    fetch(`/teachers/${teacherId}/information/?mode=${mode}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.message || 'Unable to load teacher information');
+                return;
+            }
+            document.getElementById('teacherInfoModalBody').innerHTML = data.html;
+            bindEntityInfoForms();
+            new bootstrap.Modal(document.getElementById('teacherInfoModal')).show();
+        });
+}
+
+function bindEntityInfoForms() {
+    document.querySelectorAll('.entity-info-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const entity = this.dataset.entity;
+            const entityId = this.dataset.entityId;
+            const formData = new FormData(this);
+            fetch(`/${entity}s/${entityId}/information/save/`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCsrfToken() }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    openTeacherInfoModal(entityId, 'edit');
+                } else {
+                    alert(data.message || JSON.stringify(data.errors));
+                }
+            });
+        });
+    });
+}
+
+function deleteEntityInfo(entity, entityId, modelKey, recordId) {
+    if (!confirm('Delete this record?')) return;
+    fetch(`/${entity}s/${entityId}/information/delete/${modelKey}/${recordId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            openTeacherInfoModal(entityId, 'edit');
+        } else {
+            alert(data.message || 'Delete failed');
+        }
+    });
+}
+
+document.getElementById('importTeacherInfoForm')?.addEventListener('submit', function () {
+    const type = document.getElementById('teacherImportType').value;
+    this.action = `/teachers/information/import/${type}/`;
+});
+
+/* ---------- GET teacher data for modal ---------- */
+function editStaff(id) {
+    fetch(`/get_teacher/${id}/`)
+        .then(r => {
+            if (!r.ok) throw new Error('Permission denied');
+            return r.json();
+        })
+        .then(data => {
+            document.getElementById('edit_teacher_id').value = id;
+            document.getElementById('edit_username').value   = data.username;
+            document.getElementById('edit_teacherName').value = data.teacherName;
+            document.getElementById('edit_email').value      = data.email;
+            document.getElementById('edit_role').value       = data.role;
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+        })
+        .catch(err => alert(err.message));
+}
+
+/* ---------- SUBMIT edit form ---------- */
+document.getElementById('editForm').onsubmit = function (e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_teacher_id').value;
+    const formData = new FormData();
+    formData.append('username',     document.getElementById('edit_username').value);
+    formData.append('teacherName',  document.getElementById('edit_teacherName').value);
+    formData.append('email',        document.getElementById('edit_email').value);
+    formData.append('password',     document.getElementById('edit_password').value);
+    formData.append('role',         document.getElementById('edit_role').value);
+    if (document.getElementById('edit_photo').files[0]) {
+        formData.append('photo', document.getElementById('edit_photo').files[0]);
+    }
+
+    fetch(`/update-teacher/${id}/`, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.message);
+    });
+};
+
+/* ---------- DELETE ---------- */
+function deleteStaff(id) {
+    if (!confirm('Delete this staff member?')) return;
+    fetch(`/delete-teacher/${id}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.message);
+    });
+}
+</script>
+{% endblock %}

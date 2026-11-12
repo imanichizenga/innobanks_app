@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block content %}
+<div class="container-fluid py-3 student-page">
+  {% if messages %}{% for message in messages %}<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+
+  <div class="card border mb-3 student-intro-card">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center py-3">
+      <div>
+        <h4 class="mb-1">Student Registration</h4>
+        <p class="text-muted mb-0">Manage students, add additional profile information, and preview printable ID cards.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary btn-sm px-3 rounded-pill add-student-btn" data-bs-toggle="modal" data-bs-target="#studentCreateModal"><i class="bi bi-person-plus-fill me-1"></i>Create New Student</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-center" id="toolbarFilterForm">
+        <div class="col-12 col-md-3">
+          <select class="form-select" name="class" id="classSelector" onchange="document.getElementById('toolbarFilterForm').submit()">
+            {% for class in classes %}
+            <option value="{{ class.id }}" {% if selected_class and selected_class.id == class.id %}selected{% endif %}>
+              {{ class.ClassName.class_name }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %} • {{ class_counts|get_item:class.id|default:0 }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-3"><input class="form-control" type="text" name="q" value="{{ search_query }}" placeholder="Search name, index, contact"></div>
+        <div class="col-6 col-md-2"><button class="btn btn-outline-secondary w-100" type="submit"><i class="bi bi-search me-1"></i>Filter</button></div>
+        {% if selected_class %}
+        <div class="col-6 col-md-2"><a class="btn btn-outline-success w-100" href="{% url 'export_students_excel' selected_class.id %}"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a></div>
+        <div class="col-6 col-md-2"><a class="btn btn-outline-danger w-100" href="{% url 'export_students_pdf' selected_class.id %}"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a></div>
+        {% endif %}
+      </form>
+      <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+          <form action="{% url 'upload_students' %}" method="POST" enctype="multipart/form-data" id="uploadForm" class="border rounded p-2">{% csrf_token %}
+            <div class="d-flex gap-2 flex-wrap">
+              <select class="form-select form-select-sm" name="teacherclass" required>{% for class in classes %}<option value="{{ class.id }}" {% if selected_class and selected_class.id == class.id %}selected{% endif %}>{{ class.ClassName.class_name }}</option>{% endfor %}</select>
+              <input type="file" class="form-control form-control-sm" name="file" accept=".csv,.xls,.xlsx" required>
+              <button class="btn btn-sm btn-primary" id="uploadButton"><i class="bi bi-cloud-upload me-1"></i>Bulk Upload</button>
+            </div>
+          </form>
+        </div>
+        <div class="col-lg-6">
+          <form action="{% url 'import_student_information' 'academic' %}" method="POST" enctype="multipart/form-data" id="importStudentInfoForm" class="border rounded p-2">{% csrf_token %}
+            <div class="d-flex gap-2 flex-wrap">
+              <select class="form-select form-select-sm" id="studentImportType"><option value="academic">Academic</option><option value="guardian">Guardian</option><option value="sponsor">Sponsor</option><option value="medical">Medical</option><option value="emergency">Emergency</option><option value="passport">Passport</option></select>
+              <input type="file" class="form-control form-control-sm" name="file" required>
+              <button class="btn btn-sm btn-outline-primary"><i class="bi bi-database-add me-1"></i>Import Info</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <strong>Students {% if selected_class %}• {{ selected_class.ClassName.class_name }}{% endif %}</strong>
+      <span class="badge bg-primary rounded-pill">{{ students|length }}</span>
+    </div>
+    <div class="card-body">
+      {% if students %}
+      <form method="POST" action="{% url 'delete_selected_students' %}" id="bulkDeleteForm">{% csrf_token %}<input type="hidden" name="class_id" value="{{ selected_class.id }}">
+        <div class="d-flex justify-content-between align-items-center mb-2"><small>Selected: <span id="selectedCount">0</span></small><button class="btn btn-sm btn-danger" id="deleteSelectedBtn" disabled><i class="bi bi-trash me-1"></i>Delete Selected</button></div>
+        <div class="table-responsive student-table-wrap">
+          <table class="table table-hover table-bordered table-sm align-middle mb-0 student-registration-table" id="studentTable">
+           <thead class="table-light">
+  <tr>
+    <th style="width:40px; min-width:40px; max-width:40px; text-align:center;">
+      <input type="checkbox" id="selectAllStudents">
+    </th>
+    <th style="width:50px; min-width:50px; max-width:50px; white-space:nowrap; text-align:center;">
+      #
+    </th>
+    <th style="width:50px; min-width:50px; max-width:50px; white-space:nowrap; text-align:center;">Photo</th>
+    <th style="min-width:220px; width:260px; white-space:nowrap;">Full Name</th>
+    <th>Class</th>
+    <th>Contact</th>
+    <th >Gender</th>
+    <th>Academic Level</th>
+    <th>ID Validity</th>
+    <th>Index Number</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+            <tbody>
+              {% for s in students %}
+              <tr class="student-row" data-student-id="{{ s.id }}" data-student-name="{{ s.fullName|default:'Unnamed'|escape }}" data-student-index="{{ s.indexNumber|default:'-'|escape }}" data-student-class="{{ s.teacherclass.ClassName.class_name|default:'-'|escape }}" data-student-academic-level="{{ s.academic_information.academic_level|default:'FTNA'|escape }}" data-student-gender="{{ s.get_sex_display|default:'-'|escape }}" data-student-contact="{{ s.contact|default:'-'|escape }}" data-student-photo="{% if s.photo %}{{ s.photo.url|escape }}{% endif %}" data-student='{"id":"{{ s.id }}","name":"{{ s.fullName|default:"Unnamed"|escapejs }}","index":"{{ s.indexNumber|default:"-"|escapejs }}","class":"{{ s.teacherclass.ClassName.class_name|default:"-"|escapejs }}","academic_level":"{{ s.academic_information.academic_level|default:"FTNA"|escapejs }}","gender":"{{ s.get_sex_display|default:"-"|escapejs }}","contact":"{{ s.contact|default:"-"|escapejs }}","photo":"{% if s.photo %}{{ s.photo.url|escapejs }}{% endif %}"}'>
+                <td><input type="checkbox" name="student_ids[]" value="{{ s.id }}" class="student-checkbox"></td>
+                <td>{{ forloop.counter }}</td>
+                <td>{% if s.photo %}<img src="{{ s.photo.url }}" class="stu-photo">{% else %}<div class="stu-photo placeholder-glow"><span class="placeholder w-100 h-100"></span></div>{% endif %}</td>
+                <td>{{ s.fullName }}</td>
+                <td>{{ s.teacherclass.ClassName.class_name }}</td>
+                <td>{{ s.contact }}</td>
+                <td>{{ s.get_sex_display }}</td>
+                <td>{{ s.academic_information.academic_level|default:"-" }}</td>
+                <td>
+                  {% if s.academic_information.academic_level == 'English course' or s.academic_information.academic_level == 'Computer course' %}
+                  <select class="form-select form-select-sm short-course-validity-select" data-student-id="{{ s.id }}" onclick="event.stopPropagation();" aria-label="Short course ID validity">
+                    <option value="3" {% if s.academic_information.short_course_validity_months == 3 or not s.academic_information.short_course_validity_months %}selected{% endif %}>3 months</option>
+                    <option value="6" {% if s.academic_information.short_course_validity_months == 6 %}selected{% endif %}>6 months</option>
+                    <option value="12" {% if s.academic_information.short_course_validity_months == 12 %}selected{% endif %}>12 months</option>
+                  </select>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>{{ s.indexNumber }}</td>
+                <td>
+                  <div class="btn-group btn-group-sm action-btn-group">
+                    <a href="{% url 'student_id_card_view' s.id %}" class="btn btn-outline-dark preview-id-btn" onclick="event.stopPropagation();" title="ID Card"><i class="bi bi-person-vcard"></i></a>
+                    <a href="{% url 'student_information_page' s.id %}" class="btn btn-outline-success student-info-btn" onclick="event.stopPropagation();" title="Add More"><i class="bi bi-plus-circle"></i></a>
+                    <a href="{% url 'update_student' s.id %}" class="btn btn-outline-primary" onclick="event.stopPropagation();"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'delete_student' s.id %}" class="btn btn-outline-danger" onclick="event.stopPropagation();"><i class="bi bi-trash"></i></a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </form>
+      {% else %}<div class="alert alert-info mb-0">No students found for the selected filters.</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% include 'partials/student_create_modal.html' %}
+{% include 'partials/student_id_preview_modal.html' %}
+<div class="modal fade" id="studentInfoModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header bg-primary text-white"><h6 class="modal-title mb-0">Student Information</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body" id="studentInfoModalBody"></div></div></div></div>
+
+<script>
+function getCsrfToken(){return document.querySelector('[name=csrfmiddlewaretoken]')?.value;}
+let studentInfoLoadToken=0;
+function hasModalRetryParam(){return new URLSearchParams(window.location.search).get('modal_retry')==='1';}
+function modalFallbackUrl(params){const url=new URL(window.location.href);['open_info','created_student','preview_id','modal_retry'].forEach(key=>url.searchParams.delete(key));Object.entries(params||{}).forEach(([key,value])=>{if(value!==undefined&&value!==null&&value!=='')url.searchParams.set(key,value);});url.searchParams.set('modal_retry','1');return url.toString();}
+function reloadForModal(params){const targetUrl=modalFallbackUrl(params);if(targetUrl===window.location.href){window.location.reload();return;}window.location.assign(targetUrl);}
+function openModalFallback(fallbackUrl){if(fallbackUrl&&!hasModalRetryParam()){window.location.assign(fallbackUrl);return true;}return false;}
+function showModalById(modalId,fallbackUrl){
+  const modalEl=document.getElementById(modalId);
+  if(!modalEl){openModalFallback(fallbackUrl);return null;}
+  const verifyOpen=()=>{if(modalEl.classList.contains('show'))return;setTimeout(()=>{if(modalEl.classList.contains('show'))return;openModalFallback(fallbackUrl);},150);};
+  try{
+    const BootstrapModal=window.bootstrap&&window.bootstrap.Modal;
+    if(!BootstrapModal){setTimeout(()=>showModalById(modalId,fallbackUrl),120);setTimeout(verifyOpen,320);return null;}
+    const modal=BootstrapModal.getOrCreateInstance(modalEl);
+    modal.show();
+    setTimeout(verifyOpen,220);
+    return modal;
+  }catch(e){
+    openModalFallback(fallbackUrl);
+    return null;
+  }
+}
+function openStudentInfoModal(studentId,mode,options={}){if(!studentId)return;const fallbackUrl=options.fallbackUrl||modalFallbackUrl({created_student:studentId,open_info:'1'});const body=document.getElementById('studentInfoModalBody');const token=++studentInfoLoadToken;if(body){body.innerHTML='<div class="d-flex align-items-center gap-2 text-muted py-4"><div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div><span>Loading student information...</span></div>';}showModalById('studentInfoModal',fallbackUrl);fetch(`/students/${studentId}/information/?mode=${encodeURIComponent(mode||'edit')}`).then(r=>r.json()).then(data=>{if(token!==studentInfoLoadToken)return;if(!data.success){if(body)body.innerHTML=`<div class="alert alert-danger mb-0">${data.message||'Unable to load student information.'}</div>`;return;}if(body)body.innerHTML=data.html;bindEntityInfoForms(body);setupPassportPhotoCapture(studentId);const firstAcademic=document.querySelector('#collapse-academic');if(firstAcademic){firstAcademic.classList.add('show');}}).catch(()=>{if(token===studentInfoLoadToken&&body){body.innerHTML='<div class="alert alert-danger mb-0">Unable to load student information. Please try again.</div>';}})}
+function updateStudentTablePhoto(studentId,photoUrl){if(!photoUrl)return;const row=document.querySelector(`.student-row[data-student-id="${studentId}"]`);if(!row)return;const cell=row.children[2];cell.innerHTML=`<img src="${photoUrl}" class="stu-photo">`;try{const data=JSON.parse(row.dataset.student);data.photo=photoUrl;row.dataset.student=JSON.stringify(data);}catch(e){}}
+function bindEntityInfoForms(root=document){root.querySelectorAll('.entity-info-form').forEach(form=>{if(form.dataset.bound==='1')return;form.dataset.bound='1';form.addEventListener('submit',function(e){e.preventDefault();const entity=this.dataset.entity,entityId=this.dataset.entityId;const fd=new FormData(this);const btn=this.querySelector('[type="submit"]');const originalHtml=btn?.innerHTML;if(btn){btn.disabled=true;btn.innerHTML='Saving...';}fetch(`/${entity}s/${entityId}/information/save/`,{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrfToken()}}).then(r=>r.json()).then(data=>{if(data.success){updateStudentTablePhoto(entityId,data.student_photo_url);openStudentInfoModal(entityId,'edit')}else{alert(data.message||JSON.stringify(data.errors))}}).catch(()=>alert('Unable to save student information. Please try again.')).finally(()=>{if(btn){btn.disabled=false;btn.innerHTML=originalHtml;}})})})}
+function deleteEntityInfo(entity,entityId,modelKey,recordId){if(!confirm('Delete this record?'))return;fetch(`/${entity}s/${entityId}/information/delete/${modelKey}/${recordId}/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}}).then(r=>r.json()).then(data=>{if(data.success){openStudentInfoModal(entityId,'edit')}})}
+function setupCameraCapture(config){const fileInput=document.getElementById(config.fileInputId),hiddenInput=document.getElementById(config.hiddenInputId),previewImage=document.getElementById(config.previewImageId),previewPlaceholder=document.getElementById(config.previewPlaceholderId),video=document.getElementById(config.videoId),videoPlaceholder=document.getElementById(config.videoPlaceholderId),startBtn=document.getElementById(config.startButtonId),captureBtn=document.getElementById(config.captureButtonId),stopBtn=document.getElementById(config.stopButtonId);let stream=null;if(!fileInput||!hiddenInput||!previewImage||!video||fileInput.dataset.cameraBound==='1')return;fileInput.dataset.cameraBound='1';const showPreview=(src)=>{previewImage.src=src;previewImage.classList.remove('d-none');previewPlaceholder?.classList.add('d-none')};const stopStream=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.classList.add('d-none');videoPlaceholder?.classList.remove('d-none');if(captureBtn)captureBtn.disabled=true;if(stopBtn)stopBtn.disabled=true};fileInput.addEventListener('change',function(){hiddenInput.value='';const [file]=this.files;if(file){showPreview(URL.createObjectURL(file));}});startBtn?.addEventListener('click',async function(){try{stream=await navigator.mediaDevices.getUserMedia({video:true});video.srcObject=stream;video.classList.remove('d-none');videoPlaceholder?.classList.add('d-none');if(captureBtn)captureBtn.disabled=false;if(stopBtn)stopBtn.disabled=false;}catch(e){alert('Unable to access camera');}});captureBtn?.addEventListener('click',function(){if(!stream)return;const c=document.createElement('canvas');c.width=video.videoWidth||640;c.height=video.videoHeight||480;c.getContext('2d').drawImage(video,0,0,c.width,c.height);const dataUrl=c.toDataURL('image/png');hiddenInput.value=dataUrl;fileInput.value='';showPreview(dataUrl);stopStream();});stopBtn?.addEventListener('click',stopStream);window.addEventListener('beforeunload',stopStream,{once:true});document.getElementById(config.modalId||'studentInfoModal')?.addEventListener('hidden.bs.modal',stopStream,{once:true})}
+function setupPassportPhotoCapture(studentId){setupCameraCapture({fileInputId:'id_passport_photo',hiddenInputId:`passportCapturedPhotoData-${studentId}`,previewImageId:`passportPhotoPreview-${studentId}`,previewPlaceholderId:`passportPreviewPlaceholder-${studentId}`,videoId:`passportCameraPreview-${studentId}`,videoPlaceholderId:`passportCameraPlaceholder-${studentId}`,startButtonId:`passportStartCamera-${studentId}`,captureButtonId:`passportCaptureCamera-${studentId}`,stopButtonId:`passportStopCamera-${studentId}`});}
+async function generateIndex(force=false){const cls=document.getElementById('modalTeacherClass').value;const input=document.getElementById('modalIndexNumber');if(!force&&input.dataset.manual==='1')return;const r=await fetch(`/students/index-number/?class_id=${cls}`);const d=await r.json();if(d.success){input.value=d.index_number;input.dataset.manual='0';}}
+let selectedStudentId='';let idCustomLogoData='';let idPreviewLoadToken=0;let currentIdAppearance={use_badge:false,badge_text:'',academic_level:''};let currentIdBranding={logo_url:'',horizontal_logo_size:1,vertical_logo_size:1.28,horizontal_header_size:1,vertical_header_size:.85,horizontal_title_size:1,vertical_title_size:1.18,horizontal_subtitle_size:1,vertical_subtitle_size:1.05,horizontal_title_x_percent:50,horizontal_title_y_percent:18,vertical_title_x_percent:50,vertical_title_y_percent:20,horizontal_subtitle_x_percent:50,horizontal_subtitle_y_percent:62,vertical_subtitle_x_percent:50,vertical_subtitle_y_percent:58,apply_layout_adjustments_horizontal:false,apply_layout_adjustments_vertical:true};const defaultLogoSrc="{% static 'BRITISH_LOGO.png' %}";
+function openIdPreview(data,options={}){
+  if(!data||!data.id)return;
+  const fallbackUrl=options.fallbackUrl||modalFallbackUrl({preview_id:data.id});
+  const token=++idPreviewLoadToken;
+  selectedStudentId=data.id;
+  document.getElementById('idStudentName').textContent=data.name;
+  document.getElementById('idStudentNameVertical').textContent=data.name;
+  document.querySelectorAll('.id-student-index').forEach(el=>el.textContent=data.index||'-');
+  document.querySelectorAll('.id-student-class').forEach(el=>el.textContent=data.class||'-');
+  const photo=data.photo||"{% static 'assets/img/logo.png' %}";
+  document.getElementById('idStudentPhoto').src=photo;
+  document.getElementById('idStudentPhotoVertical').src=photo;
+  document.querySelectorAll('#idStudentQr,#idStudentQrVertical').forEach(el=>el.src='');
+  document.querySelectorAll('.id-expiry-text').forEach(el=>el.textContent='-');
+  document.querySelectorAll('.id-issued-text').forEach(el=>el.textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}));
+  document.querySelectorAll('.id-student-reg').forEach(el=>el.textContent=data.index||'-');
+  document.getElementById('idPrincipalSignatureText').textContent='p-signature';
+  document.getElementById('idPrincipalSignatureTextVertical').textContent='p-signature';
+  currentIdAppearance={use_badge:false,badge_text:data.academic_level||'',academic_level:data.academic_level||''};
+  if(window.syncPreviewLogoScaleFromBranding){window.syncPreviewLogoScaleFromBranding(true);}
+  if(window.applyStudentIdPreviewStyles){window.applyStudentIdPreviewStyles();}
+  showModalById('studentIdPreviewModal',fallbackUrl);
+  fetch(`/students/${data.id}/id-card/appearance-defaults/`).then(r=>r.json()).then(ad=>{
+    if(token!==idPreviewLoadToken)return;
+    currentIdAppearance={use_badge:!!ad.use_badge,badge_text:ad.badge_text||ad.academic_level||'',academic_level:ad.academic_level||data.academic_level||''};
+    document.getElementById('idHorizontalFrontHeaderColor').value=ad.front.header;
+    document.getElementById('idHorizontalFrontPrimaryColor').value=ad.front.body;
+    document.getElementById('idHorizontalFrontAccentColor').value=ad.front.accent;
+    document.getElementById('idHorizontalFrontTextColor').value='#111111';
+    document.getElementById('idHorizontalBackTopColor').value=ad.back.header;
+    document.getElementById('idHorizontalBackBottomColor').value=ad.back.body;
+    document.getElementById('idHorizontalBackAccentColor').value=ad.back.accent;
+    document.getElementById('idHorizontalBackTextColor').value=ad.back.text;
+    document.getElementById('idVerticalFrontTopColor').value=ad.front.header;
+    document.getElementById('idVerticalFrontBottomColor').value=ad.front.body;
+    document.getElementById('idVerticalFrontAccentColor').value=ad.front.accent;
+    document.getElementById('idVerticalBackTopColor').value=ad.back.header;
+    document.getElementById('idVerticalBackBottomColor').value=ad.back.body;
+    currentIdBranding=Object.assign(currentIdBranding,ad.branding||{});
+    idCustomLogoData='';
+    document.getElementById('idCardLogoUpload').value='';
+    document.querySelectorAll('#idSchoolLogo,#idSchoolLogoVertical').forEach(el=>el.src=currentIdBranding.logo_url||defaultLogoSrc);
+    if(window.syncPreviewLogoScaleFromBranding){window.syncPreviewLogoScaleFromBranding(true);}
+    if(window.applyStudentIdPreviewStyles){window.applyStudentIdPreviewStyles();}
+  }).catch(()=>{if(token===idPreviewLoadToken&&window.applyStudentIdPreviewStyles){window.applyStudentIdPreviewStyles();}});
+  fetch(`/students/${data.id}/id-card/public-url/`).then(r=>r.json()).then(d=>{
+    if(token!==idPreviewLoadToken)return;
+    const qrImageData=d.qr_image_data_uri;
+    if(qrImageData){document.querySelectorAll('#idStudentQr,#idStudentQrVertical').forEach(el=>el.src=qrImageData);}
+    if(d.registration_number){document.querySelectorAll('.id-student-reg').forEach(el=>el.textContent=d.registration_number);}
+    if(d.issued_date_text){document.querySelectorAll('.id-issued-text').forEach(el=>el.textContent=d.issued_date_text);}
+    if(d.expiry_text){document.querySelectorAll('.id-expiry-text').forEach(el=>el.textContent=d.expiry_text);}
+    const signatureSrc=d.principal_signature_src||d.principal_signature_data_uri||d.principal_signature_url;
+    if(signatureSrc){
+      const sigHtml=`<img src="${signatureSrc}" alt="Principal signature" class="id-signature-image">`;
+      document.getElementById('idPrincipalSignatureText').innerHTML=sigHtml;
+      document.getElementById('idPrincipalSignatureTextVertical').innerHTML=sigHtml;
+    }else{
+      document.getElementById('idPrincipalSignatureText').textContent='p-signature';
+      document.getElementById('idPrincipalSignatureTextVertical').textContent='p-signature';
+    }
+  }).catch(()=>{});
+}
+function studentDataFromElement(el){
+  const row=el?.closest('.student-row');
+  if(!row)return null;
+  let data={};
+  try{data=JSON.parse(row.dataset.student||'{}')||{};}catch(e){data={};}
+  return {
+    id:data.id||row.dataset.studentId||'',
+    name:data.name||row.dataset.studentName||'Unnamed',
+    index:data.index||row.dataset.studentIndex||'-',
+    class:data.class||row.dataset.studentClass||'-',
+    academic_level:data.academic_level||row.dataset.studentAcademicLevel||'',
+    gender:data.gender||row.dataset.studentGender||'-',
+    contact:data.contact||row.dataset.studentContact||'-',
+    photo:data.photo||row.dataset.studentPhoto||''
+  };
+}
+function studentRowById(studentId){return Array.from(document.querySelectorAll('.student-row')).find(row=>row.dataset.studentId===String(studentId));}
+function handleStudentInfoAction(event,button){event?.stopPropagation();}
+function handleIdPreviewAction(event,button){event?.stopPropagation();}
+document.addEventListener('DOMContentLoaded',function(){
+  setupCameraCapture({fileInputId:'studentPhotoInput',hiddenInputId:'studentCapturedPhotoData',previewImageId:'studentPhotoPreview',previewPlaceholderId:'studentPreviewPlaceholder',videoId:'studentCameraPreview',videoPlaceholderId:'studentCameraPlaceholder',startButtonId:'studentStartCamera',captureButtonId:'studentCaptureCamera',stopButtonId:'studentStopCamera'});
+  document.getElementById('importStudentInfoForm')?.addEventListener('submit',function(){this.action=`/students/information/import/${document.getElementById('studentImportType').value}/`;});
+  document.getElementById('studentForm')?.addEventListener('submit',function(){const b=document.getElementById('submitButton');b.disabled=true;b.innerHTML='Creating...';});
+  document.getElementById('uploadForm')?.addEventListener('submit',function(){const b=document.getElementById('uploadButton');b.disabled=true;b.innerHTML='Uploading...';});
+  const selectAll=document.getElementById('selectAllStudents');const checks=[...document.querySelectorAll('.student-checkbox')];const delBtn=document.getElementById('deleteSelectedBtn');const cnt=document.getElementById('selectedCount');const updateSel=()=>{const c=checks.filter(i=>i.checked).length;if(cnt)cnt.textContent=c;if(delBtn)delBtn.disabled=c===0;};selectAll?.addEventListener('change',e=>{checks.forEach(c=>c.checked=e.target.checked);updateSel();});checks.forEach(c=>c.addEventListener('change',updateSel));document.getElementById('bulkDeleteForm')?.addEventListener('submit',e=>{if(!checks.some(c=>c.checked)||!confirm('Delete selected students?'))e.preventDefault();});updateSel();
+  document.getElementById('studentTable')?.addEventListener('click',function(e){const infoBtn=e.target.closest('.student-info-btn');if(infoBtn){handleStudentInfoAction(e,infoBtn);return;}const previewBtn=e.target.closest('.preview-id-btn');if(previewBtn){handleIdPreviewAction(e,previewBtn);return;}const row=e.target.closest('.student-row');if(!row||e.target.closest('.btn')||e.target.closest('a')||e.target.closest('input')||e.target.closest('select'))return;window.location.href=`/students/${row.dataset.studentId}/id-card/`;});
+  document.querySelectorAll('.short-course-validity-select').forEach(select=>{select.addEventListener('change',function(e){e.stopPropagation();const previous=this.dataset.previousValue||this.defaultValue||'3';this.disabled=true;const fd=new FormData();fd.append('validity_months',this.value);fetch(`/students/${this.dataset.studentId}/short-course-validity/`,{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrfToken()||'','X-Requested-With':'XMLHttpRequest'}}).then(async r=>{let data={};try{data=await r.json();}catch(err){data={message:'Unable to update ID validity'};}return {ok:r.ok,data};}).then(({ok,data})=>{if(!ok||!data.success){this.value=previous;alert(data.message||data.error||'Unable to update ID validity');return;}this.dataset.previousValue=this.value;}).catch(()=>{this.value=previous;alert('Unable to update ID validity');}).finally(()=>{this.disabled=false;});});select.dataset.previousValue=select.value;});
+  const scale=document.getElementById('idCardScale'),photoX=document.getElementById('idPhotoX'),photoY=document.getElementById('idPhotoY'),photoScale=document.getElementById('idPhotoScale'),logoX=document.getElementById('idLogoX'),logoY=document.getElementById('idLogoY'),logoScale=document.getElementById('idLogoScale'),contentX=document.getElementById('idContentX'),contentY=document.getElementById('idContentY'),qrX=document.getElementById('idQrX'),qrY=document.getElementById('idQrY'),qrScale=document.getElementById('idQrScale'),nameSize=document.getElementById('idNameSize'),logoInput=document.getElementById('idCardLogoUpload'),printLayout=document.getElementById('idPrintLayout'),cardDesign=document.getElementById('idCardDesign'),photoBgColor=document.getElementById('idPhotoBgColor'),verticalPhotoBgWrap=document.getElementById('verticalPhotoBgWrap'),horizontalQrControls=document.getElementById('horizontalQrControls');
+  const verticalFrontTopColor=document.getElementById('idVerticalFrontTopColor'),verticalFrontBottomColor=document.getElementById('idVerticalFrontBottomColor'),verticalFrontAccentColor=document.getElementById('idVerticalFrontAccentColor'),verticalBackTopColor=document.getElementById('idVerticalBackTopColor'),verticalBackBottomColor=document.getElementById('idVerticalBackBottomColor'),horizontalFrontPrimaryColor=document.getElementById('idHorizontalFrontPrimaryColor'),horizontalFrontHeaderColor=document.getElementById('idHorizontalFrontHeaderColor'),horizontalFrontAccentColor=document.getElementById('idHorizontalFrontAccentColor'),horizontalFrontTextColor=document.getElementById('idHorizontalFrontTextColor'),horizontalBackTopColor=document.getElementById('idHorizontalBackTopColor'),horizontalBackAccentColor=document.getElementById('idHorizontalBackAccentColor'),horizontalBackBottomColor=document.getElementById('idHorizontalBackBottomColor'),horizontalBackTextColor=document.getElementById('idHorizontalBackTextColor');
+  const hexToRgb=(hex)=>{const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex||'');return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0];};
+  const rgbToHex=(rgb)=>`#${rgb.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('')}`;
+  const mixColor=(color,target,amount)=>{const a=hexToRgb(color),b=hexToRgb(target);return rgbToHex(a.map((v,i)=>v+((b[i]-v)*amount)));};
+  const lighten=(color,amount)=>mixColor(color,'#ffffff',amount);
+  const darken=(color,amount)=>mixColor(color,'#000000',amount);
+  const readableText=(color)=>{const [r,g,b]=hexToRgb(color);return (((r*299)+(g*587)+(b*114))/1000)>=150?'#111111':'#ffffff';};
+  const isDarkColor=(color)=>{const [r,g,b]=hexToRgb(color);return (((r*299)+(g*587)+(b*114))/1000)<150;};
+  const solidPanelColor=(color,textColor)=>{const textIsDark=isDarkColor(textColor);if((readableText(color)==='#111111')===textIsDark){const [r,g,b]=hexToRgb(color);if(textIsDark)return Math.min(r,g,b)>238?darken(color,.06):lighten(color,.34);return darken(color,.18);}return textIsDark?lighten(color,.64):darken(color,.24);};
+  const getPreviewBrandingLogoScale=(design=cardDesign?.value)=>{
+    return design==='vertical'?(currentIdBranding.vertical_logo_size||1.28):(currentIdBranding.horizontal_logo_size||1);
+  };
+  const applyPreviewLogoTransform=()=>{
+    document.querySelectorAll('#idSchoolLogo,#idSchoolLogoVertical').forEach(el=>el.style.transform=`translate(${logoX.value}px, ${logoY.value}px) scale(${logoScale.value})`);
+  };
+  const syncPreviewLogoScaleFromBranding=(force=true)=>{
+    if(force&&logoScale){logoScale.value=getPreviewBrandingLogoScale(cardDesign?.value);}
+    applyPreviewLogoTransform();
+  };
+  window.getPreviewBrandingLogoScale=getPreviewBrandingLogoScale;
+  window.syncPreviewLogoScaleFromBranding=syncPreviewLogoScaleFromBranding;
+  const brandingValue=(value,fallback)=>(value===undefined||value===null||value==='')?fallback:value;
+  const layoutAdjustmentEnabled=(layout)=>layout==='vertical'?currentIdBranding.apply_layout_adjustments_vertical!==false:currentIdBranding.apply_layout_adjustments_horizontal===true;
+  const layoutBrandingValue=(layout,value,fallback)=>layoutAdjustmentEnabled(layout)?brandingValue(value,fallback):fallback;
+  const apply=()=>{
+    document.querySelectorAll('#studentFrontCard,#studentBackCard').forEach(c=>c.style.transform=`scale(${scale.value})`);
+    document.querySelectorAll('#idStudentPhoto,#idStudentPhotoVertical').forEach(el=>el.style.transform=`translate(${photoX.value}px, ${photoY.value}px) scale(${photoScale.value})`);
+    applyPreviewLogoTransform();
+    document.querySelectorAll('#idDetailsBlock,#idDetailsBlockVertical').forEach(el=>el.style.transform=`translate(${contentX.value}px, ${contentY.value}px)`);
+    document.querySelectorAll('#idQrBlock,#idStudentQrVertical').forEach(el=>el.style.transform=`translate(${qrX.value}px, ${qrY.value}px) scale(${qrScale.value})`);
+    document.getElementById('idStudentName').style.fontSize=`${nameSize.value}px`;
+    document.getElementById('idStudentNameVertical').style.fontSize=`${nameSize.value}px`;
+
+    const front=document.getElementById('studentFrontCard');
+    const back=document.getElementById('studentBackCard');
+    front.style.setProperty('--id-theme', horizontalFrontPrimaryColor.value);
+    front.style.setProperty('--id-photo-bg', photoBgColor.value);
+    front.style.setProperty('--vf-top', verticalFrontTopColor.value);
+    front.style.setProperty('--vf-bottom', verticalFrontBottomColor.value);
+    front.style.setProperty('--vf-accent', verticalFrontAccentColor.value);
+    front.style.setProperty('--vf-top-end', darken(verticalFrontTopColor.value,.08));
+    front.style.setProperty('--vf-subtitle', '#111111');
+    front.style.setProperty('--hf-border', horizontalFrontAccentColor.value);
+    front.style.setProperty('--hf-inner', lighten(horizontalFrontAccentColor.value,.70));
+    front.style.setProperty('--hf-panel', solidPanelColor(horizontalFrontPrimaryColor.value,'#111111'));
+    front.style.setProperty('--hf-header', horizontalFrontHeaderColor.value);
+    front.style.setProperty('--hf-accent', horizontalFrontAccentColor.value);
+    front.style.setProperty('--hf-text', '#111111');
+    front.style.setProperty('--horizontal-header-scale', layoutBrandingValue('horizontal',currentIdBranding.horizontal_header_size,1));
+    front.style.setProperty('--vertical-header-scale', layoutBrandingValue('vertical',currentIdBranding.vertical_header_size,.85));
+    front.style.setProperty('--horizontal-title-scale', brandingValue(currentIdBranding.horizontal_title_size,1));
+    front.style.setProperty('--vertical-title-scale', brandingValue(currentIdBranding.vertical_title_size,1.18));
+    front.style.setProperty('--horizontal-subtitle-scale', brandingValue(currentIdBranding.horizontal_subtitle_size,1));
+    front.style.setProperty('--vertical-subtitle-scale', brandingValue(currentIdBranding.vertical_subtitle_size,1.05));
+    front.style.setProperty('--horizontal-title-x', `${layoutBrandingValue('horizontal',currentIdBranding.horizontal_title_x_percent,50)}%`);
+    front.style.setProperty('--horizontal-title-y', `${layoutBrandingValue('horizontal',currentIdBranding.horizontal_title_y_percent,18)}%`);
+    front.style.setProperty('--horizontal-subtitle-x', `${layoutBrandingValue('horizontal',currentIdBranding.horizontal_subtitle_x_percent,50)}%`);
+    front.style.setProperty('--horizontal-subtitle-y', `${layoutBrandingValue('horizontal',currentIdBranding.horizontal_subtitle_y_percent,62)}%`);
+    front.style.setProperty('--vertical-title-x', `${layoutBrandingValue('vertical',currentIdBranding.vertical_title_x_percent,50)}%`);
+    front.style.setProperty('--vertical-title-y', `${layoutBrandingValue('vertical',currentIdBranding.vertical_title_y_percent,20)}%`);
+    front.style.setProperty('--vertical-subtitle-x', `${layoutBrandingValue('vertical',currentIdBranding.vertical_subtitle_x_percent,50)}%`);
+    front.style.setProperty('--vertical-subtitle-y', `${layoutBrandingValue('vertical',currentIdBranding.vertical_subtitle_y_percent,58)}%`);
+    back.style.setProperty('--vb-top', verticalBackTopColor.value);
+    back.style.setProperty('--vb-bottom', verticalBackBottomColor.value);
+    back.style.setProperty('--vb-top-end', lighten(verticalBackTopColor.value,.14));
+    back.style.setProperty('--vb-accent', darken(verticalBackTopColor.value,.2));
+    back.style.setProperty('--vb-inner', lighten(verticalBackTopColor.value,.55));
+    back.style.setProperty('--vb-text', '#111111');
+    back.style.setProperty('--hb-top', horizontalBackTopColor.value);
+    back.style.setProperty('--hb-top-end', lighten(horizontalBackTopColor.value,.14));
+    back.style.setProperty('--hb-accent', horizontalBackAccentColor.value);
+    back.style.setProperty('--hb-bottom', horizontalBackBottomColor.value);
+    back.style.setProperty('--hb-text', horizontalBackTextColor.value);
+    back.style.setProperty('--hb-inner', lighten(horizontalBackAccentColor.value,.52));
+    document.querySelectorAll('#idLevelBadge,#idLevelBadgeVertical').forEach(el=>{
+      el.textContent=currentIdAppearance.badge_text||'';
+      el.classList.toggle('d-none',!(currentIdAppearance.use_badge&&currentIdAppearance.badge_text));
+    });
+    front.classList.toggle('front-wave',['CSEE','English course','Computer course'].includes(currentIdAppearance.academic_level));
+
+    const design=cardDesign.value;
+    front.classList.toggle('id-design-vertical',design==='vertical');
+    front.classList.toggle('id-design-horizontal',design!=='vertical');
+    back.classList.toggle('id-back-vertical',design==='vertical');
+    back.classList.toggle('id-back-horizontal',design!=='vertical');
+    verticalPhotoBgWrap.classList.toggle('d-none',design!=='vertical');
+    horizontalQrControls.classList.remove('d-none');
+  };
+  window.applyStudentIdPreviewStyles=apply;
+  [scale,photoX,photoY,photoScale,logoX,logoY,logoScale,contentX,contentY,qrX,qrY,qrScale,nameSize,photoBgColor,verticalFrontTopColor,verticalFrontBottomColor,verticalFrontAccentColor,verticalBackTopColor,verticalBackBottomColor,horizontalFrontPrimaryColor,horizontalFrontHeaderColor,horizontalFrontAccentColor,horizontalFrontTextColor,horizontalBackTopColor,horizontalBackAccentColor,horizontalBackBottomColor,horizontalBackTextColor].forEach(el=>el?.addEventListener('input',apply));
+  const handleCardDesignChange=()=>{syncPreviewLogoScaleFromBranding(true);apply();};
+  cardDesign?.addEventListener('input',handleCardDesignChange);
+  cardDesign?.addEventListener('change',handleCardDesignChange);
+  logoInput?.addEventListener('change',function(){const [file]=this.files||[];if(!file)return;const reader=new FileReader();reader.onload=e=>{idCustomLogoData=e.target.result;document.querySelectorAll('#idSchoolLogo,#idSchoolLogoVertical').forEach(el=>el.src=idCustomLogoData);};reader.readAsDataURL(file);});
+  apply();
+  const updatePrintButtonText=()=>{const btn=document.getElementById('printIdCardBtn');if(btn)btn.innerHTML=printLayout?.value==='multiple'?'<i class="bi bi-download me-1"></i>Download Front & Back PNG':'<i class="bi bi-download me-1"></i>Download ID PNG';};
+  printLayout?.addEventListener('change',updatePrintButtonText);
+  updatePrintButtonText();
+  const triggerIdPngDownload=(url)=>{const a=document.createElement('a');a.href=url;a.download='';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),250);};
+  document.getElementById('printIdCardBtn')?.addEventListener('click',()=>{if(!selectedStudentId)return;const settings={scale:scale.value,photoX:photoX.value,photoY:photoY.value,photoScale:photoScale.value,logoX:logoX.value,logoY:logoY.value,logoScale:logoScale.value,contentX:contentX.value,contentY:contentY.value,qrX:qrX.value,qrY:qrY.value,qrScale:qrScale.value,nameSize:nameSize.value,photoBgColor:photoBgColor.value,verticalFrontTopColor:verticalFrontTopColor.value,verticalFrontBottomColor:verticalFrontBottomColor.value,verticalFrontAccentColor:verticalFrontAccentColor.value,verticalBackTopColor:verticalBackTopColor.value,verticalBackBottomColor:verticalBackBottomColor.value,horizontalFrontPrimaryColor:horizontalFrontPrimaryColor.value,horizontalFrontHeaderColor:horizontalFrontHeaderColor.value,horizontalFrontAccentColor:horizontalFrontAccentColor.value,horizontalFrontTextColor:'#111111',horizontalBackTopColor:horizontalBackTopColor.value,horizontalBackAccentColor:horizontalBackAccentColor.value,horizontalBackBottomColor:horizontalBackBottomColor.value,horizontalBackTextColor:horizontalBackTextColor.value,themeColor:horizontalFrontPrimaryColor.value,useBadge:currentIdAppearance.use_badge?'1':'0',badgeText:currentIdAppearance.badge_text||'',cardDesign:cardDesign.value,printLayout:printLayout.value,horizontalHeaderSize:layoutBrandingValue('horizontal',currentIdBranding.horizontal_header_size,1),verticalHeaderSize:layoutBrandingValue('vertical',currentIdBranding.vertical_header_size,.85),horizontalTitleSize:brandingValue(currentIdBranding.horizontal_title_size,1),verticalTitleSize:brandingValue(currentIdBranding.vertical_title_size,1.18),horizontalSubtitleSize:brandingValue(currentIdBranding.horizontal_subtitle_size,1),verticalSubtitleSize:brandingValue(currentIdBranding.vertical_subtitle_size,1.05),horizontalTitleXPercent:layoutBrandingValue('horizontal',currentIdBranding.horizontal_title_x_percent,50),horizontalTitleYPercent:layoutBrandingValue('horizontal',currentIdBranding.horizontal_title_y_percent,18),verticalTitleXPercent:layoutBrandingValue('vertical',currentIdBranding.vertical_title_x_percent,50),verticalTitleYPercent:layoutBrandingValue('vertical',currentIdBranding.vertical_title_y_percent,20),horizontalSubtitleXPercent:layoutBrandingValue('horizontal',currentIdBranding.horizontal_subtitle_x_percent,50),horizontalSubtitleYPercent:layoutBrandingValue('horizontal',currentIdBranding.horizontal_subtitle_y_percent,62),verticalSubtitleXPercent:layoutBrandingValue('vertical',currentIdBranding.vertical_subtitle_x_percent,50),verticalSubtitleYPercent:layoutBrandingValue('vertical',currentIdBranding.vertical_subtitle_y_percent,58),logoData:idCustomLogoData||''};const q=new URLSearchParams(settings);if(!idCustomLogoData){q.delete('logoData');}const baseUrl=`/students/${selectedStudentId}/id-card/png/`;if(printLayout.value==='multiple'){const frontQ=new URLSearchParams(q);frontQ.set('side','front');const backQ=new URLSearchParams(q);backQ.set('side','back');triggerIdPngDownload(`${baseUrl}?${frontQ.toString()}`);setTimeout(()=>triggerIdPngDownload(`${baseUrl}?${backQ.toString()}`),250);return;}window.location.href=`${baseUrl}?${q.toString()}`;});
+  const indexInput=document.getElementById('modalIndexNumber');indexInput?.addEventListener('input',()=>indexInput.dataset.manual='1');document.getElementById('modalTeacherClass')?.addEventListener('change',()=>generateIndex(false));document.getElementById('regenerateIndexBtn')?.addEventListener('click',()=>generateIndex(true));document.getElementById('studentCreateModal')?.addEventListener('shown.bs.modal',()=>generateIndex(false));
+  const requestedPreviewId=new URLSearchParams(window.location.search).get('preview_id');
+  if(requestedPreviewId){const previewRow=studentRowById(requestedPreviewId);if(previewRow){openIdPreview(studentDataFromElement(previewRow));}}
+  {% if open_info and created_student %}window.location.href=`/students/{{ created_student }}/information/page/`;{% endif %}
+});
+</script>
+<style>
+  
+.student-page{max-width:1480px;margin:0 auto;padding-left:.35rem;padding-right:.35rem}
+.student-intro-card{box-shadow:none!important}
+.student-page .card{margin-left:0;margin-right:0}
+.student-page .add-student-btn{font-weight:600}
+.student-page .student-table-wrap{overflow-x:auto;scrollbar-width:thin}
+.student-page #studentTable{min-width:1040px;width:100%;font-size:.835rem;table-layout:fixed}
+.student-page #studentTable th,.student-page #studentTable td{padding:.4rem .45rem;vertical-align:middle;border-color:#dfe3e8}
+.student-page #studentTable th{white-space:nowrap}
+.student-page #studentTable td:nth-child(3),.student-page #studentTable td:nth-child(7),.student-page #studentTable td:nth-child(8),.student-page #studentTable td:nth-child(9),.student-page #studentTable td:nth-child(10){white-space:nowrap}
+.student-page #studentTable td:nth-child(4){min-width:160px}
+.student-page #studentTable td:nth-child(5),.student-page #studentTable td:nth-child(6){min-width:120px}
+.student-page #studentTable td:nth-child(11){min-width:138px}
+.student-page .short-course-validity-select{min-width:108px}
+.student-page .stu-photo{width:36px;height:36px;border-radius:6px;object-fit:cover;object-position:center}
+.student-page .action-btn-group .btn{padding:.2rem .34rem}
+.student-page .student-row{cursor:pointer}
+.student-create-dialog{max-width:760px}
+.id-controls-wrap{max-height:65vh;overflow:auto;padding-right:.2rem}
+.id-control-group{border:1px solid #e4e8ef;border-radius:.5rem;padding:.6rem .7rem;margin-bottom:.6rem;background:#fff}
+.id-card{--id-theme:#0b86d8;--id-photo-bg:#000000;--vf-top:#111418;--vf-top-end:#101316;--vf-bottom:#ffffff;--vf-accent:#1469c8;--vf-subtitle:#111111;--vb-top:#0a5c9f;--vb-top-end:#2670ad;--vb-bottom:#ffffff;--vb-accent:#08497f;--vb-inner:#8db9dd;--vb-text:#111111;--hf-header:#ffffff;--hf-border:#08619c;--hf-inner:#b5def7;--hf-panel:#0866a4;--hf-accent:#0a5c9f;--hf-text:#111111;--hb-top:#0a5c9f;--hb-top-end:#2670ad;--hb-accent:#113765;--hb-bottom:#ffffff;--hb-text:#111111;--hb-inner:#8f9faf;--horizontal-header-scale:1;--vertical-header-scale:.85;--horizontal-title-scale:1;--vertical-title-scale:1.18;--horizontal-subtitle-scale:1;--vertical-subtitle-scale:1.05;--horizontal-title-x:50%;--horizontal-title-y:18%;--horizontal-subtitle-x:50%;--horizontal-subtitle-y:62%;--vertical-title-x:50%;--vertical-title-y:20%;--vertical-subtitle-x:50%;--vertical-subtitle-y:58%;width:340px;max-width:100%;height:214px;border-radius:14px;overflow:hidden;position:relative;background:#fff;box-shadow:0 12px 20px rgba(10,33,68,.18);transform-origin:top left}
+.id-front-vertical{display:none}
+.id-design-vertical .front-horizontal{display:none}
+.id-design-vertical.id-card{width:248px;height:392px;max-width:100%}
+.id-design-vertical .id-front-vertical{display:flex;flex-direction:column;height:100%}
+.front-horizontal{height:100%;display:flex;flex-direction:column}
+.id-header{display:flex;align-items:flex-start;gap:10px;height:calc(63px * var(--horizontal-header-scale));padding:11px 12px 8px;background:var(--hf-header);position:relative;box-sizing:border-box}.id-logo{width:44px;height:44px;object-fit:contain;transform-origin:top left}
+.id-title{position:absolute;inset:0;color:#111;font-weight:700;line-height:1.2;text-align:center;pointer-events:none}.id-title-main{font-size:calc(.84rem * var(--horizontal-title-scale));position:absolute;left:var(--horizontal-title-x);top:var(--horizontal-title-y);transform:translate(-50%,-50%);width:210px}.id-title small{font-size:calc(.63rem * var(--horizontal-subtitle-scale));color:#111;position:absolute;left:var(--horizontal-subtitle-x);top:var(--horizontal-subtitle-y);transform:translate(-50%,-50%);width:210px}
+.id-level-badge{position:absolute;right:12px;top:13px;background:var(--hf-accent);color:#fff;border-radius:5px;padding:2px 7px;font-size:.58rem;font-weight:700;line-height:1.2;letter-spacing:0}
+.id-level-badge-vertical{top:auto;right:12px;bottom:10px;background:var(--vf-accent);color:#111;z-index:3}
+.id-h-body{position:relative;flex:1;min-height:0;background:var(--id-theme)}
+.front-wave .id-h-body::after{content:"";position:absolute;left:-20px;right:-20px;bottom:0;height:92px;background:#fff;clip-path:polygon(0 28%,6% 25%,12% 26%,18% 31%,24% 39%,30% 49%,36% 59%,42% 67%,50% 72%,58% 67%,64% 59%,70% 49%,76% 39%,82% 31%,88% 26%,94% 25%,100% 28%,100% 100%,0 100%);z-index:0}
+.id-body{display:grid;grid-template-columns:92px minmax(0,1fr) 72px;gap:8px;padding:12px 12px 0;align-items:start;position:relative;z-index:1}
+.id-photo-wrap{width:90px;height:118px;border-radius:8px;overflow:hidden;border:2px solid #dce8ff;background:#fff}.vertical-photo-bg{background:var(--id-photo-bg);border:none}
+.id-photo{width:100%;height:100%;object-fit:cover;object-position:center;transform-origin:center}
+.id-info{color:#111;font-size:.62rem;line-height:1.2;transform-origin:top left;min-width:0;overflow:hidden;padding:0 2px}.id-info h6{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px!important}
+.id-detail-stack{display:flex;flex-direction:column;gap:8px}
+.id-detail-block{min-width:0;display:flex;flex-direction:column;gap:1px}
+.id-detail-block span{font-size:.51rem;font-weight:700;text-transform:uppercase;color:#111}
+.id-detail-block strong{font-size:.58rem;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.16}
+.id-qr-block{display:flex;flex-direction:column;align-items:center;gap:8px;justify-self:end;transform-origin:top right}
+.id-qr{width:56px;height:56px;padding:3px;background:#fff;border-radius:6px;transform-origin:top right}
+.id-qr-meta{width:100%;display:flex;flex-direction:column;gap:5px;text-align:center;color:#111}
+.id-qr-meta div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.id-qr-meta span{font-size:.47rem;font-weight:700;text-transform:uppercase;color:#111}
+.id-qr-meta strong{font-size:.52rem;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.id-front-vertical{background:#fff}
+.vertical-top{position:relative;height:calc(70px * var(--vertical-header-scale));padding:7px 15px 5px;background:linear-gradient(180deg,var(--vf-top),var(--vf-top-end));color:#111;text-align:center;overflow:hidden;box-sizing:border-box}
+.vertical-logo{width:34px;height:34px;box-sizing:border-box;border-radius:50%;background:#fff;padding:4px;object-fit:contain;display:block;border:2px solid #d9ecff;position:absolute;left:12px;top:7px;z-index:2;transform-origin:top left}
+.vertical-heading{position:absolute;left:calc(50% + 6px);top:0;z-index:2;width:134px;max-width:134px;height:100%;transform:translateX(-50%);text-align:center}
+.vertical-top h5{font-size:calc(.8rem * var(--vertical-title-scale));line-height:1.14;margin:0;font-weight:700;letter-spacing:.32px;color:#111;position:absolute;left:var(--vertical-title-x);top:var(--vertical-title-y);transform:translate(-50%,-50%);width:134px}
+.vertical-top p{margin:0;font-size:calc(.55rem * var(--vertical-subtitle-scale));line-height:1.18;color:#111;position:absolute;left:var(--vertical-subtitle-x);top:var(--vertical-subtitle-y);transform:translate(-50%,-50%);width:134px}
+.vertical-bottom{flex:1;background:var(--vf-bottom);padding:9px 16px 14px;display:flex;flex-direction:column;gap:5px;transform-origin:top left;position:relative;overflow:hidden}
+.vertical-details{display:flex;flex-direction:column;gap:6.5px;transform-origin:top left;position:relative;z-index:1}
+.front-wave .vertical-details{gap:2px;max-height:58px;overflow:hidden}
+.front-wave .vertical-row{font-size:.55rem;line-height:1.15}
+.front-wave .vertical-label{min-width:48px}
+.front-wave .vertical-bottom::after{content:"";position:absolute;left:-14px;right:-14px;bottom:0;height:102px;background:#fff;clip-path:polygon(0 24%,6% 22%,12% 23%,18% 28%,24% 36%,30% 47%,36% 58%,42% 68%,50% 74%,58% 68%,64% 58%,70% 47%,76% 36%,82% 28%,88% 23%,94% 22%,100% 24%,100% 100%,0 100%);z-index:0}
+.vertical-photo{margin:0 auto 5px;width:132px;height:142px;box-sizing:border-box;position:relative;z-index:2;border:3px solid #fff}
+.vertical-name{font-weight:700;color:#111;text-align:center;line-height:1.2;position:relative;z-index:2;margin-bottom:5px}
+.vertical-row{display:flex;align-items:flex-start;gap:7px;font-size:.72rem;line-height:1.32}
+.vertical-label{min-width:60px;font-weight:700;color:#111}
+.vertical-label.blue{color:#111}
+.vertical-sep{font-weight:700;color:#111}
+.vertical-value{flex:1;color:#111;word-break:break-word;position:relative;z-index:1}
+.id-back .back-vertical-wrap{display:none}
+.id-back-horizontal .back-horizontal-wrap{display:flex;flex-direction:column;height:100%}
+.id-back-horizontal .id-back-top{background:linear-gradient(120deg,var(--hb-top),var(--hb-top-end));color:#fff;height:112px;padding:14px;text-align:center}.id-back-top h5{font-size:1rem;margin:0 0 4px}.id-back-top p{font-size:.68rem;line-height:1.35;margin:0}
+.id-back-horizontal .id-back-bottom{height:102px;padding:10px 14px;text-align:center;color:var(--hb-text);background:var(--hb-bottom);display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.id-back-note{font-size:.71rem;line-height:1.34}
+.id-signature-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:34px}
+.id-signature-label{font-size:.72rem;font-weight:600}
+.id-signature-image{max-height:24px;max-width:95px;object-fit:contain;display:block;background:rgba(255,255,255,.92);padding:1px 2px;border-radius:3px}
+.id-back-vertical{width:248px;height:392px;max-width:100%}
+.id-back-vertical .back-horizontal-wrap{display:none}
+.id-back-vertical .back-vertical-wrap{display:flex;flex-direction:column;height:100%}
+.vback-top{background:linear-gradient(150deg,var(--vb-top),var(--vb-top-end));color:#111;padding:22px 18px 16px;text-align:center;min-height:34%;position:relative;overflow:hidden}
+.vback-top h5{margin:0 0 6px;font-size:1.02rem}.vback-top p{margin:0;font-size:.71rem;line-height:1.35}
+.vback-contact{margin-top:8px!important;opacity:.95}
+.vback-bottom{background:var(--vb-bottom);padding:16px 18px 18px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:10px;flex:1;color:var(--vb-text)}
+.vback-qr-zone{display:flex;align-items:center;justify-content:center;width:100%;min-height:98px}
+.id-qr-vertical{width:74px;height:74px;padding:6px;border:1px solid var(--vb-inner);border-radius:8px;justify-self:center;transform-origin:center}
+@media (max-width:991px){.student-page{padding-left:.15rem;padding-right:.15rem}.id-card{width:100%;height:auto;aspect-ratio:1.59/1;transform:none!important}.student-page #studentTable{min-width:860px;font-size:.82rem}}
+</style>
+{% endblock %}

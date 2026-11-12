@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-1">{{ title }}</h2>
+      <p class="text-muted mb-0">All fields use Bootstrap styling to keep the transport module consistent with the rest of the ERP.</p>
+    </div>
+    <a href="{% url cancel_url %}" class="btn btn-outline-secondary">Back</a>
+  </div>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <a href="{% url cancel_url %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

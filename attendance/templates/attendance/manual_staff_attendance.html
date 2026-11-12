@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h3 class="mb-1">Manual Staff Attendance</h3>
+      <p class="text-muted mb-0">Filter staff by role, then record attendance without affecting existing attendance workflows.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'attendance:staff_attendance_report' %}">Staff Reports</a>
+  </div>
+
+  <form method="get" class="card card-body mb-3 shadow-sm">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Late cutoff time</label>
+        <input type="time" name="cutoff_time" class="form-control" value="{% if cutoff_time %}{{ cutoff_time|time:'H:i' }}{% endif %}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Staff role</label>
+        <select name="role" class="form-select">
+          <option value="">All staff</option>
+          {% for value, label in role_choices %}
+            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary flex-grow-1">Load</button>
+        <a href="{% url 'attendance:manual_staff_attendance' %}" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">Total Staff</div><div class="fs-4 fw-bold">{{ total_staff }}</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">Present</div><div class="fs-4 fw-bold text-success">{{ present_count }}</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">Late</div><div class="fs-4 fw-bold text-warning">{{ late_count }}</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="text-muted small">Absent</div><div class="fs-4 fw-bold text-danger">{{ absent_count }}</div></div></div></div>
+  </div>
+
+  <form method="post" class="card shadow-sm" id="staffAttendanceForm">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+    <input type="hidden" name="cutoff_time" value="{% if cutoff_time %}{{ cutoff_time|time:'H:i' }}{% endif %}">
+    <input type="hidden" name="role" value="{{ selected_role }}">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span>Staff list{% if selected_role %} - {{ selected_role|title }}{% endif %}</span>
+      <button class="btn btn-success btn-sm">Save</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Key</th>
+            <th>Date</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Status</th>
+            <th class="text-center">Present</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for teacher in teachers %}
+            {% with row=existing_map|get_item:teacher.id %}
+            <tr class="attendance-row {% if row.status == 'present' %}table-success{% endif %}">
+              <td>{{ forloop.counter }}<input type="hidden" name="teacher_ids" value="{{ teacher.id }}"></td>
+              <td>
+                <div class="fw-semibold">{{ teacher.teacherName|default:teacher.user.username }}</div>
+                <small class="text-muted">{{ teacher.user.username }}</small>
+              </td>
+              <td><span class="badge bg-secondary-subtle text-dark border">{{ teacher.teacher_role|title }}</span></td>
+              <td>{{ teacher.teacher_key }}</td>
+              <td>{{ selected_date|date:'Y-m-d' }}</td>
+              <td><input class="form-control form-control-sm check-in-input" type="time" name="check_in_{{ teacher.id }}" value="{% if row and row.check_in_time %}{{ row.check_in_time|time:'H:i' }}{% endif %}" data-initial="{% if row and row.check_in_time %}1{% else %}0{% endif %}"></td>
+              <td><input class="form-control form-control-sm" type="time" name="check_out_{{ teacher.id }}" value="{% if row and row.check_out_time %}{{ row.check_out_time|time:'H:i' }}{% endif %}"></td>
+              <td><span class="badge status-badge {% if row.status == 'present' %}bg-success{% else %}bg-danger{% endif %}">{% if row.status == 'present' %}Present{% else %}Absent{% endif %}</span></td>
+              <td class="text-center"><input type="hidden" class="present-hidden" name="present_{{ teacher.id }}" value="{% if row.status == 'present' %}1{% else %}0{% endif %}"><input type="checkbox" class="form-check-input attendance-check" {% if row.status == 'present' %}checked{% endif %}></td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4">No staff records found for the selected role.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+<script>
+(function () {
+  const form = document.getElementById('staffAttendanceForm');
+  if (!form) return;
+
+  function nowHHMM() {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
+
+  function updateRow(row) {
+    const checkbox = row.querySelector('.attendance-check');
+    const hidden = row.querySelector('.present-hidden');
+    const checkIn = row.querySelector('.check-in-input');
+    const badge = row.querySelector('.status-badge');
+
+    if (checkbox.checked) {
+      hidden.value = '1';
+      if (!checkIn.value) checkIn.value = nowHHMM();
+      badge.textContent = 'Present';
+      badge.classList.remove('bg-danger');
+      badge.classList.add('bg-success');
+      row.classList.add('table-success');
+    } else {
+      hidden.value = '0';
+      if (checkIn.dataset.initial !== '1') checkIn.value = '';
+      badge.textContent = 'Absent';
+      badge.classList.remove('bg-success');
+      badge.classList.add('bg-danger');
+      row.classList.remove('table-success');
+    }
+  }
+
+  form.querySelectorAll('tr.attendance-row').forEach((row) => {
+    const checkbox = row.querySelector('.attendance-check');
+    updateRow(row);
+    checkbox.addEventListener('change', function () {
+      updateRow(row);
+    });
+  });
+})();
+</script>
+{% endblock %}

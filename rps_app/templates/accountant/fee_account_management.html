@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-money-check-alt me-2"></i>Manage Fee Accounts</h2>
+    </div>
+
+    <!-- Create Fee Account Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'finance:create_fee_account' %}" method="POST" class="row g-3" id="feeAccountForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="teacherclass" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select name="teacherclass" class="form-select rounded-end" id="teacherclass" required onchange="updateFees()">
+                            <option value="" disabled selected>Select a class</option>
+                            {% for tc in teacher_classes %}
+                            <option value="{{ tc.id }}" {% if tc.id|stringformat:"s" == selected_class_id %}selected{% endif %}>{{ tc.ClassName.class_name }} ({{ tc.academicclassyear.academic_year_name|default:"No Academic Year" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="fee" class="form-label fw-semibold"><i class="fas fa-money-bill me-2"></i>Select Fee</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-money-bill-wave"></i></span>
+                        <select name="fee" class="form-select rounded-end" id="fee" required>
+                            <option value="" disabled selected>Select a fee</option>
+                            {% for fee in fees %}
+                            <option value="{{ fee.id }}">{{ fee.fee_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="account_number" class="form-label fw-semibold"><i class="fas fa-credit-card me-2"></i>Account Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-hashtag"></i></span>
+                        <input type="text" name="account_number" class="form-control rounded-end" id="account_number" placeholder="Enter account number" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="account_name" class="form-label fw-semibold"><i class="fas fa-user me-2"></i>Account Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user-circle"></i></span>
+                        <input type="text" name="account_name" class="form-control rounded-end" id="account_name" placeholder="Enter account name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="is_active" class="form-label fw-semibold"><i class="fas fa-toggle-on me-2"></i>Active Status</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-check-circle"></i></span>
+                        <select name="is_active" class="form-select rounded-end" id="is_active" required>
+                            <option value="true">Active</option>
+                            <option value="false" selected>Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-plus-circle me-2"></i>Add Fee Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Fee Accounts Table Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Fee Accounts</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#feeAccountsTable" aria-expanded="false" aria-controls="feeAccountsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="feeAccountsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 5%;">#</th>
+                                <th scope="col" style="width: 20%;">Class</th>
+                                <th scope="col" style="width: 20%;">Fee</th>
+                                <th scope="col" style="width: 20%;">Account Number</th>
+                                <th scope="col" style="width: 20%;">Account Name</th>
+                                <th scope="col" style="width: 10%;">Active</th>
+                                <th scope="col" class="text-center" style="width: 5%;">Edit</th>
+                                <th scope="col" class="text-center" style="width: 5%;">Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fa in fee_accounts %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ fa.teacherclass.ClassName.class_name|default:"No Class" }}</td>
+                                <td>{{ fa.fee.fee_name }}</td>
+                                <td>{{ fa.account_number }}</td>
+                                <td>{{ fa.account_name }}</td>
+                                <td class="text-center">
+                                    {% if fa.is_active %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                    <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'finance:update_fee_account' fee_account_id=fa.id %}" class="btn btn-warning btn-sm rounded-pill">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <form action="{% url 'finance:delete_fee_account' fee_account_id=fa.id %}" method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm rounded-pill" onclick="return confirm('Are you sure you want to delete this fee account?');">
+                                            <i class="fas fa-trash-alt me-1"></i>Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No fee accounts registered yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.getElementById('feeAccountForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    function updateFees() {
+        const teacherClassId = document.getElementById('teacherclass').value;
+        const feeSelect = document.getElementById('fee');
+        feeSelect.innerHTML = '<option value="" disabled selected>Loading fees...</option>';
+
+        if (teacherClassId) {
+            fetch(`{% url 'finance:get_fees_for_class' class_id=0 %}`.replace('0', teacherClassId), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    feeSelect.innerHTML = '<option value="" disabled selected>Select a fee</option>';
+                    if (data.fees && Array.isArray(data.fees)) {
+                        data.fees.forEach(fee => {
+                            const option = document.createElement('option');
+                            option.value = fee.id;
+                            option.textContent = fee.fee_name;
+                            feeSelect.appendChild(option);
+                        });
+                    } else {
+                        feeSelect.innerHTML = '<option value="" disabled selected>No fees available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching fees:', error);
+                    feeSelect.innerHTML = '<option value="" disabled selected>Error loading fees</option>';
+                });
+        } else {
+            feeSelect.innerHTML = '<option value="" disabled selected>Select a class first</option>';
+        }
+    }
+
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

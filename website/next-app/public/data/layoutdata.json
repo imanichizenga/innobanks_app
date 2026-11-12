@@ -1,0 +1,13 @@
+{
+  "headerData": [
+    { "label": "Home", "href": "/" },
+    { "label": "About Us", "href": "/about-us" },
+    { "label": "Academics", "href": "/academics" },
+    { "label": "Admission", "href": "/admission" },
+    { "label": "Courses", "href": "/courses" },
+    { "label": "News", "href": "/news" },
+    { "label": "Events", "href": "/events" },
+    { "label": "Student Life", "href": "/student-life" },
+    { "label": "Contact Us", "href": "/contact-us" }
+  ]
+}

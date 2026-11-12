@@ -1,0 +1,5 @@
+{% if message %}
+<div class="alert {% if status == 'success' %}alert-success{% else %}alert-warning{% endif %}">
+    <i class="bi {% if status == 'success' %}bi-check-circle-fill{% else %}bi-exclamation-circle{% endif %} me-2"></i>{{ message }}
+</div>
+{% endif %}

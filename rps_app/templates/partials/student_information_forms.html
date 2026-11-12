@@ -1,0 +1,124 @@
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h6 class="mb-0">Student: {{ student.fullName|default:student.user.username }}</h6>
+        <small class="text-muted">Index Number: {{ student.indexNumber }}</small>
+    </div>
+</div>
+
+<div class="accordion" id="studentInfoAccordion">
+    {% for section in sections %}
+    <div class="accordion-item mb-2 border">
+        <h2 class="accordion-header" id="heading-{{ section.key }}">
+            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ section.key }}">
+                {{ section.title }}
+            </button>
+        </h2>
+        <div id="collapse-{{ section.key }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#studentInfoAccordion">
+            <div class="accordion-body">
+                {% if section.multiple and section.records %}
+                <div class="table-responsive mb-2">
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>#</th><th>Record</th><th width="20%">Action</th></tr></thead>
+                        <tbody>
+                            {% for rec in section.records %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ rec }}</td>
+                                <td>
+                                    {% if not read_only %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEntityInfo('student', {{ student.id }}, '{{ section.key }}', {{ rec.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if read_only %}
+                    {% if section.key == 'passport' and section.record %}
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label small text-muted">Passport Photo</label>
+                                <div class="ratio ratio-4x3 bg-white border rounded overflow-hidden">
+                                    {% if section.record.passport_photo %}
+                                    <img class="w-100 h-100 object-fit-cover" src="{{ section.record.passport_photo.url }}" alt="Passport photo">
+                                    {% else %}
+                                    <div class="d-flex align-items-center justify-content-center text-muted">No photo</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label small text-muted">Photo Comment</label>
+                                <div class="form-control form-control-sm bg-light mb-2">{{ section.record.photo_comment|default:'-' }}</div>
+                                <label class="form-label small text-muted">Uploaded At</label>
+                                <div class="form-control form-control-sm bg-light">{{ section.record.uploaded_at|date:'Y-m-d H:i'|default:'-' }}</div>
+                            </div>
+                        </div>
+                    {% elif section.record %}
+                        <div class="row g-2">
+                            {% for field in section.form %}
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">{{ field.label }}</label>
+                                <div class="form-control form-control-sm bg-light">{{ field.value|default:'-' }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% elif not section.multiple %}
+                        <p class="text-muted small mb-0">No {{ section.title|lower }} data available.</p>
+                    {% endif %}
+                {% else %}
+                <form class="entity-info-form" data-entity="student" data-entity-id="{{ student.id }}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="model_key" value="{{ section.key }}">
+                    {% if section.record %}
+                    <input type="hidden" name="record_id" value="{{ section.record.id }}">
+                    {% endif %}
+                    {% if section.key == 'passport' %}
+                    <input type="hidden" name="captured_photo_data" id="passportCapturedPhotoData-{{ student.id }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">Upload Manually</label>
+                            {{ section.form.passport_photo }}
+                            <div class="ratio ratio-4x3 mt-2 bg-dark rounded overflow-hidden">
+                                <video id="passportCameraPreview-{{ student.id }}" class="w-100 h-100 object-fit-cover d-none" autoplay playsinline muted></video>
+                                <div id="passportCameraPlaceholder-{{ student.id }}" class="d-flex align-items-center justify-content-center text-white-50">Camera preview</div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2 flex-wrap">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="passportStartCamera-{{ student.id }}">Open Camera</button>
+                                <button type="button" class="btn btn-outline-success btn-sm" id="passportCaptureCamera-{{ student.id }}" disabled>Capture</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="passportStopCamera-{{ student.id }}" disabled>Close</button>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">Preview</label>
+                            <div class="ratio ratio-4x3 bg-white border rounded overflow-hidden">
+                                <img id="passportPhotoPreview-{{ student.id }}" class="w-100 h-100 object-fit-cover {% if not section.record.passport_photo %}d-none{% endif %}" {% if section.record.passport_photo %}src="{{ section.record.passport_photo.url }}"{% endif %} alt="Passport preview">
+                                <div id="passportPreviewPlaceholder-{{ student.id }}" class="d-flex align-items-center justify-content-center text-muted {% if section.record.passport_photo %}d-none{% endif %}">Preview appears here</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">{{ section.form.photo_comment.label }}</label>
+                        {{ section.form.photo_comment }}
+                    </div>
+                    {% else %}
+                        {% for field in section.form %}
+                        <div class="mb-2">
+                            <label class="form-label small">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary btn-sm">Save {{ section.title }}</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>

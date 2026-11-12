@@ -1,0 +1,44 @@
+{% if student_searched %}
+    <div class="container">
+        <h2>Search Results for "{{ student.fullName }}"</h2>
+        <table class="table table-hover table-striped table-bordered">
+            <thead>
+                <tr>
+                    <!-- <th>Student Name</th> -->
+                    <th>Subject</th>
+                    <th>Marks</th>
+                    <th>Class</th>
+                    <th>Entered By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mark in student_searched %}
+                    <tr>
+                        <!-- <td>{{ mark.student.fullName }}</td> -->
+                        <td>{{ mark.subject.nameSubject }}</td>
+                        <td>{{ mark.marks }}</td>
+                        <td>{{ mark.teacherclass.ClassName }}</td>
+                        <td>{{ mark.user.teacherName|default:mark.user.username }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No marks found for this student.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="container">
+        <p class="no-results">{{ Message|default:"Your search appear here." }}</p>
+    </div>
+{% endif %}
+
+<style>
+    h2 { text-align: center; color: #2c3e50; margin-bottom: 2rem; font-weight: 700; letter-spacing: 1px; }
+    table { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 2rem; }
+    thead th { background-color: #3498db; color: white; font-weight: bold; }
+    tbody tr:hover { background-color: #ecf0f1; transition: background-color 0.3s ease; }
+    td, th { padding: 12px; text-align: center; font-size: 16px; }
+    .no-results { text-align: center; font-style: italic; color: #7f8c8d; margin-top: 20px; font-size: 18px; }
+</style>

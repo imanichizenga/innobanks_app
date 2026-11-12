@@ -1,0 +1,466 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Online Payment{% endblock %}
+
+{% block content %}
+<style>
+  .table thead th { white-space: nowrap; }
+  .table td, .table th { vertical-align: middle; }
+  .token-value { font-weight: 700; color: #0d6efd; letter-spacing: .02em; }
+  .modern-card { border: 0; border-radius: 1rem; overflow: hidden; }
+  .modern-card .card-header { background: linear-gradient(135deg, #f8fbff, #eef6ff); border-bottom: 1px solid #e9f0fa; }
+  .action-stack .btn { min-width: 120px; }
+  .btn .spinner-border { width: .9rem; height: .9rem; border-width: .14em; }
+  .select-col { width: 52px; }
+  .table-responsive { min-width: 1150px; }
+</style>
+
+<div class="container-xxl my-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary mb-0">Manage Online Payment</h2>
+  </div>
+
+  <div class="alert d-none" id="statusAlert" role="alert"></div>
+
+  <div class="card shadow-sm modern-card mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end" id="paymentFiltersForm">
+        <div class="col-md-3">
+          <label class="form-label">Teacher Class</label>
+          <select class="form-select" name="class_id" id="classSelect" required>
+            <option value="">Select a class</option>
+            {% for tc in teacher_classes %}
+              <option value="{{ tc.id }}" {% if selected_class_id == tc.id %}selected{% endif %}>
+                {{ tc.ClassName.class_name|default:"Unnamed Class" }}
+                {% if tc.academicclassyear %} ({{ tc.academicclassyear.academic_year_name }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Fee</label>
+          <select class="form-select" name="fee_id" id="feeSelect">
+            <option value="">Select fee</option>
+            {% for fee in fees %}
+              <option value="{{ fee.id }}" {% if selected_fee_id == fee.id %}selected{% endif %}>{{ fee.fee_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Search Student</label>
+          <input type="text" class="form-control" name="search" id="searchInput" value="{{ search_query|default:'' }}" placeholder="Name or admission no">
+        </div>
+
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i>Load Students</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm modern-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Completed via Bill Pay</p>
+          <h5 class="mb-0">{{ summary.completed_billpay_amount|floatformat:2 }} TZS</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm modern-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Completed via Push Payment</p>
+          <h5 class="mb-0">{{ summary.completed_push_amount|floatformat:2 }} TZS</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm modern-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Completed Payments</p>
+          <h5 class="mb-0">{{ summary.completed_count }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm modern-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Pending Payments</p>
+          <h5 class="mb-0">{{ summary.pending_count }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm modern-card">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Student Payments</h5>
+      <button class="btn btn-primary btn-sm" id="bulkGenerateBtn" type="button">
+        <span class="btn-label"><i class="fas fa-bolt me-1"></i>Generate Token for Selected</span>
+        <span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-center select-col"><input class="form-check-input" type="checkbox" id="selectAllStudents" aria-label="Select all students"></th>
+              <th class="text-center" style="width:60px;">#</th>
+              <th>Student</th>
+              <th>Admission No</th>
+              <th>Phone</th>
+              <th class="text-end">Amount Paid</th>
+              <th class="text-center">Payment Status</th>
+              <th class="text-center">Request Status</th>
+              <th class="text-center">Transaction Status</th>
+              <th>Bill Pay Number / Payment Token</th>
+              <th class="text-center">Notify Student</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="studentsBody">
+            {% if not selected_class_id or not selected_fee_id %}
+              <tr>
+                <td colspan="12" class="text-center text-muted py-4">Select class and fee then click "Load Students".</td>
+              </tr>
+            {% elif not students %}
+              <tr>
+                <td colspan="12" class="text-center text-muted py-4">No students found for this fee.</td>
+              </tr>
+            {% else %}
+              {% for student in students %}
+                <tr data-student-id="{{ student.student_id }}">
+                  <td class="text-center"><input class="form-check-input row-selector" type="checkbox" value="{{ student.student_id }}" aria-label="Select student"></td>
+                  <td class="text-center fw-semibold">{{ forloop.counter }}</td>
+                  <td>{{ student.student_name }}</td>
+                  <td>{{ student.admission_no }}</td>
+                  <td>{{ student.phone_number }}</td>
+                  <td class="text-end">{{ student.amount_paid|floatformat:2 }}</td>
+                  <td class="text-center"><span class="badge bg-{% if student.payment_status == "paid" %}success{% elif student.payment_status == "failed" %}danger{% elif student.payment_status == "partial" %}info text-dark{% else %}warning text-dark{% endif %}">{{ student.payment_status }}</span></td>
+                  <td class="text-center"><span class="badge bg-{% if student.request_status == "success" or student.request_status == "completed" %}success{% elif student.request_status == "failed" or student.request_status == "error" %}danger{% else %}info text-dark{% endif %}">{{ student.request_status|default:"-" }}</span></td>
+                  <td class="text-center"><span class="badge bg-{% if student.transaction_status == "completed" or student.transaction_status == "success" %}success{% elif student.transaction_status == "failed" %}danger{% elif student.transaction_status == "expired" %}secondary{% else %}warning text-dark{% endif %}">{{ student.transaction_status|default:"pending" }}</span>{% if student.transaction_completed_at %}<div class="small text-muted mt-1">{{ student.transaction_completed_at|date:"Y-m-d H:i" }}</div>{% endif %}</td>
+                  <td>
+                    {% if student.payment_token %}
+                      <div class="token-value">{{ student.payment_token }}</div>
+                    {% elif student.bill_pay_number %}
+                      <div class="token-value">{{ student.bill_pay_number }}</div>
+                    {% else %}
+                      <span class="text-muted">Not generated</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <button
+                      class="btn btn-sm {% if student.notify_student_account %}btn-success{% else %}btn-outline-secondary{% endif %} notify-btn"
+                      data-notify="{% if student.notify_student_account %}true{% else %}false{% endif %}">
+                      {% if student.notify_student_account %}Enabled{% else %}Disabled{% endif %}
+                    </button>
+                  </td>
+                  <td>
+                    <div class="d-grid gap-2 action-stack">
+                      <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-primary action-btn" data-action="generate"><span class="btn-label">Generate</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+                        <button class="btn btn-outline-info action-btn" data-action="refresh"><span class="btn-label">Refresh</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+                      </div>
+                      <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-success action-btn" data-action="push"><span class="btn-label">Push Payment</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+                        <button class="btn btn-outline-danger action-btn" data-action="delete"><span class="btn-label">Delete</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const classSelect = document.getElementById('classSelect');
+  const feeSelect = document.getElementById('feeSelect');
+  const studentsBody = document.getElementById('studentsBody');
+  const alertBox = document.getElementById('statusAlert');
+
+  const urls = {
+    feesBase: "{% url 'finance:fees_for_class' 999999 %}".replace('999999/', ''),
+    studentsBase: "{% url 'finance:students_for_fee' 999999 999998 %}".replace('999999/999998/', ''),
+    generate: "{% url 'finance:generate_billpay_number' %}",
+    refresh: "{% url 'finance:refresh_billpay_number' %}",
+    del: "{% url 'finance:delete_billpay_number' %}",
+    push: "{% url 'finance:push_mobile_payment' %}",
+    notify: "{% url 'finance:toggle_notify_student_account' %}",
+    bulkGenerate: "{% url 'finance:generate_billpay_numbers_bulk' %}"
+  };
+
+  function getCookie(name) {
+    const v = `; ${document.cookie}`;
+    const parts = v.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
+
+  function showAlert(message, isError = false) {
+    alertBox.className = `alert ${isError ? 'alert-danger' : 'alert-success'}`;
+    alertBox.textContent = message;
+    alertBox.classList.remove('d-none');
+  }
+
+  function statusBadge(value, kind) {
+    const normalized = (value || '').toString().toLowerCase();
+    if (kind === 'payment') {
+      if (normalized === 'paid' || normalized === 'success' || normalized === 'completed') return `<span class="badge bg-success">${value || '-'}</span>`;
+      if (normalized === 'failed') return `<span class="badge bg-danger">${value || '-'}</span>`;
+      if (normalized === 'partial') return `<span class="badge bg-info text-dark">${value || '-'}</span>`;
+      return `<span class="badge bg-warning text-dark">${value || 'pending'}</span>`;
+    }
+    if (kind === 'request') {
+      if (normalized === 'success') return `<span class="badge bg-success">${value || '-'}</span>`;
+      if (normalized === 'failed' || normalized === 'error') return `<span class="badge bg-danger">${value || '-'}</span>`;
+      return `<span class="badge bg-info text-dark">${value || '-'}</span>`;
+    }
+    if (normalized === 'success' || normalized === 'completed') return `<span class="badge bg-success">${value || '-'}</span>`;
+    if (normalized === 'failed') return `<span class="badge bg-danger">${value || '-'}</span>`;
+    if (normalized === 'expired') return `<span class="badge bg-secondary">${value || '-'}</span>`;
+    return `<span class="badge bg-warning text-dark">${value || 'pending'}</span>`;
+  }
+
+  function renderStudents(students) {
+    if (!students.length) {
+      studentsBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No students found for this fee.</td></tr>';
+      return;
+    }
+    studentsBody.innerHTML = students.map((s, i) => `
+      <tr data-student-id="${s.student_id}">
+        <td class="text-center"><input class="form-check-input row-selector" type="checkbox" value="${s.student_id}" aria-label="Select student"></td>
+        <td class="text-center fw-semibold">${i + 1}</td>
+        <td>${s.student_name || '-'}</td>
+        <td>${s.admission_no || '-'}</td>
+        <td>${s.phone_number || '-'}</td>
+        <td class="text-end">${s.amount_paid ? Number(s.amount_paid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+        <td class="text-center">${statusBadge(s.payment_status || 'pending', 'payment')}</td>
+        <td class="text-center">${statusBadge(s.request_status || '-', 'request')}</td>
+        <td class="text-center">${statusBadge(s.transaction_status || 'pending', 'tx')}${s.transaction_completed_at ? `<div class="small text-muted mt-1">${new Date(s.transaction_completed_at).toLocaleString()}</div>` : ""}</td>
+        <td>${s.payment_token ? `<div class="token-value">${s.payment_token}</div>` : (s.bill_pay_number ? `<div class="token-value">${s.bill_pay_number}</div>` : '<span class="text-muted">Not generated</span>')}</td>
+        <td class="text-center"><button class="btn btn-sm ${s.notify_student_account ? 'btn-success' : 'btn-outline-secondary'} notify-btn" data-notify="${s.notify_student_account ? 'true' : 'false'}">${s.notify_student_account ? 'Enabled' : 'Disabled'}</button></td>
+        <td><div class="d-grid gap-2 action-stack">
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-primary action-btn" data-action="generate"><span class="btn-label">Generate</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+            <button class="btn btn-outline-info action-btn" data-action="refresh"><span class="btn-label">Refresh</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+          </div>
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-success action-btn" data-action="push"><span class="btn-label">Push Payment</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+            <button class="btn btn-outline-danger action-btn" data-action="delete"><span class="btn-label">Delete</span><span class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span></button>
+          </div>
+        </div></td>
+      </tr>
+    `).join('');
+    syncSelectAllCheckbox();
+  }
+
+
+  function selectedStudentIds() {
+    return Array.from(studentsBody.querySelectorAll('.row-selector:checked')).map((el) => el.value);
+  }
+
+  function syncSelectAllCheckbox() {
+    const selectAll = document.getElementById('selectAllStudents');
+    if (!selectAll) return;
+    const rowChecks = Array.from(studentsBody.querySelectorAll('.row-selector'));
+    const checked = rowChecks.filter((cb) => cb.checked).length;
+    selectAll.checked = rowChecks.length > 0 && checked === rowChecks.length;
+    selectAll.indeterminate = checked > 0 && checked < rowChecks.length;
+  }
+
+  async function fetchJSON(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': getCookie('csrftoken'),
+        ...(options.headers || {}),
+      },
+    });
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+      throw new Error(data.error || data.message || 'Request failed');
+    }
+    return data;
+  }
+
+  async function loadFees(classId) {
+    feeSelect.innerHTML = '<option value="">Select fee</option>';
+    if (!classId) return;
+    const data = await fetchJSON(`${urls.feesBase}${classId}/`);
+    data.fees.forEach((fee) => {
+      const opt = document.createElement('option');
+      opt.value = fee.id;
+      opt.textContent = fee.fee_name;
+      feeSelect.appendChild(opt);
+    });
+  }
+
+  async function loadStudents() {
+    const classId = classSelect.value;
+    const feeId = feeSelect.value;
+    if (!classId || !feeId) return;
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput?.value ? `?search=${encodeURIComponent(searchInput.value)}` : '';
+    const data = await fetchJSON(`${urls.studentsBase}${classId}/${feeId}/${query}`);
+    renderStudents(data.students || []);
+  }
+
+  let pollingTimer = null;
+
+  function startStatusPolling() {
+    if (!classSelect.value || !feeSelect.value) return;
+    if (pollingTimer) return;
+    pollingTimer = setInterval(async () => {
+      if (!classSelect.value || !feeSelect.value) return;
+      try {
+        await loadStudents();
+      } catch (err) {
+        console.error('Failed to refresh student payment status', err);
+      }
+    }, 10000);
+  }
+
+  classSelect.addEventListener('change', async () => {
+    try {
+      await loadFees(classSelect.value);
+      studentsBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">Select fee to view students.</td></tr>';
+    } catch (err) {
+      showAlert(err.message, true);
+    }
+  });
+
+  feeSelect.addEventListener('change', async () => {
+    try {
+      await loadStudents();
+      startStatusPolling();
+    } catch (err) {
+      showAlert(err.message, true);
+    }
+  });
+
+  document.getElementById('searchInput')?.addEventListener('input', () => {
+    if (classSelect.value && feeSelect.value) {
+      loadStudents();
+    }
+  });
+
+
+  document.getElementById('selectAllStudents')?.addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    studentsBody.querySelectorAll('.row-selector').forEach((cb) => { cb.checked = checked; });
+    syncSelectAllCheckbox();
+  });
+
+  studentsBody.addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-selector')) {
+      syncSelectAllCheckbox();
+    }
+  });
+
+  document.getElementById('bulkGenerateBtn')?.addEventListener('click', async () => {
+    const classId = classSelect.value;
+    const feeId = feeSelect.value;
+    const ids = selectedStudentIds();
+    if (!classId || !feeId) {
+      showAlert('Please select class and fee first.', true);
+      return;
+    }
+    if (!ids.length) {
+      showAlert('Please select at least one student.', true);
+      return;
+    }
+
+    const btn = document.getElementById('bulkGenerateBtn');
+    const spinner = btn.querySelector('.spinner-border');
+    const label = btn.querySelector('.btn-label');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    label.classList.add('opacity-75');
+
+    try {
+      const data = await fetchJSON(urls.bulkGenerate, {
+        method: 'POST',
+        body: JSON.stringify({ class_id: classId, fee_id: feeId, student_ids: ids }),
+      });
+      let message = data.message || 'Bulk token generation completed.';
+      if (data.failed && data.failed.length) {
+        message += ` Failed students: ${data.failed.map((f) => f.student_name || f.student_id).join(', ')}.`;
+      }
+      showAlert(message, false);
+      await loadStudents();
+    } catch (err) {
+      showAlert(err.message, true);
+    } finally {
+      btn.disabled = false;
+      spinner.classList.add('d-none');
+      label.classList.remove('opacity-75');
+    }
+  });
+
+  studentsBody.addEventListener('click', async (e) => {
+    const actionBtn = e.target.closest('.action-btn');
+    const notifyBtn = e.target.closest('.notify-btn');
+    const row = e.target.closest('tr[data-student-id]');
+    if (!row) return;
+    const payload = {
+      student_id: row.dataset.studentId,
+      class_id: classSelect.value,
+      fee_id: feeSelect.value,
+    };
+
+    try {
+      if (actionBtn) {
+        const action = actionBtn.dataset.action;
+        const endpoint = action === 'generate' ? urls.generate : action === 'refresh' ? urls.refresh : action === 'delete' ? urls.del : urls.push;
+        const spinner = actionBtn.querySelector('.spinner-border');
+        const label = actionBtn.querySelector('.btn-label');
+        actionBtn.disabled = true;
+        if (spinner) spinner.classList.remove('d-none');
+        if (label) label.classList.add('opacity-75');
+        try {
+          const data = await fetchJSON(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+          showAlert(data.message || 'Action completed.');
+          await loadStudents();
+        } finally {
+          actionBtn.disabled = false;
+          if (spinner) spinner.classList.add('d-none');
+          if (label) label.classList.remove('opacity-75');
+        }
+      }
+      if (notifyBtn) {
+        const current = notifyBtn.dataset.notify === 'true';
+                notifyBtn.disabled = true;
+        const original = notifyBtn.textContent;
+        notifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Saving';
+        try {
+          const data = await fetchJSON(urls.notify, { method: 'POST', body: JSON.stringify({ ...payload, notify: (!current).toString() }) });
+          showAlert(data.message || 'Notification setting updated.');
+          await loadStudents();
+        } finally {
+          notifyBtn.disabled = false;
+          notifyBtn.textContent = original;
+        }
+      }
+    } catch (err) {
+      showAlert(err.message, true);
+    }
+  });
+
+  if (classSelect.value && feeSelect.value) {
+    startStatusPolling();
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between mb-3"><h3>Student Attendance Report</h3><a class="btn btn-outline-secondary" href="{% url 'attendance:manual_student_attendance' %}">Back</a></div>
+  <form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2"><label>Class</label><select name="class_id" class="form-select" required><option value="">Select</option>{% for class in classes %}<option value="{{ class.id }}" {% if selected_class_id == class.id|stringformat:'s' %}selected{% endif %}>{{ class.ClassName }}</option>{% endfor %}</select></div>
+      <div class="col-md-2"><label>Date</label>{{ form.date }}</div><div class="col-md-2"><label>View</label>{{ form.view }}</div><div class="col-md-2"><label>Status</label>{{ form.status }}</div>
+      <div class="col-md-2"><label>From</label>{{ form.from_time }}</div><div class="col-md-2"><label>To</label>{{ form.to_time }}</div>
+      <div class="col-md-2"><label>Arrived after</label>{{ form.arrived_after }}</div><div class="col-md-2"><label>Date from</label>{{ form.date_from }}</div><div class="col-md-2"><label>Date to</label>{{ form.date_to }}</div>
+      <div class="col-md-2"><label>Search</label>{{ form.search }}</div><div class="col-md-2"><div class="form-check mt-4">{{ form.late_only }} <label class="form-check-label">Late only</label></div></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100">Apply</button></div>
+      <div class="col-md-2"><button name="export" value="pdf" class="btn btn-danger w-100">Download PDF</button></div>
+    </div>
+  </form>
+  <div class="row g-2 mb-3"><div class="col"><div class="card card-body"><small>Total</small><h5>{{ summary.total }}</h5></div></div><div class="col"><div class="card card-body"><small class="text-success">Present</small><h5 class="text-success">{{ summary.present }}</h5></div></div><div class="col"><div class="card card-body"><small class="text-warning">Late</small><h5 class="text-warning">{{ summary.late }}</h5></div></div><div class="col"><div class="card card-body"><small class="text-danger">Absent</small><h5 class="text-danger">{{ summary.absent }}</h5></div></div><div class="col"><div class="card card-body"><small>Attendance %</small><h5>{{ summary.percentage }}%</h5></div></div></div>
+
+  <div class="card"><div class="card-header">Period {{ period_start }} - {{ period_end }} ({{ view_type }})</div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>#</th><th>Name</th><th>Index</th><th>Date</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Recorded At</th></tr></thead><tbody>{% for rec in records %}<tr><td>{{ forloop.counter }}</td><td>{{ rec.student.fullName }}</td><td>{{ rec.student.indexNumber|default:'-' }}</td><td>{{ rec.date }}</td><td>{{ rec.check_in_time|default:'-' }}</td><td>{{ rec.check_out_time|default:'-' }}</td><td>{% if rec.attendance_status == 'present' %}<span class="badge bg-success">Present</span>{% elif rec.attendance_status == 'late' %}<span class="badge bg-warning text-dark">Late</span>{% elif rec.attendance_status == 'excused' %}<span class="badge bg-info text-dark">Excused</span>{% else %}<span class="badge bg-danger">Absent</span>{% endif %}</td><td>{{ rec.recorded_at|date:'Y-m-d H:i'|default:'-' }}</td></tr>{% empty %}<tr><td colspan="8" class="text-center text-muted py-3">No matching records.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

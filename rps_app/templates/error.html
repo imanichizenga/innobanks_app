@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="card shadow-sm border-0 rounded-4 p-4 mx-auto" style="max-width: 600px;">
+        <h3 class="text-center fw-bold text-danger mb-4">An Error Occurred</h3>
+        <p class="text-center text-muted mb-4">{{ error_message }}</p>
+        <a href="{% url 'result_evaluation' %}" class="btn btn-outline-primary rounded-pill w-100 shadow-sm fw-medium">Back to Evaluation</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Status{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-info-circle me-2"></i>Payment Status</h2>
+    </div>
+
+    <!-- Status Card -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <div id="paymentStatusAlert" class="alert alert-{% if payment.status == 'SUCCESS' %}success{% elif payment.status == 'PENDING' %}warning{% else %}danger{% endif %}">
+                <h4 class="alert-heading mb-3">
+                    <i id="paymentStatusIcon" class="fas fa-{% if payment.status == 'SUCCESS' %}check-circle{% elif payment.status == 'PENDING' %}clock{% else %}times-circle{% endif %} me-2"></i>
+                    <span id="paymentStatusText">{{ payment.status }}</span>
+                </h4>
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info alert-dismissible fade show mt-2" role="alert">
+                            <i class="fas fa-lightbulb me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% if payment.payment_method == 'PHONE' and payment.status == 'PENDING' %}
+                    <p id="paymentStatusMessage" class="lead mb-0">Payment request sent to your phone! Check your mobile money app (e.g., M-Pesa, Tigo Pesa) for the prompt.</p>
+                    <hr>
+                    <div class="alert alert-info">
+                        <strong>Tip:</strong> Complete the payment on your phone. This page updates automatically once the status changes.
+                    </div>
+                {% elif payment.payment_method == 'CARD' and payment.status == 'PENDING' %}
+                    <p id="paymentStatusMessage" class="lead mb-0">Card payment link ready! Proceed to complete the transaction.</p>
+                    <hr>
+                    <div class="alert alert-info">
+                        <strong>Tip:</strong> Click the button below to open the secure payment page. Status will update automatically after.
+                    </div>
+                {% elif payment.status == 'SUCCESS' %}
+                    <p id="paymentStatusMessage" class="lead mb-0">Payment completed successfully!</p>
+                {% elif payment.status == 'FAILED' %}
+                    <p id="paymentStatusMessage" class="lead mb-0">Payment failed. Please try again.</p>
+                {% endif %}
+                
+                {% if payment.payment_method == 'CARD' and payment.status == 'PENDING' and payment.callback_data.card_url %}
+                    <hr>
+                    <div class="text-center">
+                        <a href="{{ payment.callback_data.card_url }}" class="btn btn-primary btn-lg rounded-pill w-100 mb-2" 
+                           onclick="return confirm('Opening secure card payment page. Proceed?')">
+                            <i class="fas fa-credit-card me-2"></i>Finish Transaction
+                        </a>
+                        <small class="text-muted d-block">Secure redirect to payment gateway</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Card -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 fw-semibold"><i class="fas fa-receipt me-2"></i>Transaction Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong><i class="fas fa-hashtag me-2 text-muted"></i>Order ID:</strong> {{ payment.order_id }}</p>
+                    <p class="mb-1"><strong><i class="fas fa-key me-2 text-muted"></i>Transaction ID:</strong> {{ payment.transaction_id }}</p>
+                    <p class="mb-1"><strong><i class="fas fa-money-bill me-2 text-muted"></i>Amount:</strong> {{ payment.amount }} TZS</p>
+                    <p class="mb-1"><strong><i class="fas fa-exchange-alt me-2 text-muted"></i>Method:</strong> {{ payment.payment_method }}</p>
+                    <p class="mb-0"><strong><i class="fas fa-clock me-2 text-muted"></i>Created:</strong> {{ payment.created_at|date:"Y-m-d H:i:s" }}</p>
+                </div>
+                {% if payment.callback_data %}
+                <div class="col-md-6">
+                    <h6 class="mb-2">Callback Details:</h6>
+                    <pre class="small bg-light p-2 overflow-auto" style="max-height: 200px; font-size: 0.875rem;">{{ payment.callback_data|safe }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="text-center">
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="{% url 'notifications_list' %}" class="btn btn-info rounded-pill px-4">
+                <i class="fas fa-bell me-2"></i>View Notifications
+            </a>
+            <a href="{% url 'payment_form' %}" class="btn btn-secondary rounded-pill px-4">
+                <i class="fas fa-plus me-2"></i>New Payment
+            </a>
+            {% if payment.status == 'PENDING' %}
+            <button id="refreshStatusButton" class="btn btn-outline-primary rounded-pill px-4" type="button">
+                <i class="fas fa-sync-alt me-2"></i><span>Refresh Status</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    const transactionId = "{{ payment.transaction_id }}";
+    const statusEndpoint = "{% url 'payment_status' transaction_id=payment.transaction_id %}";
+    const statusAlert = document.getElementById('paymentStatusAlert');
+    const statusIcon = document.getElementById('paymentStatusIcon');
+    const statusText = document.getElementById('paymentStatusText');
+    const statusMessage = document.getElementById('paymentStatusMessage');
+    const refreshButton = document.getElementById('refreshStatusButton');
+
+    const statusConfig = {
+        SUCCESS: {
+            alertClass: 'alert-success',
+            icon: 'check-circle',
+            message: 'Payment completed successfully!'
+        },
+        PENDING: {
+            alertClass: 'alert-warning',
+            icon: 'clock',
+            message: 'Payment is still pending. Please complete the payment to continue.'
+        },
+        FAILED: {
+            alertClass: 'alert-danger',
+            icon: 'times-circle',
+            message: 'Payment failed. Please try again.'
+        }
+    };
+
+    const updateStatusUI = (status) => {
+        const config = statusConfig[status] || statusConfig.PENDING;
+        statusAlert.classList.remove('alert-success', 'alert-warning', 'alert-danger');
+        statusAlert.classList.add(config.alertClass);
+        statusIcon.className = `fas fa-${config.icon} me-2`;
+        statusText.textContent = status;
+        if (statusMessage) {
+            statusMessage.textContent = config.message;
+        }
+    };
+
+    const fetchStatus = async () => {
+        try {
+            if (refreshButton) {
+                refreshButton.disabled = true;
+                refreshButton.querySelector('span').textContent = 'Checking...';
+            }
+            const response = await fetch(statusEndpoint, { credentials: 'include' });
+            if (!response.ok) {
+                throw new Error('Failed to fetch status');
+            }
+            const data = await response.json();
+            updateStatusUI(data.status);
+            if (data.status !== 'PENDING') {
+                clearInterval(pollingTimer);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            if (refreshButton) {
+                refreshButton.disabled = false;
+                refreshButton.querySelector('span').textContent = 'Refresh Status';
+            }
+        }
+    };
+
+    {% if payment.status == 'PENDING' %}
+    const pollingTimer = setInterval(fetchStatus, 10000);
+    if (refreshButton) {
+        refreshButton.addEventListener('click', fetchStatus);
+    }
+    {% endif %}
+</script>
+{% endblock %}

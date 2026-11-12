@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Make Payment{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-credit-card me-2"></i>Secure Payment</h2>
+    </div>
+
+    <!-- Payment Form Card -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form method="post" class="row g-3" id="paymentForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="customer_name" class="form-label fw-semibold"><i class="fas fa-user me-2"></i>Full Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control rounded-end" id="customer_name" name="customer_name" 
+                               value="{{ user.get_full_name|default:user.username }}" placeholder="Enter full name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="customer_email" class="form-label fw-semibold"><i class="fas fa-envelope me-2"></i>Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control rounded-end" id="customer_email" name="customer_email" 
+                               value="{{ user.email }}" placeholder="Enter email" required>
+                    </div>
+                </div>
+                <!-- Phone Field: Dynamic based on method -->
+                <div class="col-12 col-md-6 phone-field" id="phoneGroup">
+                    <label for="customer_phone" class="form-label fw-semibold"><i class="fas fa-phone me-2"></i>Phone Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-phone"></i></span>
+                        <input type="tel" class="form-control rounded-end" id="customer_phone" name="customer_phone" 
+                               placeholder="e.g., +255712345678" pattern="+255[0-9]{9}" title="Tanzania format: +255xxxxxxxxx">
+                    </div>
+                    <div class="form-text small text-muted">Required for Mobile Money. Use VODACOM or MIX BY YAS.</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="amount" class="form-label fw-semibold"><i class="fas fa-money-bill-wave me-2"></i>Amount (TZS)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-coins"></i></span>
+                        <input type="number" step="0.01" class="form-control rounded-end muted" id="amount" name="amount" min="0.01" placeholder="0.00" readonly value="{{ amount }}">
+                    </div>
+                    <div class="form-text">Minimum 0.01 TZS</div>
+                </div>
+                <div class="col-12">
+                    <label for="payment_method" class="form-label fw-semibold"><i class="fas fa-exchange-alt me-2"></i>Payment Method</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-credit-card"></i></span>
+                        <select class="form-select rounded-end" id="payment_method" name="payment_method" required>
+                            <option value="PHONE">Mobile Money (Push to Phone)</option>
+                            <option value="CARD">Credit/Debit Card</option>
+                        </select>
+                    </div>
+                    <div class="form-text">Payment will be processed securely via Snippe gateway.</div>
+                </div>
+                <div class="col-12 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitBtn">
+                        <i class="fas fa-arrow-right me-2"></i>Initiate Payment
+                    </button>
+                </div>
+            </form>
+            <div class="mt-3 text-center">
+                <small class="text-muted">Secure & Encrypted • Powered by Snippe</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Link -->
+    <div class="text-center">
+        <a href="{% url 'notifications_list' %}" class="btn btn-outline-info rounded-pill px-4">
+            <i class="fas fa-history me-2"></i>View Recent Payments
+        </a>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    // Dynamic show/hide phone field
+    document.getElementById('payment_method').addEventListener('change', function() {
+        const phoneGroup = document.getElementById('phoneGroup');
+        const phoneInput = document.getElementById('customer_phone');
+        if (this.value === 'PHONE') {
+            phoneGroup.style.display = 'block';
+            phoneInput.required = true;
+            phoneInput.setAttribute('aria-required', 'true');
+        } else {
+            phoneGroup.style.display = 'none';
+            phoneInput.required = false;
+            phoneInput.removeAttribute('aria-required');
+            phoneInput.value = '';  // Clear if hidden
+        }
+    });
+
+    // Form submission with loading state
+    document.getElementById('paymentForm').addEventListener('submit', function(event) {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span><i class="fas fa-sync-alt me-2"></i>Processing...';
+    });
+
+    // Trigger initial state
+    document.getElementById('payment_method').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

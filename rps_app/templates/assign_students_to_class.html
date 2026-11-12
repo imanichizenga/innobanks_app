@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container py-5">
+    <h2 class="mb-4">Assign Subjects to Students in {{ teacherclass.ClassName }}</h2>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="form-container">
+        <form method="POST" id="assignForm">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.subject.id_for_label }}" class="form-label">Subject:</label>
+                {{ form.subject }}
+                {% if form.subject.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.subject.errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Students in {{ teacherclass.ClassName }}:</label>
+                {% if students %}
+                <div id="student-list">
+                    {% for student in students %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="student" value="{{ student.id }}" id="student_{{ student.id }}">
+                        <label class="form-check-label" for="student_{{ student.id }}">{{ student.fullName }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {{ form.student }} <!-- Hidden field for form submission -->
+                {% if form.student.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.student.errors %}
+                    {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted">No students in this class.</p>
+                {% endif %}
+            </div>
+            <button class="btn btn-outline-primary rounded-pill" type="submit" id="submitButton" {% if not students %}disabled{% endif %}>
+                Assign Subject
+            </button>
+            <a href="{% url 'create_student_subject' %}" class="btn btn-outline-secondary rounded-pill">Back to Classes</a>
+        </form>
+
+        <script>
+            document.getElementById("assignForm").addEventListener("submit", function(event) {
+                const button = document.getElementById("submitButton");
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+            });
+
+            // Sync checkbox state with hidden select field
+            const studentList = document.getElementById("student-list");
+            const studentField = document.getElementById("{{ form.student.id_for_label }}");
+            const submitButton = document.getElementById("submitButton");
+            studentList.querySelectorAll(".form-check-input").forEach(checkbox => {
+                checkbox.addEventListener("change", function() {
+                    const option = studentField.querySelector(`option[value="${this.value}"]`);
+                    option.selected = this.checked;
+                    const anyChecked = studentList.querySelectorAll(".form-check-input:checked").length > 0;
+                    submitButton.disabled = !anyChecked;
+                });
+            });
+
+            // Initial state: disable submit if no students checked
+            submitButton.disabled = true;
+        </script>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .form-label {
+        font-weight: bold;
+    }
+    .form-control, .form-check-input {
+        margin-bottom: 10px;
+    }
+    .invalid-feedback {
+        color: #dc3545;
+    }
+</style>
+{% endblock %}

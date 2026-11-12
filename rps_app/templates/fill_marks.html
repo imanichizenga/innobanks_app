@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="fas fa-chalkboard-teacher me-2"></i>
+            Subject: {{ teacher_subject.subject.nameSubject }} ({{ teacher_subject.teacherclass.ClassName }})
+        </h2>
+        <a href="{% url 'select_examination_name' teacher_subject.id %}" class="btn btn-sm btn-light rounded-pill">
+            <i class="fas fa-edit me-2"></i>Change Examination
+        </a>
+    </div>
+    <h5 class="text-muted mb-4">
+        <i class="fas fa-file-alt me-2"></i>Examination: {{ examination_name.exam_name }}
+    </h5>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Excel Download and Upload Section -->
+    {% if students %}
+        <div class="card shadow-sm mb-5">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center row g-3">
+                    <div class="col-12 col-md-6">
+                        <a href="{% url 'upload_marks' teacher_subject.id %}?download_template=true" class="btn btn-primary w-100 rounded-pill">
+                            <i class="fas fa-download me-2"></i>Download Excel Template
+                        </a>
+                    </div>
+                    {% if not teacher_subject.is_restricted %}
+                        <div class="col-12 col-md-6">
+                            <form method="post" enctype="multipart/form-data" action="{% url 'upload_marks' teacher_subject.id %}" class="d-flex align-items-center">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="fas fa-upload"></i></span>
+                                    <input type="file" name="excel_file" accept=".xlsx,.xls" class="form-control rounded-end" required>
+                                </div>
+                                <button type="submit" class="btn btn-success rounded-pill ms-2">
+                                    <i class="fas fa-upload me-2"></i>Upload Marks
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Search Bar -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                <input type="text" id="studentSearch" class="form-control rounded-end" placeholder="Search students by name or index number..." autofocus>
+            </div>
+        </div>
+    </div>
+
+    <!-- Marks Entry Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Enter Student Marks</h5>
+        </div>
+        <div class="card-body p-0">
+            <form method="post" id="marksForm">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-bordered align-middle m-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 35%;">Student</th>
+                                <th scope="col" style="width: 25%;">Index Number</th>
+                                <th scope="col" style="width: 30%;">Mark (0-100)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentRows">
+                            {% for student in students %}
+                                <tr class="student-row animate__animated animate__fadeIn" data-name="{{ student.fullName|default:'Unnamed Student'|lower }}" data-index="{{ student.indexNumber|default:'N/A'|lower }}">
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td>{{ student.fullName|default:"Unnamed Student" }}</td>
+                                    <td>{{ student.indexNumber|default:"N/A" }}</td>
+                                    <td>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-marker"></i></span>
+                                            <input type="number" name="marks_{{ student.id }}" min="0" max="100"
+                                                   value="{% if student.id in student_marks %}{{ student_marks|get_item:student.id }}{% endif %}"
+                                                   class="form-control rounded-end text-center"
+                                                   {% if teacher_subject.is_restricted %}disabled{% endif %}>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-exclamation-circle me-2"></i>No students available to mark.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Conditional Button Display -->
+                {% if students %}
+                    {% if not teacher_subject.is_restricted %}
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill mt-4" id="saveButton">
+                            <i class="fas fa-save me-2"></i>Save Marks
+                        </button>
+                    {% else %}
+                        <p class="text-muted text-center mt-3"><i class="fas fa-lock me-2"></i>Marks entry is restricted for this subject.</p>
+                        <a href="{% url 'teacher_dashboard' %}" class="btn btn-primary w-100 rounded-pill mt-4">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-primary w-100 rounded-pill mt-4">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Select Class
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Saved Marks Summary Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>Saved Marks for {{ examination_name.exam_name }}</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#savedMarksTable" aria-expanded="false" aria-controls="savedMarksTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="savedMarksTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover table-bordered align-middle m-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 35%;">Student Name</th>
+                                <th scope="col" style="width: 25%;">Index Number</th>
+                                <th scope="col" style="width: 30%;">Mark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mark in saved_marks %}
+                                <tr class="animate__animated animate__fadeIn">
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td>{{ mark.student.fullName|default:"Unnamed Student" }}</td>
+                                    <td>{{ mark.student.indexNumber|default:"N/A" }}</td>
+                                    <td>{{ mark.marks }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-exclamation-circle me-2"></i>No marks have been saved yet.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const marksForm = document.getElementById('marksForm');
+        const saveButton = document.getElementById('saveButton');
+        const searchInput = document.getElementById('studentSearch');
+        const studentRows = document.querySelectorAll('.student-row');
+
+        // Form submission handling
+        if (marksForm && saveButton) {
+            marksForm.addEventListener('submit', function() {
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            });
+        }
+
+        // Real-time search functionality
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.trim().toLowerCase();
+
+            studentRows.forEach(row => {
+                const studentName = row.getAttribute('data-name');
+                const indexNumber = row.getAttribute('data-index');
+
+                if (studentName.includes(searchTerm) || indexNumber.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const visibleRows = Array.from(studentRows).filter(row => row.style.display !== 'none');
+            const tbody = document.getElementById('studentRows');
+            if (visibleRows.length === 0 && searchTerm) {
+                if (!tbody.querySelector('.no-match-row')) {
+                    const noMatchRow = document.createElement('tr');
+                    noMatchRow.className = 'no-match-row';
+                    noMatchRow.innerHTML = '<td colspan="4" class="text-center text-muted py-4"><i class="fas fa-exclamation-circle me-2"></i>No students match your search.</td>';
+                    tbody.appendChild(noMatchRow);
+                }
+            } else {
+                const noMatchRow = tbody.querySelector('.no-match-row');
+                if (noMatchRow) {
+                    noMatchRow.remove();
+                }
+            }
+        });
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+
+<style>
+    #studentSearch {
+        transition: all 0.3s ease;
+    }
+    #studentSearch:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+    }
+    .student-row {
+        transition: opacity 0.2s ease;
+    }
+    .student-row[style*="display: none"] {
+        opacity: 0;
+    }
+</style>
+{% endblock %}

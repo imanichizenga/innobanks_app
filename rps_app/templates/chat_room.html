@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chat with {{ receiver_name }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            Chat with {{ receiver_name }}
+        </h2>
+        <div class="d-flex align-items-center gap-2">
+            <span id="connection-status" class="badge bg-success">Connected</span>
+            <a href="{% url 'chat_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill">Back</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div id="chat-messages" class="card-body p-0" style="height:480px; overflow-y:auto; background:#f8f9fa;">
+            {% for m in messages %}
+                {% include "chat/_message_bubble.html" with msg=m user=request.user %}
+            {% empty %}
+                <div class="text-center text-muted p-5">
+                    <p>No messages yet. Start the conversation!</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Upload Progress -->
+        <div id="upload-progress" class="progress mx-3 mt-2" style="height:4px; display:none;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width:0%;"></div>
+        </div>
+
+        <!-- Input Area with Typing Indicator -->
+        <div class="card-footer bg-white p-3">
+            <div id="typing-indicator" class="text-muted small mb-2 ms-3" style="display:none; min-height:20px;">
+                <span class="fw-bold"></span> is typing...
+            </div>
+
+            <form id="chat-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control border-0 shadow-none"
+                           placeholder="Type a message..." autocomplete="off" maxlength="2000">
+
+                    <input type="file" id="file-input" class="d-none" accept="*/*">
+                    <button type="button" id="attach-btn" class="btn btn-outline-secondary border-0">
+                        <i class="fas fa-paperclip"></i>
+                        <span id="file-name-display" class="ms-1 small d-none"></span>
+                    </button>
+
+                    <button type="submit" id="send-btn"
+                            class="btn btn-primary position-relative d-flex align-items-center justify-content-center">
+                        <i class="fas fa-paper-plane send-icon"></i>
+                        <span class="spinner-grow spinner-grow-sm d-none"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+    #chat-messages::-webkit-scrollbar { width: 6px; }
+    #chat-messages::-webkit-scrollbar-track { background: transparent; }
+    #chat-messages::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+
+    .message-bubble {
+        position: relative;
+        max-width: 80%;
+        word-wrap: break-word;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .reaction-list {
+        position: absolute;
+        bottom: -14px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 4px;
+        z-index: 10;
+    }
+
+    .reaction-btn {
+        font-size: 0.9rem;
+        padding: 2px 8px !important;
+        transition: transform .15s;
+    }
+    .reaction-btn:active { transform: scale(1.5); }
+
+    .emoji-picker {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        padding: 10px 14px;
+        display: flex;
+        gap: 16px;
+        font-size: 1.9rem;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: 12px;
+        z-index: 1000;
+        user-select: none;
+    }
+    .emoji-picker span {
+        cursor: pointer;
+        transition: transform .15s;
+    }
+    .emoji-picker span:active {
+        transform: scale(1.6);
+    }
+
+    .tick-single { color: #999 !important; }
+    .tick-double { color: #999 !important; }
+    .tick-seen { color: #4fc3f7 !important; }
+</style>
+
+<script>
+    const currentUser = '{{ request.user.username|escapejs }}';
+    const receiverUsername = '{{ receiver.username|escapejs }}';
+    const roomName = '{{ room_name|escapejs }}';
+    let chatSocket = null;
+    let typingTimer = null;
+    const TYPING_DELAY = 1000;
+    let uploadedFile = null;
+    let messageSending = false;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function setStatus(connected) {
+        const el = document.getElementById('connection-status');
+        el.className = connected ? 'badge bg-success' : 'badge bg-danger';
+        el.textContent = connected ? 'Connected' : 'Reconnecting...';
+    }
+
+    function setSendButtonLoading(loading) {
+        const btn = document.getElementById('send-btn');
+        const icon = btn.querySelector('.send-icon');
+        const spinner = btn.querySelector('.spinner-grow');
+        btn.disabled = loading;
+        icon.classList.toggle('d-none', loading);
+        spinner.classList.toggle('d-none', !loading);
+        messageSending = loading;
+    }
+
+    function scrollToBottom() {
+        const chat = document.getElementById('chat-messages');
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function renderBubble(data, isOwn) {
+        const container = document.createElement('div');
+        container.className = `p-3 ${isOwn ? 'text-end' : 'text-start'}`;
+        container.dataset.messageId = data.message_id;
+
+        const bubbleClass = isOwn ? 'bg-primary text-white' : 'bg-light text-dark';
+        const linkClass = isOwn ? 'text-white' : 'text-primary';
+
+        const reactions = data.reactions || {};
+        const reactionsHtml = Object.entries(reactions)
+            .map(([e, c]) => `<span class="badge bg-white text-dark border reaction-btn">${e} ${c > 1 ? c : ''}</span>`)
+            .join('');
+
+        let tickHtml = '';
+        if (isOwn) {
+            if (data.status === 2) tickHtml = '<i class="fas fa-check-double tick-seen ms-1"></i>';
+            else if (data.status === 1) tickHtml = '<i class="fas fa-check-double tick-double ms-1"></i>';
+            else tickHtml = '<i class="fas fa-check tick-single ms-1"></i>';
+        }
+
+        container.innerHTML = `
+            <div class="d-inline-block ${bubbleClass} rounded p-3 mb-1 shadow-sm message-bubble">
+                ${data.message ? `<div class="small">${data.message.replace(/\n/g, '<br>')}</div>` : ''}
+                ${data.file_url ? `
+                    <a href="${data.file_url}" target="_blank" class="d-block mt-1 small text-decoration-none ${linkClass}">
+                        <i class="fas fa-paperclip"></i> ${data.file_name || 'File'}
+                    </a>` : ''
+                }
+                <div class="reaction-list" style="display: ${reactionsHtml ? 'flex' : 'none'};">
+                    ${reactionsHtml}
+                </div>
+            </div>
+            <div class="text-muted small mt-1 d-flex align-items-center ${isOwn ? 'justify-content-end' : ''}">
+                ${new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                ${tickHtml}
+            </div>`;
+
+        const bubble = container.querySelector('.message-bubble');
+
+        // === MOBILE & DESKTOP LONG PRESS HANDLER (FIXED) ===
+        let pressTimer;
+        const longPressDuration = 550;
+
+        const startPress = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pressTimer = setTimeout(() => {
+                showEmojiPicker(bubble, data.message_id);
+            }, longPressDuration);
+        };
+
+        const cancelPress = (e) => {
+            if (e) e.preventDefault();
+            clearTimeout(pressTimer);
+        };
+
+        // Mobile
+        bubble.addEventListener('touchstart', startPress, { passive: false });
+        bubble.addEventListener('touchend', cancelPress);
+        bubble.addEventListener('touchmove', cancelPress);
+        bubble.addEventListener('touchcancel', cancelPress);
+
+        // Desktop (long press + right click)
+        bubble.addEventListener('mousedown', (e) => {
+            if (e.button === 2) {
+                e.preventDefault();
+                showEmojiPicker(bubble, data.message_id);
+            } else if (e.button === 0) {
+                startPress(e);
+            }
+        });
+        bubble.addEventListener('mouseup', cancelPress);
+        bubble.addEventListener('mouseleave', cancelPress);
+        bubble.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        return container;
+    }
+
+    function showEmojiPicker(bubble, messageId) {
+        // Remove any existing picker
+        document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
+
+        const picker = document.createElement('div');
+        picker.className = 'emoji-picker';
+
+        const emojis = ['👍', '❤️', '😂', '😮', '😢', '😡', '🔥', '🎉'];
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.textContent = emoji;
+            span.onclick = (e) => {
+                e.stopPropagation();
+                chatSocket.send(JSON.stringify({
+                    type: 'reaction',
+                    message_id: messageId,
+                    emoji: emoji
+                }));
+                picker.remove();
+            };
+            span.ontouchstart = (e) => e.stopPropagation(); // Prevent scrolling
+            picker.appendChild(span);
+        });
+
+        bubble.style.position = 'relative';
+        bubble.appendChild(picker);
+
+        // Remove picker when tapping outside
+        const removeOnOutside = (e) => {
+            if (!picker.contains(e.target) && !bubble.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('touchstart', removeOnOutside);
+                document.removeEventListener('click', removeOnOutside);
+            }
+        };
+        setTimeout(() => {
+            document.addEventListener('touchstart', removeOnOutside);
+            document.addEventListener('click', removeOnOutside);
+        }, 0);
+    }
+
+    function connectWS() {
+        if (chatSocket && (chatSocket.readyState === WebSocket.OPEN || chatSocket.readyState === WebSocket.CONNECTING)) return;
+
+        const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+        chatSocket = new WebSocket(`${scheme}://${location.host}/ws/chat/${roomName}/`);
+
+        chatSocket.onopen = () => {
+            console.log('Chat WebSocket connected');
+            setStatus(true);
+        };
+
+        chatSocket.onmessage = (e) => {
+            const d = JSON.parse(e.data);
+
+            if (d.type === 'message') {
+                const isOwn = d.sender_username === currentUser;
+                const bubble = renderBubble(d, isOwn);
+                document.getElementById('chat-messages').appendChild(bubble);
+                scrollToBottom();
+                if (isOwn && messageSending) setSendButtonLoading(false);
+            }
+            else if (d.type === 'typing') {
+                const el = document.getElementById('typing-indicator');
+                const span = el.querySelector('span');
+                if (d.is_typing && d.username !== currentUser) {
+                    span.textContent = d.username;
+                    el.style.display = 'block';
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+            else if (d.type === 'reaction') {
+                const msgDiv = document.querySelector(`[data-message-id="${d.message_id}"]`);
+                if (msgDiv) {
+                    const reactionList = msgDiv.querySelector('.reaction-list');
+                    const reactions = d.reactions || {};
+                    const html = Object.entries(reactions)
+                        .map(([e, c]) => `<span class="badge bg-white text-dark border reaction-btn">${e} ${c > 1 ? c : ''}</span>`)
+                        .join('');
+                    reactionList.innerHTML = html;
+                    reactionList.style.display = html ? 'flex' : 'none';
+                }
+            }
+            else if (d.type === 'status' && d.seen) {
+                document.querySelectorAll('[data-message-id]').forEach(div => {
+                    if (div.classList.contains('text-end')) {
+                        const tick = div.querySelector('.fa-check, .fa-check-double');
+                        if (tick) {
+                            tick.className = 'fas fa-check-double tick-seen ms-1';
+                        }
+                    }
+                });
+            }
+        };
+
+        chatSocket.onclose = () => {
+            setStatus(false);
+            setTimeout(connectWS, 2000);
+        };
+    }
+
+    // Rest of the script (send message, typing, file upload) remains unchanged...
+    document.getElementById('chat-form').onsubmit = (e) => {
+        e.preventDefault();
+        const input = document.getElementById('message-input');
+        const text = input.value.trim();
+
+        if ((!text && !uploadedFile) || messageSending) return;
+        if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) return;
+
+        setSendButtonLoading(true);
+
+        const payload = {
+            type: 'message',
+            receiver_username: receiverUsername,
+            message: text
+        };
+        if (uploadedFile) {
+            payload.file_path = uploadedFile.file_path;
+            payload.file_name = uploadedFile.file_name;
+        }
+
+        chatSocket.send(JSON.stringify(payload));
+        input.value = '';
+        uploadedFile = null;
+        document.getElementById('file-name-display').classList.add('d-none');
+        input.focus();
+    };
+
+    document.getElementById('message-input').addEventListener('input', () => {
+        if (!typingTimer && chatSocket?.readyState === WebSocket.OPEN) {
+            chatSocket.send(JSON.stringify({ type: 'typing', is_typing: true }));
+        }
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            if (chatSocket?.readyState === WebSocket.OPEN) {
+                chatSocket.send(JSON.stringify({ type: 'typing', is_typing: false }));
+            }
+            typingTimer = null;
+        }, TYPING_DELAY);
+    });
+
+    document.getElementById('attach-btn').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        const fd = new FormData();
+        fd.append('file', file);
+        const progressBar = document.querySelector('#upload-progress .progress-bar');
+        const progressContainer = document.getElementById('upload-progress');
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', "{% url 'upload_chat_file' %}", true);
+        xhr.setRequestHeader('X-CSRFToken', csrftoken);
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                progressBar.style.width = (e.loaded / e.total) * 100 + '%';
+            }
+        };
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                const d = JSON.parse(xhr.responseText);
+                if (d.success) {
+                    uploadedFile = { file_path: d.file_path, file_name: d.file_name };
+                    const display = document.getElementById('file-name-display');
+                    display.textContent = d.file_name.length > 12 ? d.file_name.slice(0,10) + '...' : d.file_name;
+                    display.classList.remove('d-none');
+                }
+            }
+            progressContainer.style.display = 'none';
+        };
+        xhr.send(fd);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        connectWS();
+        scrollToBottom();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,225 @@
+{% load static %}
+<div class="modal fade" id="studentIdPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-md-down">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-vcard-fill me-2"></i>Student ID Card Preview</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <div class="id-controls-wrap">
+              <div class="id-control-group">
+                <h6 class="mb-2">Card Design</h6>
+                <label class="form-label small mb-1">Style</label>
+                <select class="form-select form-select-sm" id="idCardDesign">
+                  <option value="horizontal" selected>Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+                <div id="verticalPhotoBgWrap" class="mt-2 d-none">
+                  <label class="form-label small mb-1">Vertical photo background</label>
+                  <input type="color" class="form-control form-control-color" id="idPhotoBgColor" value="#000000" title="Choose vertical photo background">
+                </div>
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Branding</h6>
+                <label class="form-label small mb-1">School icon/logo</label>
+                <input type="file" class="form-control form-control-sm" id="idCardLogoUpload" accept="image/*">
+                <label class="form-label small mt-2 mb-1">Logo X position</label>
+                <input type="range" class="form-range" id="idLogoX" min="-20" max="20" step="1" value="0">
+                <label class="form-label small mb-1">Logo Y position</label>
+                <input type="range" class="form-range" id="idLogoY" min="-20" max="20" step="1" value="0">
+                <label class="form-label small mb-1">Logo scale</label>
+                <input type="range" class="form-range" id="idLogoScale" min="0.2" max="4" step="0.05" value="1">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Photo Position</h6>
+                <label class="form-label small mb-1">Photo X position</label>
+                <input type="range" class="form-range" id="idPhotoX" min="-20" max="20" step="1" value="0">
+                <label class="form-label small mb-1">Photo Y position</label>
+                <input type="range" class="form-range" id="idPhotoY" min="-20" max="20" step="1" value="0">
+                <label class="form-label small mb-1">Photo scale</label>
+                <input type="range" class="form-range" id="idPhotoScale" min="0.8" max="1.4" step="0.05" value="1">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Content Layout</h6>
+                <label class="form-label small mb-1">Details X position</label>
+                <input type="range" class="form-range" id="idContentX" min="-20" max="20" step="1" value="0">
+                <label class="form-label small mb-1">Details Y position</label>
+                <input type="range" class="form-range" id="idContentY" min="-20" max="20" step="1" value="0">
+                <div id="horizontalQrControls">
+                  <label class="form-label small mb-1">QR X position</label>
+                  <input type="range" class="form-range" id="idQrX" min="-20" max="20" step="1" value="0">
+                  <label class="form-label small mb-1">QR Y position</label>
+                  <input type="range" class="form-range" id="idQrY" min="-20" max="20" step="1" value="0">
+                  <label class="form-label small mb-1">QR scale</label>
+                  <input type="range" class="form-range" id="idQrScale" min="0.8" max="2.4" step="0.05" value="1.15">
+                </div>
+                <label class="form-label small mb-1">Name size</label>
+                <input type="range" class="form-range" id="idNameSize" min="12" max="18" step="1" value="14">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Vertical Front Colors</h6>
+                <label class="form-label small mb-1">Top background</label>
+                <input type="color" class="form-control form-control-color" id="idVerticalFrontTopColor" value="#111418">
+                <label class="form-label small mt-2 mb-1">Bottom background</label>
+                <input type="color" class="form-control form-control-color" id="idVerticalFrontBottomColor" value="#ffffff">
+                <label class="form-label small mt-2 mb-1">Accent / labels</label>
+                <input type="color" class="form-control form-control-color" id="idVerticalFrontAccentColor" value="#1469c8">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Vertical Back Colors</h6>
+                <label class="form-label small mb-1">Top background</label>
+                <input type="color" class="form-control form-control-color" id="idVerticalBackTopColor" value="#0a5c9f">
+                <label class="form-label small mt-2 mb-1">Bottom background</label>
+                <input type="color" class="form-control form-control-color" id="idVerticalBackBottomColor" value="#ffffff">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Horizontal Front Colors</h6>
+                <label class="form-label small mb-1">Primary blue</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalFrontPrimaryColor" value="#0b86d8">
+                <label class="form-label small mt-2 mb-1">Header background</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalFrontHeaderColor" value="#ffffff">
+                <label class="form-label small mt-2 mb-1">Accent</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalFrontAccentColor" value="#0a5c9f">
+                <label class="form-label small mt-2 mb-1">Text</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalFrontTextColor" value="#ffffff">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Horizontal Back Colors</h6>
+                <label class="form-label small mb-1">Top section</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalBackTopColor" value="#0a5c9f">
+                <label class="form-label small mt-2 mb-1">Bottom accent text</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalBackAccentColor" value="#113765">
+                <label class="form-label small mt-2 mb-1">Bottom background</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalBackBottomColor" value="#ffffff">
+                <label class="form-label small mt-2 mb-1">Bottom text</label>
+                <input type="color" class="form-control form-control-color" id="idHorizontalBackTextColor" value="#111111">
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Print Setup</h6>
+                <label class="form-label small mb-1">Card zoom</label>
+                <input type="range" class="form-range" id="idCardScale" min="0.85" max="1.2" step="0.05" value="1">
+                <label class="form-label small mt-2 mb-1">Print layout</label>
+                <select class="form-select form-select-sm" id="idPrintLayout">
+                  <option value="single" selected>Single Page</option>
+                  <option value="multiple">Multiple Page</option>
+                </select>
+              </div>
+
+              <div class="id-control-group">
+                <h6 class="mb-2">Print Actions</h6>
+                <button class="btn btn-dark w-100" id="printIdCardBtn"><i class="bi bi-download me-1"></i>Download ID PNG</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <ul class="nav nav-pills mb-3" role="tablist">
+              <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#idFrontTab" type="button">Front</button></li>
+              <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#idBackTab" type="button">Back</button></li>
+            </ul>
+            <div class="tab-content">
+              <div class="tab-pane fade show active" id="idFrontTab">
+                <div class="id-card id-front id-design-horizontal" id="studentFrontCard">
+                  <div class="front-horizontal">
+                    <div class="id-header">
+                      <img src="{% static 'BRITISH_LOGO.png' %}" class="id-logo" id="idSchoolLogo" alt="logo">
+                      <div class="id-title"><span class="id-title-main">THE BRITISH SECONDARY SCHOOL</span><small class="id-subtitle">STUDENT IDENTIFICATION CARD</small></div>
+                      <div class="id-level-badge d-none" id="idLevelBadge"></div>
+                    </div>
+                    <div class="id-h-body">
+                      <div class="id-body">
+                        <div class="id-photo-wrap"><img id="idStudentPhoto" class="id-photo" alt="student"></div>
+                        <div class="id-info" id="idDetailsBlock">
+                          <h6 id="idStudentName" class="mb-1">Student Name</h6>
+                          <div class="id-detail-stack">
+                            <div class="id-detail-block"><span>ID</span><strong class="id-student-index">-</strong></div>
+                            <div class="id-detail-block"><span>Class</span><strong class="id-student-class">-</strong></div>
+                            <div class="id-detail-block"><span>Reg No</span><strong class="id-student-reg">-</strong></div>
+                          </div>
+                        </div>
+                        <div class="id-qr-block" id="idQrBlock">
+                          <img id="idStudentQr" class="id-qr" alt="QR">
+                          <div class="id-qr-meta">
+                            <div><span>Issued</span><strong class="id-issued-text">-</strong></div>
+                            <div><span>Expire</span><strong class="id-expiry-text">-</strong></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="id-front-vertical">
+                    <div class="vertical-top">
+                      <img src="{% static 'BRITISH_LOGO.png' %}" class="id-logo vertical-logo" id="idSchoolLogoVertical" alt="logo">
+                      <div class="vertical-heading">
+                        <h5>THE BRITISH SCHOOL</h5>
+                        <p>STUDENT IDENTIFICATION CARD</p>
+                      </div>
+                      <div class="id-level-badge id-level-badge-vertical d-none" id="idLevelBadgeVertical"></div>
+                    </div>
+                    <div class="vertical-bottom">
+                      <div class="id-photo-wrap vertical-photo-bg vertical-photo">
+                        <img id="idStudentPhotoVertical" class="id-photo" alt="student">
+                      </div>
+                      <div class="vertical-name" id="idStudentNameVertical">Student Name</div>
+                      <div class="vertical-details" id="idDetailsBlockVertical">
+                        <div class="vertical-row"><span class="vertical-label">ID</span><span class="vertical-sep">:</span><span class="vertical-value id-student-index">-</span></div>
+                        <div class="vertical-row"><span class="vertical-label">Class</span><span class="vertical-sep">:</span><span class="vertical-value id-student-class">-</span></div>
+                        <div class="vertical-row"><span class="vertical-label">Reg No</span><span class="vertical-sep">:</span><span class="vertical-value id-student-reg">-</span></div>
+                        <div class="vertical-row"><span class="vertical-label blue">Issued</span><span class="vertical-sep">:</span><span class="vertical-value id-issued-text">-</span></div>
+                        <div class="vertical-row"><span class="vertical-label blue">Expire</span><span class="vertical-sep">:</span><span class="vertical-value id-expiry-text">-</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="tab-pane fade" id="idBackTab">
+                <div class="id-card id-back id-back-horizontal" id="studentBackCard">
+                  <div class="back-horizontal-wrap">
+                    <div class="id-back-top">
+                      <h5>THE BRITISH SECONDARY SCHOOL</h5>
+                      <p>P.O.Box 32536<br>Mwenge ITV, Dar es salaam, Tanzania<br>0655400420 | 0755400420<br>info@britishschool.ac.tz</p>
+                    </div>
+                    <div class="id-back-bottom">
+                      <div class="id-back-note">This card is the property of The British School. If found, please return it to the address above.</div>
+                      <div class="id-signature-wrap">
+                        <div class="id-signature-label">Principal Signature:</div>
+                        <div id="idPrincipalSignatureText" class="id-signature-fallback">p-signature</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="back-vertical-wrap">
+                    <div class="vback-top">
+                      <h5>THE BRITISH SCHOOL</h5>
+                      <p>Student Affairs & Administration</p>
+                      <p class="vback-contact">P.O.Box 32536 • Dar es salaam<br>0655400420 | 0755400420</p>
+                    </div>
+                    <div class="vback-bottom">
+                      <div class="id-back-note">This card remains school property. Kindly return it to The British School administration if found.</div>
+                      <div class="vback-qr-zone">
+                        <img id="idStudentQrVertical" class="id-qr id-qr-vertical" alt="QR">
+                      </div>
+                      <div class="id-signature-wrap">
+                        <div class="id-signature-label">Principal Signature</div>
+                        <div id="idPrincipalSignatureTextVertical" class="id-signature-fallback">p-signature</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

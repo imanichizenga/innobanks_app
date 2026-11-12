@@ -1,0 +1,177 @@
+<!-- templates/required_subjects.html (no changes needed; included for completeness) -->
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<!-- Include Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <h2 class="fw-bold text-primary mb-4"><i class="fas fa-book-open me-2"></i>Required Subjects</h2>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Assign Subject Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Assign New Subject</h5>
+        </div>
+        <div class="card-body">
+            <form action="{% url 'required_subjects' %}" method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12 col-md-4">
+                    <label for="subject" class="form-label fw-semibold"><i class="fas fa-book me-2"></i>Subject</label>
+                    <select name="subject" id="subject" class="form-select" required>
+                        <option value="" disabled {% if not last_subject_id %}selected{% endif %}>Select a Subject</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if last_subject_id == subject.id|stringformat:"s" %}selected{% endif %}>{{ subject.nameSubject|default:"Unnamed Subject" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="level" class="form-label fw-semibold"><i class="fas fa-level-up-alt me-2"></i>Level</label>
+                    <select name="level" id="level" class="form-select" required>
+                        <option value="" disabled {% if not last_level %}selected{% endif %}>Select Level</option>
+                        <option value="Primary" {% if last_level == 'Primary' %}selected{% endif %}>Primary</option>
+                        <option value="Olevel" {% if last_level == 'Olevel' %}selected{% endif %}>O Level</option>
+                        <option value="Alevel" {% if last_level == 'Alevel' %}selected{% endif %}>A Level</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="teacherclass" class="form-label fw-semibold"><i class="fas fa-chalkboard-teacher me-2"></i>Class</label>
+                    <select name="teacherclass" id="teacherclass" class="form-select" required>
+                        <option value="" disabled {% if not last_teacherclass_id %}selected{% endif %}>Select a Class</option>
+                        {% for teacherclass in teacher_classes %}
+                        <option value="{{ teacherclass.id }}" {% if last_teacherclass_id == teacherclass.id|stringformat:"s" %}selected{% endif %}>{{ teacherclass }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" type="submit" name="assign">
+                        <i class="fas fa-plus-circle me-2"></i>Assign
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter by Class</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12 col-md-6">
+                    <label for="filter_teacherclass" class="form-label fw-semibold"><i class="fas fa-chalkboard-teacher me-2"></i>Select Class to Filter</label>
+                    <select id="filter_teacherclass" class="form-select">
+                        <option value="">All Classes</option>
+                        {% for teacherclass in teacher_classes %}
+                        <option value="{{ teacherclass.id }}">{{ teacherclass }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subjects Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Required Subjects</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped align-middle m-0 table-bordered" id="required-subjects-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="text-center" style="width: 10%;">#</th>
+                            <th scope="col" style="width: 20%;">Subject</th>
+                            <th scope="col" style="width: 15%;">Level</th>
+                            <th scope="col" style="width: 25%;" class="filterable-column">Class</th>
+                            <th scope="col" style="width: 15%;">Assigned By</th>
+                            <th scope="col" class="text-center" style="width: 15%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in required_subjects %}
+                        <tr data-teacherclass-id="{{ subject.teacherclass.id|default:0 }}">
+                            <td class="text-center">{{ forloop.counter }}</td>
+                            <td>{{ subject.subject.nameSubject|default:"Unnamed Subject" }}</td>
+                            <td>{{ subject.get_level_display }}</td>
+                            <td class="filterable-cell">{{ subject.teacherclass|default:"No Class Assigned" }}</td>
+                            <td>{{ subject.user.username }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'update_required_subject' subject.id %}" class="btn btn-primary btn-sm me-1">
+                                    <i class="fas fa-edit me-1"></i>Update
+                                </a>
+                                <a href="{% url 'delete_required_subject' subject.id %}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt me-1"></i>Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>No subjects found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterSelect = document.getElementById('filter_teacherclass');
+    const table = document.getElementById('required-subjects-table');
+    const rows = table.querySelectorAll('tbody tr');
+
+    filterSelect.addEventListener('change', function() {
+        const selectedClassId = this.value;
+        let visibleRows = 0;
+
+        rows.forEach(function(row) {
+            const rowClassId = row.getAttribute('data-teacherclass-id');
+            const rowClassCell = row.querySelector('.filterable-cell');
+
+            if (selectedClassId === '' || rowClassId == selectedClassId) {
+                row.style.display = '';
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update the counter column if needed (optional: re-number visible rows)
+        const visibleRowIndices = Array.from(rows).filter(row => row.style.display !== 'none').map((_, index) => index + 1);
+        let counter = 1;
+        rows.forEach(function(row, index) {
+            if (row.style.display !== 'none') {
+                const counterCell = row.querySelector('td:first-child');
+                counterCell.textContent = counter++;
+            }
+        });
+
+        // Optional: Show/hide "no subjects found" message
+        const emptyRow = table.querySelector('tbody tr td[colspan="6"]');
+        if (emptyRow) {
+            emptyRow.parentElement.style.display = visibleRows === 0 ? '' : 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

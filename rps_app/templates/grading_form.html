@@ -1,0 +1,791 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-4 my-lg-5">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold text-primary mb-1">
+        <i class="fas fa-graduation-cap me-2"></i>Grading System
+      </h2>
+      <div class="text-muted small">Set grade “start points”, and the system will auto-calculate the ranges.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+      {% if grading_instance %}
+      <a href="{% url 'grading_form' %}" class="btn btn-outline-secondary rounded-pill px-4">
+        <i class="fas fa-arrow-left me-2"></i>Back to List
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Messages -->
+  {% if messages %}
+  <div class="mb-4">
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show rounded-4" role="alert">
+        <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- LEFT: Form -->
+    <div class="col-lg-7">
+
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4 p-lg-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+              <i class="fas fa-book me-2"></i>
+              {% if grading_instance %}Update{% else %}Add{% endif %} Grading System
+            </h5>
+            <span class="badge bg-light text-dark border rounded-pill px-3 py-2">
+              <i class="fas fa-magic me-2"></i>Auto ranges enabled
+            </span>
+          </div>
+
+          {% if grading_instance %}
+          <form action="{% url 'grading_form' grading_instance.id %}" method="POST" id="gradingForm" class="row g-3">
+          {% else %}
+          <form action="{% url 'grading_form' %}" method="POST" id="gradingForm" class="row g-3">
+          {% endif %}
+            {% csrf_token %}
+
+            <!-- Grading type -->
+            <div class="col-12">
+              <label class="form-label fw-semibold mb-2">Choose grading type</label>
+
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        id="type_primary"
+                        name="grading_type"
+                        value="primary"
+                        {% if grading_instance and grading_instance.is_primary %}checked{% endif %}
+                      >
+                      <label class="form-check-label fw-semibold" for="type_primary">
+                        <i class="fas fa-school me-2 text-primary"></i>Primary
+                      </label>
+                      <div class="text-muted small mt-1">A, B, C, D, E</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        id="type_olevel"
+                        name="grading_type"
+                        value="o_level"
+                        {% if is_o_level_default %}checked{% endif %}
+                        {% if grading_instance and not grading_instance.is_primary and not grading_instance.is_advance %}checked{% endif %}
+                      >
+                      <label class="form-check-label fw-semibold" for="type_olevel">
+                        <i class="fas fa-graduation-cap me-2 text-primary"></i>O-Level
+                      </label>
+                      <div class="text-muted small mt-1">A, B, C, D, F + Divisions</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        id="type_alevel"
+                        name="grading_type"
+                        value="advance"
+                        {% if grading_instance and grading_instance.is_advance %}checked{% endif %}
+                      >
+                      <label class="form-check-label fw-semibold" for="type_alevel">
+                        <i class="fas fa-level-up-alt me-2 text-primary"></i>A-Level
+                      </label>
+                      <div class="text-muted small mt-1">A, B, C, D, E, S, F + Divisions</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-2">
+
+            <!-- Grade start inputs -->
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="fw-semibold">Grade thresholds (start points)</div>
+                <div class="text-muted small">
+                  Example: A starts at 70 ⇒ <span class="fw-semibold">70–100</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>A starts at</label>
+              <input type="number" class="form-control rounded-4" name="grade_a" id="grade_a"
+                     value="{{ grading_instance.grade_a|default:'' }}" required max="100" min="0" placeholder="e.g. 80">
+              <div class="form-text" id="range_a"></div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>B starts at</label>
+              <input type="number" class="form-control rounded-4" name="grade_b" id="grade_b"
+                     value="{{ grading_instance.grade_b|default:'' }}" required max="100" min="0" placeholder="e.g. 70">
+              <div class="form-text" id="range_b"></div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>C starts at</label>
+              <input type="number" class="form-control rounded-4" name="grade_c" id="grade_c"
+                     value="{{ grading_instance.grade_c|default:'' }}" required max="100" min="0" placeholder="e.g. 60">
+              <div class="form-text" id="range_c"></div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>D starts at</label>
+              <input type="number" class="form-control rounded-4" name="grade_d" id="grade_d"
+                     value="{{ grading_instance.grade_d|default:'' }}" required max="100" min="0" placeholder="e.g. 50">
+              <div class="form-text" id="range_d"></div>
+            </div>
+
+            <!-- A-Level only -->
+            <div class="col-12" id="advancedFields" style="display: {% if grading_instance and grading_instance.is_advance %}block{% else %}none{% endif %};">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>E starts at</label>
+                  <input type="number" class="form-control rounded-4" name="grade_e" id="grade_e"
+                         value="{{ grading_instance.grade_e|default:'' }}" max="100" min="0" placeholder="e.g. 40">
+                  <div class="form-text" id="range_e"></div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-semibold"><i class="fas fa-star me-2"></i>S starts at</label>
+                  <input type="number" class="form-control rounded-4" name="grade_s" id="grade_s"
+                         value="{{ grading_instance.grade_s|default:'' }}" max="100" min="0" placeholder="e.g. 35">
+                  <div class="form-text" id="range_s"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Primary: E starts at  (O/A-level: F starts at) -->
+            <div class="col-12">
+              <label class="form-label fw-semibold" id="lastGradeLabel">
+                <i class="fas fa-star me-2"></i><span id="lastGradeLetter">F</span> starts at
+              </label>
+              <input type="number" class="form-control rounded-4" name="grade_f" id="grade_f"
+                     value="{{ grading_instance.grade_f|default:'' }}" required max="100" min="0" placeholder="e.g. 0 / 40">
+              <div class="form-text" id="range_f"></div>
+            </div>
+
+            <!-- Divisions (not Primary) -->
+            <div class="col-12" id="divisionFields" style="display: {% if grading_instance and not grading_instance.is_primary %}block{% else %}none{% endif %};">
+              <div class="border rounded-4 p-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <div class="fw-semibold"><i class="fas fa-trophy me-2 text-warning"></i>Divisions (required for O-Level & A-Level)</div>
+                  <div class="text-muted small">Enter the “ends at” points (positive numbers)</div>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold mb-1">Division I ends at</label>
+                    <input type="number" class="form-control rounded-4" name="division_1" id="division_1"
+                           value="{{ grading_instance.division_1|default:'' }}" min="1">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold mb-1">Division II ends at</label>
+                    <input type="number" class="form-control rounded-4" name="division_2" id="division_2"
+                           value="{{ grading_instance.division_2|default:'' }}" min="1">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold mb-1">Division III ends at</label>
+                    <input type="number" class="form-control rounded-4" name="division_3" id="division_3"
+                           value="{{ grading_instance.division_3|default:'' }}" min="1">
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold mb-1">Division IV ends at</label>
+                    <input type="number" class="form-control rounded-4" name="division_4" id="division_4"
+                           value="{{ grading_instance.division_4|default:'' }}" min="1">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live validation message -->
+            <div class="col-12">
+              <div id="liveHint" class="alert alert-warning rounded-4 py-2 px-3 d-none mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span id="liveHintText"></span>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="col-12">
+              <button class="btn btn-primary w-100 rounded-pill py-2" type="submit" id="submitButton">
+                <i class="fas fa-{% if grading_instance %}edit{% else %}plus-circle{% endif %} me-2"></i>
+                <span class="button-text">{% if grading_instance %}Update{% else %}Add{% endif %} Grading System</span>
+                <span class="spinner-border spinner-border-sm d-none" id="loadingSpinner" role="status" aria-hidden="true"></span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Live Preview -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 position-sticky" style="top: 1rem;">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <h6 class="fw-bold mb-0">
+              <i class="fas fa-table me-2 text-primary"></i>Live Preview (auto-calculated)
+            </h6>
+            <span class="badge bg-light text-dark border rounded-pill" id="previewTypeBadge">—</span>
+          </div>
+          <div class="text-muted small mb-3">This is what your thresholds mean as ranges.</div>
+
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr class="text-muted small">
+                  <th style="width: 20%;">Grade</th>
+                  <th style="width: 40%;">Start</th>
+                  <th style="width: 40%;">End</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="small text-muted">
+            <i class="fas fa-info-circle me-2"></i>
+            End values are calculated as “next grade start − 1”, and top grade ends at 100.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  {% if not grading_instance %}
+  <!-- Saved grading systems (with division ranges) -->
+  <div class="mt-5">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <div>
+        <h5 class="fw-bold mb-1"><i class="fas fa-archive me-2 text-primary"></i>Saved Grading Systems</h5>
+        <div class="text-muted small">Each card shows the calculated ranges (not only start points).</div>
+      </div>
+      <button class="btn btn-outline-primary rounded-pill px-4" type="button"
+              data-bs-toggle="collapse" data-bs-target="#gradingTables" aria-expanded="true" aria-controls="gradingTables">
+        <i class="fas fa-eye me-2"></i>Show / Hide
+      </button>
+    </div>
+
+    <div class="collapse show" id="gradingTables">
+      <div class="row g-4">
+
+        <!-- PRIMARY -->
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-success text-white rounded-top-4 d-flex justify-content-between align-items-center">
+              <div class="fw-semibold"><i class="fas fa-school me-2"></i>Primary (A–E)</div>
+              <span class="badge bg-light text-dark rounded-pill">{{ primary_grades|length }} saved</span>
+            </div>
+
+            <div class="card-body p-3 p-lg-4">
+              {% if primary_grades %}
+                <div class="row g-3">
+                  {% for g in primary_grades %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="border rounded-4 p-3 h-100">
+                      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="fw-semibold"><i class="fas fa-layer-group me-2 text-success"></i>Primary System</div>
+                        <span class="badge bg-light text-dark border rounded-pill">ID: {{ g.id }}</span>
+                      </div>
+
+                      <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2">
+                          <thead>
+                            <tr class="text-muted small"><th>Grade</th><th>Range</th></tr>
+                          </thead>
+                          <tbody class="small">
+                            <tr><td class="fw-semibold">A</td><td>{{ g.grade_a }}–100</td></tr>
+                            <tr><td class="fw-semibold">B</td><td>{{ g.grade_b }}–{{ g.grade_a|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">C</td><td>{{ g.grade_c }}–{{ g.grade_b|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">D</td><td>{{ g.grade_d }}–{{ g.grade_c|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">E</td><td>{{ g.grade_e }}–{{ g.grade_d|add:"-1" }}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div class="d-flex gap-2 mt-2">
+                        <a href="{% url 'grading_form' g.id %}" class="btn btn-warning btn-sm rounded-pill flex-grow-1">
+                          <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'delete_grading_system' g.id %}" class="btn btn-danger btn-sm rounded-pill flex-grow-1"
+                           onclick="return confirm('Are you sure you want to delete this grading system?')">
+                          <i class="fas fa-trash-alt me-1"></i>Delete
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="alert alert-info rounded-4 mb-0">
+                  <i class="fas fa-exclamation-circle me-2"></i>No Primary grading systems recorded yet.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- O-LEVEL -->
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-primary text-white rounded-top-4 d-flex justify-content-between align-items-center">
+              <div class="fw-semibold"><i class="fas fa-graduation-cap me-2"></i>O-Level (A–F) + Divisions</div>
+              <span class="badge bg-light text-dark rounded-pill">{{ o_level_grades|length }} saved</span>
+            </div>
+
+            <div class="card-body p-3 p-lg-4">
+              {% if o_level_grades %}
+                <div class="row g-3">
+                  {% for g in o_level_grades %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="border rounded-4 p-3 h-100">
+                      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="fw-semibold"><i class="fas fa-layer-group me-2 text-primary"></i>O-Level System</div>
+                        <span class="badge bg-light text-dark border rounded-pill">ID: {{ g.id }}</span>
+                      </div>
+
+                      <!-- Grades -->
+                      <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2">
+                          <thead>
+                            <tr class="text-muted small"><th>Grade</th><th>Range</th></tr>
+                          </thead>
+                          <tbody class="small">
+                            <tr><td class="fw-semibold">A</td><td>{{ g.grade_a }}–100</td></tr>
+                            <tr><td class="fw-semibold">B</td><td>{{ g.grade_b }}–{{ g.grade_a|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">C</td><td>{{ g.grade_c }}–{{ g.grade_b|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">D</td><td>{{ g.grade_d }}–{{ g.grade_c|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">F</td><td>{{ g.grade_f }}–{{ g.grade_d|add:"-1" }}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <!-- Divisions (Ranges) -->
+                      <div class="border rounded-4 p-3 bg-light">
+                        <div class="fw-semibold small mb-2">
+                          <i class="fas fa-trophy me-2 text-warning"></i>Divisions (ranges)
+                        </div>
+
+                        <div class="table-responsive">
+                          <table class="table table-sm align-middle mb-0">
+                            <thead>
+                              <tr class="text-muted small">
+                                <th>Division</th>
+                                <th>Range</th>
+                              </tr>
+                            </thead>
+                            <tbody class="small">
+                              <tr>
+                                <td class="fw-semibold">Div I</td>
+                                <td>7–{{ g.division_1 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div II</td>
+                                <td>{{ g.division_1|add:"1" }}–{{ g.division_2 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div III</td>
+                                <td>{{ g.division_2|add:"1" }}–{{ g.division_3 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div IV</td>
+                                <td>{{ g.division_3|add:"1" }}–{{ g.division_4 }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div class="text-muted small mt-2">
+                          <i class="fas fa-info-circle me-2"></i>
+                          Starts at <span class="fw-semibold">7</span> then next starts at previous end + 1.
+                        </div>
+                      </div>
+
+                      <div class="d-flex gap-2 mt-2">
+                        <a href="{% url 'grading_form' g.id %}" class="btn btn-warning btn-sm rounded-pill flex-grow-1">
+                          <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'delete_grading_system' g.id %}" class="btn btn-danger btn-sm rounded-pill flex-grow-1"
+                           onclick="return confirm('Are you sure you want to delete this grading system?')">
+                          <i class="fas fa-trash-alt me-1"></i>Delete
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="alert alert-info rounded-4 mb-0">
+                  <i class="fas fa-exclamation-circle me-2"></i>No O-Level grading systems recorded yet.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- A-LEVEL -->
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+              <div class="fw-semibold"><i class="fas fa-level-up-alt me-2"></i>A-Level (A–F) + Divisions</div>
+              <span class="badge bg-light text-dark rounded-pill">{{ a_level_grades|length }} saved</span>
+            </div>
+
+            <div class="card-body p-3 p-lg-4">
+              {% if a_level_grades %}
+                <div class="row g-3">
+                  {% for g in a_level_grades %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="border rounded-4 p-3 h-100">
+                      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="fw-semibold"><i class="fas fa-layer-group me-2 text-dark"></i>A-Level System</div>
+                        <span class="badge bg-light text-dark border rounded-pill">ID: {{ g.id }}</span>
+                      </div>
+
+                      <!-- Grades -->
+                      <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2">
+                          <thead>
+                            <tr class="text-muted small"><th>Grade</th><th>Range</th></tr>
+                          </thead>
+                          <tbody class="small">
+                            <tr><td class="fw-semibold">A</td><td>{{ g.grade_a }}–100</td></tr>
+                            <tr><td class="fw-semibold">B</td><td>{{ g.grade_b }}–{{ g.grade_a|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">C</td><td>{{ g.grade_c }}–{{ g.grade_b|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">D</td><td>{{ g.grade_d }}–{{ g.grade_c|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">E</td><td>{{ g.grade_e }}–{{ g.grade_d|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">S</td><td>{{ g.grade_s }}–{{ g.grade_e|add:"-1" }}</td></tr>
+                            <tr><td class="fw-semibold">F</td><td>{{ g.grade_f }}–{{ g.grade_s|add:"-1" }}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <!-- Divisions (Ranges) -->
+                      <div class="border rounded-4 p-3 bg-light">
+                        <div class="fw-semibold small mb-2">
+                          <i class="fas fa-trophy me-2 text-warning"></i>Divisions (ranges)
+                        </div>
+
+                        <div class="table-responsive">
+                          <table class="table table-sm align-middle mb-0">
+                            <thead>
+                              <tr class="text-muted small">
+                                <th>Division</th>
+                                <th>Range</th>
+                              </tr>
+                            </thead>
+                            <tbody class="small">
+                              <tr>
+                                <td class="fw-semibold">Div I</td>
+                                <td>7–{{ g.division_1 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div II</td>
+                                <td>{{ g.division_1|add:"1" }}–{{ g.division_2 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div III</td>
+                                <td>{{ g.division_2|add:"1" }}–{{ g.division_3 }}</td>
+                              </tr>
+                              <tr>
+                                <td class="fw-semibold">Div IV</td>
+                                <td>{{ g.division_3|add:"1" }}–{{ g.division_4 }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div class="text-muted small mt-2">
+                          <i class="fas fa-info-circle me-2"></i>
+                          Starts at <span class="fw-semibold">7</span> then next starts at previous end + 1.
+                        </div>
+                      </div>
+
+                      <div class="d-flex gap-2 mt-2">
+                        <a href="{% url 'grading_form' g.id %}" class="btn btn-warning btn-sm rounded-pill flex-grow-1">
+                          <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'delete_grading_system' g.id %}" class="btn btn-danger btn-sm rounded-pill flex-grow-1"
+                           onclick="return confirm('Are you sure you want to delete this grading system?')">
+                          <i class="fas fa-trash-alt me-1"></i>Delete
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="alert alert-info rounded-4 mb-0">
+                  <i class="fas fa-exclamation-circle me-2"></i>No A-Level grading systems recorded yet.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('gradingForm');
+  const submitButton = document.getElementById('submitButton');
+  const spinner = document.getElementById('loadingSpinner');
+
+  const advancedFields = document.getElementById('advancedFields');
+  const divisionFields = document.getElementById('divisionFields');
+
+  const lastGradeLetter = document.getElementById('lastGradeLetter');
+  const previewBody = document.getElementById('previewBody');
+  const previewTypeBadge = document.getElementById('previewTypeBadge');
+
+  const liveHint = document.getElementById('liveHint');
+  const liveHintText = document.getElementById('liveHintText');
+
+  const gradingTypeRadios = document.querySelectorAll('input[name="grading_type"]');
+
+  const inputs = {
+    a: document.getElementById('grade_a'),
+    b: document.getElementById('grade_b'),
+    c: document.getElementById('grade_c'),
+    d: document.getElementById('grade_d'),
+    e: document.getElementById('grade_e'),
+    s: document.getElementById('grade_s'),
+    f: document.getElementById('grade_f'),
+  };
+
+  const rangeText = {
+    a: document.getElementById('range_a'),
+    b: document.getElementById('range_b'),
+    c: document.getElementById('range_c'),
+    d: document.getElementById('range_d'),
+    e: document.getElementById('range_e'),
+    s: document.getElementById('range_s'),
+    f: document.getElementById('range_f'),
+  };
+
+  function selectedType() {
+    const selected = document.querySelector('input[name="grading_type"]:checked');
+    return selected ? selected.value : null;
+  }
+
+  function setRequired(selector, required) {
+    document.querySelectorAll(selector).forEach(el => el.required = required);
+  }
+
+  function toggleFields() {
+    const type = selectedType();
+
+    if (type === 'advance') {
+      advancedFields.style.display = 'block';
+      setRequired('input[name="grade_e"], input[name="grade_s"]', true);
+    } else {
+      advancedFields.style.display = 'none';
+      setRequired('input[name="grade_e"], input[name="grade_s"]', false);
+      if (inputs.e) inputs.e.value = '';
+      if (inputs.s) inputs.s.value = '';
+    }
+
+    if (type === 'primary') {
+      divisionFields.style.display = 'none';
+      setRequired('input[name="division_1"], input[name="division_2"], input[name="division_3"], input[name="division_4"]', false);
+      ['division_1','division_2','division_3','division_4'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    } else {
+      divisionFields.style.display = 'block';
+      setRequired('input[name="division_1"], input[name="division_2"], input[name="division_3"], input[name="division_4"]', true);
+    }
+
+    if (type === 'primary') {
+      lastGradeLetter.textContent = 'E';
+      previewTypeBadge.textContent = 'Primary (A–E)';
+      if (inputs.f) inputs.f.placeholder = 'e.g. 40';
+    } else if (type === 'advance') {
+      lastGradeLetter.textContent = 'F';
+      previewTypeBadge.textContent = 'A-Level (A–F)';
+      if (inputs.f) inputs.f.placeholder = 'e.g. 0';
+    } else {
+      lastGradeLetter.textContent = 'F';
+      previewTypeBadge.textContent = 'O-Level (A–F)';
+      if (inputs.f) inputs.f.placeholder = 'e.g. 0';
+    }
+
+    computePreview();
+  }
+
+  function toInt(v) {
+    if (v === null || v === undefined) return null;
+    const t = String(v).trim();
+    if (t === '') return null;
+    const n = parseInt(t, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function showHint(msg) {
+    if (!msg) {
+      liveHint.classList.add('d-none');
+      liveHintText.textContent = '';
+      return;
+    }
+    liveHint.classList.remove('d-none');
+    liveHintText.textContent = msg;
+  }
+
+  function computeRanges(letters, valuesMap) {
+    const rows = [];
+
+    const missing = letters.filter(L => valuesMap[L] === null || valuesMap[L] === undefined);
+    if (missing.length) {
+      return { rows, error: null, incomplete: true };
+    }
+
+    for (const L of letters) {
+      const v = valuesMap[L];
+      if (!(v >= 0 && v <= 100)) {
+        return { rows: [], error: `All grade values must be between 0 and 100.`, incomplete: false };
+      }
+    }
+
+    for (let i = 0; i < letters.length - 1; i++) {
+      const cur = valuesMap[letters[i]];
+      const next = valuesMap[letters[i+1]];
+      if (!(cur > next)) {
+        return { rows: [], error: `Starts must be strictly descending: ${letters.join(' > ')}.`, incomplete: false };
+      }
+    }
+
+    for (let i = 0; i < letters.length; i++) {
+      const L = letters[i];
+      const start = valuesMap[L];
+      const end = (i === 0) ? 100 : (valuesMap[letters[i-1]] - 1);
+      rows.push({ grade: L, start, end });
+    }
+
+    return { rows, error: null, incomplete: false };
+  }
+
+  function computePreview() {
+    const type = selectedType();
+
+    const A = toInt(inputs.a.value);
+    const B = toInt(inputs.b.value);
+    const C = toInt(inputs.c.value);
+    const D = toInt(inputs.d.value);
+
+    const gradeFInput = toInt(inputs.f.value);
+    const E = inputs.e ? toInt(inputs.e.value) : null;
+    const S = inputs.s ? toInt(inputs.s.value) : null;
+
+    let letters = [];
+    let map = {};
+
+    if (type === 'primary') {
+      letters = ['A','B','C','D','E'];
+      map = { A, B, C, D, E: gradeFInput };
+    } else if (type === 'advance') {
+      letters = ['A','B','C','D','E','S','F'];
+      map = { A, B, C, D, E, S, F: gradeFInput };
+    } else {
+      letters = ['A','B','C','D','F'];
+      map = { A, B, C, D, F: gradeFInput };
+    }
+
+    const res = computeRanges(letters, map);
+
+    Object.values(rangeText).forEach(el => { if (el) el.textContent = ''; });
+
+    if (res.error) {
+      showHint(res.error);
+      previewBody.innerHTML = `<tr><td colspan="3" class="text-muted small py-3">Fix the warning to see preview.</td></tr>`;
+      return;
+    }
+    showHint(null);
+
+    if (res.incomplete) {
+      previewBody.innerHTML = `<tr><td colspan="3" class="text-muted small py-3">Fill all required “start at” fields to see preview.</td></tr>`;
+      return;
+    }
+
+    previewBody.innerHTML = res.rows.map(r => `
+      <tr>
+        <td class="fw-semibold">${r.grade}</td>
+        <td>${r.start}</td>
+        <td>${r.end}</td>
+      </tr>
+    `).join('');
+
+    const byGrade = {};
+    res.rows.forEach(r => byGrade[r.grade] = `${r.start}–${r.end}`);
+
+    if (rangeText.a) rangeText.a.textContent = byGrade.A ? `Range: ${byGrade.A}` : '';
+    if (rangeText.b) rangeText.b.textContent = byGrade.B ? `Range: ${byGrade.B}` : '';
+    if (rangeText.c) rangeText.c.textContent = byGrade.C ? `Range: ${byGrade.C}` : '';
+    if (rangeText.d) rangeText.d.textContent = byGrade.D ? `Range: ${byGrade.D}` : '';
+
+    if (type === 'advance') {
+      if (rangeText.e) rangeText.e.textContent = byGrade.E ? `Range: ${byGrade.E}` : '';
+      if (rangeText.s) rangeText.s.textContent = byGrade.S ? `Range: ${byGrade.S}` : '';
+      if (rangeText.f) rangeText.f.textContent = byGrade.F ? `Range: ${byGrade.F}` : '';
+    } else if (type === 'primary') {
+      if (rangeText.f) rangeText.f.textContent = byGrade.E ? `Range: ${byGrade.E}` : '';
+    } else {
+      if (rangeText.f) rangeText.f.textContent = byGrade.F ? `Range: ${byGrade.F}` : '';
+    }
+  }
+
+  gradingTypeRadios.forEach(r => r.addEventListener('change', toggleFields));
+  Object.values(inputs).forEach(el => { if (el) el.addEventListener('input', computePreview); });
+
+  if (form) {
+    form.addEventListener('submit', function () {
+      submitButton.disabled = true;
+      spinner.classList.remove('d-none');
+      submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+  }
+
+  toggleFields();
+  computePreview();
+});
+</script>
+{% endblock %}

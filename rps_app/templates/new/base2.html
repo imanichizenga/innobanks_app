@@ -1,0 +1,337 @@
+{% load static %}
+{% load custom_filters %}
+{% load pwa %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% progressive_web_app_meta %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ footer.host_required|default:"School Management System" }}{% endblock %}</title>
+
+  <!-- Bootstrap Icons CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Bootstrap CSS -->
+  <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <link href="{% static 'assets/vendor/aos/aos.css' %}" rel="stylesheet">
+  <link href="{% static 'assets/vendor/glightbox/css/glightbox.min.css' %}" rel="stylesheet">
+  <link href="{% static 'assets/vendor/swiper/swiper-bundle.min.css' %}" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="{% static 'assets/css/main.css' %}" rel="stylesheet">
+
+  <!-- Toast CSS -->
+  <style>
+    .content-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 200px);
+      padding: 15px;
+    }
+    .toast-container {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 10000;
+    }
+    .toast {
+      min-width: 300px;
+    }
+    @media (max-width: 400px) {
+      .content-container {
+        padding: 10px;
+      }
+      .toast-container {
+        top: 10px;
+        right: 10px;
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body class="index-page">
+  <!-- Toast Message Area -->
+  <div class="toast-container">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="toast align-items-center {% if message.tags == 'success' %}text-bg-success{% elif message.tags == 'error' %}text-bg-danger{% elif message.tags == 'warning' %}text-bg-warning{% elif message.tags == 'info' %}text-bg-info{% else %}text-bg-secondary{% endif %} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <header id="header" class="header dark-background d-flex flex-column">
+    <i class="header-toggle d-xl-none bi bi-list"></i>
+
+    <div class="profile-img">
+      {% if global_top_icon %}
+        <img src="{{ global_top_icon }}" alt="Profile Image" class="img-fluid rounded-circle">
+      {% else %}
+        <img src="{% static 'innobanks.png' %}" alt="Default Icon" class="img-fluid rounded-circle">
+      {% endif %}
+    </div>
+
+    <a href="{% url 'login_view' %}" class="logo d-flex align-items-center justify-content-center">
+      <h1 class="sitename">@{{ request.user.username|default:'Guest' }}</h1>
+    </a>
+
+    <div class="social-links text-center">
+      <a href="{{ footer.twitter_link|default:'#' }}" class="twitter"><i class="bi bi-twitter-x"></i></a>
+      <a href="{{ footer.facebook_link|default:'#' }}" class="facebook"><i class="bi bi-facebook"></i></a>
+      <a href="{{ footer.instagram_link|default:'#' }}" class="instagram"><i class="bi bi-instagram"></i></a>
+      <a href="{{ footer.skype_link|default:'#' }}" class="google-plus"><i class="bi bi-skype"></i></a>
+      <a href="{{ footer.linkedin_link|default:'#' }}" class="linkedin"><i class="bi bi-linkedin"></i></a>
+    </div>
+
+    <nav id="navmenu" class="navmenu">
+      <ul>
+        {% if user.is_superuser %}
+
+       
+
+
+   {% endif %}     
+        {% if user.is_authenticated %}
+          {% if user.is_student %}
+            <!-- Student Links -->
+            {% if user|has_verified_email %}
+              <li><a href="{% url 'change_password' %}"><i class="bi bi-key navicon"></i> Change Password</a></li>
+              
+              <li><a href="{% url 'student_profile' %}"><i class="bi bi-person-circle navicon"></i> Profile</a></li>
+      
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% else %}
+              <li><a href="{% url 'request_otp' 'verification' %}"><i class="bi bi-envelope-check navicon"></i> VERIFY EMAIL</a></li>
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% endif %}
+          {% elif user.is_teacher %}
+            <!-- Teacher or Superuser Links -->
+            {% if user|has_verified_email %}
+            {% if not request.user.is_superuser %}
+            <li><a href="{% url 'teacher_profile' %}"><i class="bi bi-person-circle navicon"></i> Profile</a></li>
+            {% endif %}
+              <li><a href="{% url 'teacher_dashboard' %}"><i class="bi bi-award navicon"></i> Marks</a></li>
+              <li><a href="{% url 'change_password' %}"><i class="bi bi-key navicon"></i> Change Password</a></li>
+              
+              {% if request.user.is_teacher and user.is_active and user.is_superuser %}
+              <li>
+  <a href="{% url 'result_evaluation' %}">
+    <i class="bi bi-arrow-down-circle navicon"></i> Retrieve
+  </a>
+</li>
+
+<li>
+  <a href="{% url 'search_result' %}">
+    <i class="bi bi-search navicon"></i> Search
+  </a>
+</li>
+
+<li>
+  <a href="{% url 'send_single_student_sms' %}">
+    <i class="bi bi-chat-text navicon"></i> SMS
+  </a>
+</li>
+
+
+
+
+
+
+                <li class="dropdown">
+                      <a href="#"><i class="bi bi-clipboard-check navicon"></i> <span>ATTENDANCE</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+
+                        <li><a href="{% url 'attendance:student_attendance' %}">Student</a></li>
+                        <li><a href="{% url 'attendance:staff_attendance' %}">Staff</a></li>
+                        <li><a href="{% url 'attendance:manual_student_attendance' %}">Manual Student</a></li>
+                        <li><a href="{% url 'attendance:manual_staff_attendance' %}">Manual Staff</a></li>
+                      </ul>
+                    </li>
+
+
+
+                <li class="dropdown">
+                  <a href="#"><i class="bi bi-book navicon"></i> <span>ACADEMICS</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                  <ul>
+                    <li class="dropdown">
+                      <a href="#"><i class="bi bi-person-plus navicon"></i> <span>Register</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+                        <li><a href="{% url 'create_academic_year' %}">Academic Year</a></li>
+                        <li><a href="{% url 'create_teacher_class' %}">Add Class</a></li>
+                        <li><a href="{% url 'examination_create' %}">examination</a></li>
+                        <li><a href="{% url 'create_subject' %}">Add Subject</a></li>
+                        <li><a href="{% url 'create_teacher' %}">Add Teacher</a></li>
+                        <li><a href="{% url 'create_student' %}">Add Student</a></li>
+                        <li><a href="{% url 'finance:assign_student_registration' %}">Joined Date</a></li>
+                        <li><a href="{% url 'finance:assign_student_focus' %}">Student Focus</a></li>
+                      </ul>
+                    </li>
+                    <li class="dropdown">
+                      <a href="#"><i class="bi bi-gear navicon"></i> <span>Settings</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+                        <li><a href="{% url 'grading_form' %}">Grading System</a></li>
+                        <li><a href="{% url 'display' %}">Display</a></li>
+                        <li><a href="{% url 'assign_teachers' %}">Teacher Subject</a></li>
+                        <li><a href="{% url 'select_class' %}">Student Subject</a></li>
+                        <li><a href="{% url 'exclude_subject' %}">Exclude Subject</a></li>
+                        <li><a href="{% url 'required_subjects' %}">Filter Subjects</a></li>
+                        <li><a href="{% url 'manage_source_document' %}">Signature & Stamp</a></li>
+                        <li><a href="{% url 'manage_remark_ranges' %}">Comments</a></li>
+                        <li><a href="{% url 'teacher_subject_list' %}">Access and Permission</a></li>
+                        <li><a href="{% url 'composite_subjects' %}">Composite Subject</a></li>
+                      </ul>
+                    </li>
+                    <li class="dropdown">
+                      <a href="#"><i class="bi bi-file-earmark-text navicon"></i> <span>Output</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+                        <li><a href="{% url 'top_bottom_students' %}">Top-Ten</a></li>
+                        <li><a href="{% url 'all_student_marks' %}">All Results</a></li>
+                        <li><a href="{% url 'top_ten_subjects' %}">GPA</a></li>
+                        <li><a href="{% url 'subject_grade_distribution' %}">Grades</a></li>
+                        <li><a href="{% url 'division_summary' %}">Division Summary</a></li>
+                        <li><a href="{% url 'upload_term_marks' %}">Annual Results</a></li>
+                        <li><a href="{% url 'select_pdf_options' %}">Download Results</a></li>
+                      
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+
+
+
+
+                <li class="dropdown">
+                  <a href="#"><i class="bi bi-book navicon"></i> <span>PAYROLL(Coming Soon)</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                  <ul>
+                    <li class="dropdown">
+                      <a href="#"><i class="bi bi-person-plus navicon"></i> <span>Registration</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+                        <li><a href="{% url 'payroll:select_teacher' %}">Registration</a></li>
+                      <li><a href="{% url 'payroll:select_employee_for_documents' %}">Employee Documents</a></li>
+                      <li><a href="{% url 'payroll:select_employee' %}">Payment Conditions</a></li>
+                      </ul>
+                    </li>
+                   
+                    <li class="dropdown">
+                      <a href="#"><i class="bi bi-file-earmark-text navicon"></i> <span>Output</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                      <ul>
+                        <li><a href="{% url 'top_bottom_students' %}">Top-Ten</a></li>
+                        <li><a href="{% url 'all_student_marks' %}">All Results</a></li>
+                        <li><a href="{% url 'top_ten_subjects' %}">GPA</a></li>
+                        <li><a href="{% url 'subject_grade_distribution' %}">Grades</a></li>
+                        <li><a href="{% url 'upload_term_marks' %}">Annual Results</a></li>
+                        <li><a href="{% url 'select_pdf_options' %}">Download Results</a></li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+
+
+
+              {% endif %}
+              {% if user.is_staff and user.is_teacher and user.is_active %}
+                <!-- Accountant-Specific Links -->
+                <li class="dropdown">
+                  <a href="#"><i class="bi bi-wallet navicon"></i> <span>FINANCE</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                  <ul>
+                    <li><a href="{% url 'finance:fee_create' %}">Create Fee</a></li>
+                    <li><a href="{% url 'finance:fee_list' %}">Fee Plan</a></li>
+                    <li><a href="{% url 'finance:fee_account_number_list' %}" style="pointer-events: none; cursor: default;">Fee Accounts</a></li>
+                    <li><a href="{% url 'finance:fee_account_management' %}">Fee Accounts</a></li>
+                    <li><a href="{% url 'finance:fee_management' %}">Manage Fee</a></li>
+                    <li><a href="{% url 'finance:payment_segments_monitor' %}">Payment Segments</a></li>
+                    <li><a href="{% url 'finance:view_change_logs' %}">LOGS</a></li>
+                  </ul>
+                </li>
+                <li class="dropdown">
+                  <a href="#"><i class="bi bi-envelope navicon"></i> <span>COMMUNICATION</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                  <ul>
+                    <li><a href="{% url 'send_single_student_sms' %}">Sms</a></li>
+                  </ul>
+                </li>
+              {% endif %}
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% else %}
+              <li><a href="{% url 'request_otp' 'verification' %}"><i class="bi bi-envelope-check navicon"></i> VERIFY EMAIL</a></li>
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% endif %}
+          {% elif user.is_active and not user.is_teacher and not user.is_staff %}
+            <!-- Content Creator Links -->
+            {% if user|has_verified_email %}
+              <li class="dropdown">
+                <a href="#"><i class="bi bi-camera-video navicon"></i> <span>Media</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                <ul>
+                  <li><a href="{% url 'site:upload_video' %}">Upload Video</a></li>
+                  <li><a href="{% url 'site:about' %}">Edit Pages</a></li>
+                </ul>
+              </li>
+              <li><a href="{% url 'change_password' %}"><i class="bi bi-key navicon"></i> Change Password</a></li>
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% else %}
+              <li><a href="{% url 'request_otp' 'verification' %}"><i class="bi bi-envelope-check navicon"></i> VERIFY EMAIL</a></li>
+              <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+            {% endif %}
+          {% else %}
+            <!-- Other Authenticated Users -->
+            {% if not user|has_verified_email %}
+              <li><a href="{% url 'request_otp' 'verification' %}"><i class="bi bi-envelope-check navicon"></i> VERIFY EMAIL</a></li>
+            {% endif %}
+            <li><a href="{% url 'user_logout' %}" class="text text-warning"><i class="bi bi-box-arrow-right navicon"></i> LOG-OUT</a></li>
+          {% endif %}
+        {% else %}
+          <!-- Unauthenticated Users -->
+          <li><a href="{% url 'login_view' %}"><i class="bi bi-box-arrow-in-right navicon"></i> LOGIN</a></li>
+          <li><a href="{% url 'request_otp' 'reset' %}"><i class="bi bi-key navicon"></i> RESET PASSWORD</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <div class="content-container">
+      {% block content %}
+      {% endblock %}
+    </div>
+  </main>
+
+  <!-- Vendor JS Files -->
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/php-email-form/validate.js' %}"></script>
+  <script src="{% static 'assets/vendor/aos/aos.js' %}"></script>
+  <script src="{% static 'assets/vendor/typed.js/typed.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/purecounter/purecounter_vanilla.js' %}"></script>
+  <script src="{% static 'assets/vendor/waypoints/noframework.waypoints.js' %}"></script>
+  <script src="{% static 'assets/vendor/glightbox/js/glightbox.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/imagesloaded/imagesloaded.pkgd.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/isotope-layout/isotope.pkgd.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/swiper/swiper-bundle.min.js' %}"></script>
+
+  <!-- Main JS File -->
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+  <!-- Toast JavaScript -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Initialize toasts
+      const toastElList = document.querySelectorAll('.toast');
+      const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: 5000
+      }));
+      toastList.forEach(toast => toast.show());
+    });
+  </script>
+</body>
+</html>

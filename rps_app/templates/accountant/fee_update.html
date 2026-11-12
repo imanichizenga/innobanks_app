@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Update Fee
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">Update Fee</h2>
+                    
+                    {% if messages %}
+                        <div class="messages mb-3">
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}<br>
+                            {% endfor %}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" id="feeForm" novalidate data-installment-data="{{ installment_data_json|safe }}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.academic_year.id_for_label }}" class="form-label fw-medium rounded-pill">Academic Year</label>
+                                {{ form.academic_year }}
+                                {% if form.academic_year.errors %}
+                                    <div class="text-danger small mt-1">{{ form.academic_year.errors.as_text }}</div>
+                                {% endif %}
+                                <div id="academic_year_error" class="text-danger small mt-1"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.fee_name.id_for_label }}" class="form-label fw-medium rounded-pill">Fee Name</label>
+                                {{ form.fee_name }}
+                                {% if form.fee_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.fee_name.errors.as_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.amount.id_for_label }}" class="form-label fw-medium rounded-pill">Amount</label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <div class="text-danger small mt-1">{{ form.amount.errors.as_text }}</div>
+                                {% endif %}
+                                <div id="amount_error" class="text-danger small mt-1"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.installment.id_for_label }}" class="form-label fw-medium rounded-pill">Installment</label>
+                                {{ form.installment }}
+                                {% if form.installment.errors %}
+                                    <div class="text-danger small mt-1">{{ form.installment.errors.as_text }}</div>
+                                {% endif %}
+                                <div id="installment_error" class="text-danger small mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.teacherclasses.id_for_label }}" class="form-label fw-medium rounded-pill">Teacher Classes</label>
+                                {{ form.teacherclasses }}
+                                {% if form.teacherclasses.errors %}
+                                    <div class="text-danger small mt-1">{{ form.teacherclasses.errors.as_text }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.start_date.id_for_label }}" class="form-label fw-medium rounded-pill">Start Date</label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.start_date.errors.as_text }}</div>
+                                {% endif %}
+                                <div id="start_date_error" class="text-danger small mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.end_date.id_for_label }}" class="form-label fw-medium rounded-pill">End Date</label>
+                                {{ form.end_date }}
+                                {% if form.end_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.end_date.errors.as_text }}</div>
+                                {% endif %}
+                                <div id="end_date_error" class="text-danger small mt-1"></div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-pill w-100 mt-3" id="submitBtn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" id="spinner" role="status" aria-hidden="true"></span>
+                            Update Fee
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-pill {
+        border-radius: 50rem;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+    }
+    .btn-pill:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .card {
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    .form-label {
+        color: #333;
+        font-size: 0.9rem;
+    }
+    .form-control, .form-select {
+        border: 1px solid #ced4da;
+        border-radius: 50rem;
+        padding: 0.75rem 1.5rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    .form-select[multiple] {
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        height: auto;
+    }
+    .alert {
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .text-danger {
+        font-size: 0.85rem;
+    }
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    .choices__inner {
+        border-radius: 50rem !important;
+        border: 1px solid #ced4da;
+        padding: 0.375rem 0.75rem;
+        background-color: #fff;
+    }
+    .choices__list--multiple .choices__item {
+        border-radius: 20px;
+        background-color: #007bff;
+        border: none;
+        color: #fff;
+    }
+    .choices__list--dropdown {
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .is-invalid .choices__inner {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" rel="stylesheet">
+
+<script>
+(function () {
+    'use strict';
+
+    // DOM elements
+    const form = document.getElementById('feeForm');
+    const academicYearSelect = document.getElementById('{{ form.academic_year.id_for_label|escapejs }}');
+    const installmentSelect = document.getElementById('{{ form.installment.id_for_label|escapejs }}');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label|escapejs }}');
+    const startDateInput = document.getElementById('{{ form.start_date.id_for_label|escapejs }}');
+    const endDateInput = document.getElementById('{{ form.end_date.id_for_label|escapejs }}');
+    const teacherClassesSelect = document.getElementById('{{ form.teacherclasses.id_for_label|escapejs }}');
+    const academicYearError = document.getElementById('academic_year_error');
+    const amountError = document.getElementById('amount_error');
+    const installmentError = document.getElementById('installment_error');
+    const startDateError = document.getElementById('start_date_error');
+    const endDateError = document.getElementById('end_date_error');
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+
+    // Initialize Choices.js for teacherclasses
+    if (teacherClassesSelect) {
+        new Choices(teacherClassesSelect, {
+            removeItemButton: true,
+            placeholder: true,
+            placeholderValue: 'Select classes...',
+            noResultsText: 'No classes found',
+            itemSelectText: ''
+        });
+    }
+
+    // Get installment data
+    let installmentData;
+    try {
+        installmentData = JSON.parse(form.getAttribute('data-installment-data') || '{}');
+    } catch (e) {
+        console.error('Failed to parse installment data:', e);
+        installmentData = {};
+    }
+
+    // Reset button state
+    function resetButtonState() {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+
+    // Validation function
+    function validateForm() {
+        let isValid = true;
+
+        // Clear previous client-side errors
+        academicYearError.textContent = '';
+        amountError.textContent = '';
+        installmentError.textContent = '';
+        startDateError.textContent = '';
+        endDateError.textContent = '';
+        academicYearSelect.classList.remove('is-invalid');
+        amountInput.classList.remove('is-invalid');
+        installmentSelect.classList.remove('is-invalid');
+        startDateInput.classList.remove('is-invalid');
+        endDateInput.classList.remove('is-invalid');
+
+        // Academic Year validation
+        if (!academicYearSelect.value.trim()) {
+            academicYearError.textContent = 'Please select an academic year.';
+            academicYearSelect.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        // Installment validation
+        const selectedInstallmentId = installmentSelect.value.trim();
+        if (!selectedInstallmentId) {
+            installmentError.textContent = 'Please select an installment.';
+            installmentSelect.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            const installment = installmentData[selectedInstallmentId];
+            if (installment) {
+                const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
+                const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
+                const instStart = new Date(installment.start_date);
+                const instEnd = new Date(installment.end_date);
+                const amount = parseFloat(amountInput.value) || 0;
+
+                if (startDate && (startDate < instStart || startDate > instEnd)) {
+                    startDateError.textContent = `Start date must be between ${installment.start_date} and ${installment.end_date}.`;
+                    startDateInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                if (endDate && (endDate < instStart || endDate > instEnd)) {
+                    endDateError.textContent = `End date must be between ${installment.start_date} and ${installment.end_date}.`;
+                    endDateInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                if (startDate && endDate && startDate > endDate) {
+                    endDateError.textContent = 'End date must be after start date.';
+                    endDateInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                if (amount > installment.remaining_fees) {
+                    amountError.textContent = `Amount exceeds remaining fees (${installment.remaining_fees.toFixed(2)}).`;
+                    amountInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+            }
+        }
+
+        // Amount validation
+        const amount = parseFloat(amountInput.value) || 0;
+        if (isNaN(amount) || amount <= 0) {
+            amountError.textContent = 'Please enter a valid positive amount.';
+            amountInput.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        // Date validation
+        if (!startDateInput.value) {
+            startDateError.textContent = 'Start date is required.';
+            startDateInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (!endDateInput.value) {
+            endDateError.textContent = 'End date is required.';
+            endDateInput.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    // Event listeners
+    academicYearSelect.addEventListener('change', function() {
+        validateForm();
+        // Optionally, trigger an AJAX call to update installment options
+        if (academicYearSelect.value) {
+            fetch(`/finance/get_installments/?academic_year=${academicYearSelect.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    installmentSelect.innerHTML = '<option value="">-- Select an Installment --</option>';
+                    data.installments.forEach(inst => {
+                        const option = new Option(inst.name, inst.id);
+                        installmentSelect.add(option);
+                    });
+                })
+                .catch(error => console.error('Error fetching installments:', error));
+        }
+    });
+    installmentSelect.addEventListener('change', validateForm);
+    amountInput.addEventListener('input', validateForm);
+    startDateInput.addEventListener('change', validateForm);
+    endDateInput.addEventListener('change', validateForm);
+
+    // Initial validation
+    window.addEventListener('load', function() {
+        validateForm();
+        resetButtonState();
+    });
+
+    // Form submission
+    form.addEventListener('submit', function (event) {
+        if (!validateForm()) {
+            event.preventDefault();
+            event.stopPropagation();
+            resetButtonState();
+        } else {
+            submitBtn.disabled = true;
+            spinner.classList.remove('d-none');
+        }
+    });
+
+    // Reset button state on page show
+    window.addEventListener('pageshow', resetButtonState);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-book me-2"></i>Manage Subjects</h2>
+    </div>
+
+    <!-- Form Section -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'create_subject' %}" method="POST" class="row g-3" id="subjectForm">
+                {% csrf_token %}
+                {% if message %}
+                <div class="col-12">
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-8">
+                    <label for="nameSubject" class="form-label fw-semibold"><i class="fas fa-tag me-2"></i>Subject Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book-open"></i></span>
+                        <input type="text" name="nameSubject" class="form-control rounded-end" id="nameSubject" placeholder="Enter subject name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-plus-circle me-2"></i>Add Subject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Subjects Table Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Registered Subjects</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#subjectsTable" aria-expanded="false" aria-controls="subjectsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="subjectsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered>
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 50%;">Subject Name</th>
+                                <th scope="col" class="text-center" style="width: 20%;">Delete</th>
+                                <th scope="col" class="text-center" style="width: 20%;">Update</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in subjects %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ s.nameSubject }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'delete_subject' s.id %}" class="btn btn-danger btn-sm rounded-pill">
+                                        <i class="fas fa-trash-alt me-1"></i>Delete
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'update_subject' s.id %}" class="btn btn-warning btn-sm rounded-pill">
+                                        <i class="fas fa-edit me-1"></i>Update
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No subjects registered yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.getElementById('subjectForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    // Add hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

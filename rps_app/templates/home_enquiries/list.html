@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-3 home-enquiries-page">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card border mb-3">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div>
+        <h4 class="mb-1">Website Enquiries</h4>
+        <p class="text-muted mb-0">Review website enquiries and update contact status.</p>
+      </div>
+      <span class="badge bg-primary rounded-pill">{{ enquiries|length }}</span>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-12 col-md-6">
+          <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="form-control"
+            placeholder="Search name, phone, email, location, notes"
+          >
+        </div>
+
+        <div class="col-6 col-md-3">
+          <select name="status" class="form-select">
+            <option value="">All status</option>
+            <option value="not_contacted" {% if selected_status == 'not_contacted' %}selected{% endif %}>
+              Not contacted
+            </option>
+            <option value="contacted" {% if selected_status == 'contacted' %}selected{% endif %}>
+              Contacted
+            </option>
+          </select>
+        </div>
+
+        <div class="col-6 col-md-3 d-flex gap-2">
+          <button class="btn btn-outline-secondary w-100" type="submit">Filter</button>
+          <a href="{% url 'home_enquiries' %}" class="btn btn-outline-light border w-100">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive home-enquiries-table-wrap">
+        <table class="table table-hover table-bordered table-sm align-middle mb-0" id="homeEnquiriesTable">
+          <thead class="table-light">
+            <tr>
+              <th class="col-no">#</th>
+              <th class="col-name">Name</th>
+              <th class="col-phone">Phone</th>
+              <th class="col-email">Email</th>
+              <th class="col-location">Location</th>
+              <th class="col-description">Description</th>
+              <th class="col-status">Status</th>
+              <th class="col-date">Contacted At</th>
+              <th class="col-user">Contacted By</th>
+              <th class="col-notes">Notes</th>
+              <th class="col-action">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for enquiry in enquiries %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ enquiry.full_name|default:'-' }}</td>
+              <td>{{ enquiry.phone_number|default:'-' }}</td>
+              <td>{{ enquiry.email|default:'-' }}</td>
+              <td>{{ enquiry.location|default:'-' }}</td>
+
+              <td class="description-cell">
+                {% if enquiry.description %}
+                  {% if enquiry.description|length > 45 %}
+                    <div class="short-text-wrap">
+                      <span class="short-text">
+                        {{ enquiry.description|slice:":45" }}...
+                      </span>
+                      <button
+                        type="button"
+                        class="read-more-label"
+                        data-bs-toggle="modal"
+                        data-bs-target="#descriptionModal{{ enquiry.id }}"
+                      >
+                        Read more
+                      </button>
+                    </div>
+                  {% else %}
+                    <span class="short-text">{{ enquiry.description }}</span>
+                  {% endif %}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+
+              <td>
+                {% if enquiry.is_contacted %}
+                  <span class="badge bg-success compact-badge">Contacted</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark compact-badge">Not contacted</span>
+                {% endif %}
+              </td>
+
+              <td>{{ enquiry.contacted_at|date:'Y-m-d H:i'|default:'-' }}</td>
+              <td>{{ enquiry.contacted_by.username|default:'-' }}</td>
+
+              <td class="notes-cell">
+                {% if enquiry.contact_notes %}
+                  {% if enquiry.contact_notes|length > 35 %}
+                    <div class="short-text-wrap">
+                      <span class="short-text">
+                        {{ enquiry.contact_notes|slice:":35" }}...
+                      </span>
+                      <button
+                        type="button"
+                        class="read-more-label"
+                        data-bs-toggle="modal"
+                        data-bs-target="#notesModal{{ enquiry.id }}"
+                      >
+                        Read more
+                      </button>
+                    </div>
+                  {% else %}
+                    <span class="short-text">{{ enquiry.contact_notes }}</span>
+                  {% endif %}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+
+              <td>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm compact-action-btn"
+                  data-bs-toggle="modal"
+                  data-bs-target="#updateModal{{ enquiry.id }}"
+                >
+                  Update
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="11" class="text-center text-muted py-4">
+                No home enquiries found.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% for enquiry in enquiries %}
+    {% if enquiry.description and enquiry.description|length > 45 %}
+    <div
+      class="modal fade"
+      id="descriptionModal{{ enquiry.id }}"
+      tabindex="-1"
+      aria-labelledby="descriptionModalLabel{{ enquiry.id }}"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="descriptionModalLabel{{ enquiry.id }}">
+              Full Description
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-message-box">
+              {{ enquiry.description|linebreaksbr }}
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if enquiry.contact_notes and enquiry.contact_notes|length > 35 %}
+    <div
+      class="modal fade"
+      id="notesModal{{ enquiry.id }}"
+      tabindex="-1"
+      aria-labelledby="notesModalLabel{{ enquiry.id }}"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="notesModalLabel{{ enquiry.id }}">
+              Full Contact Notes
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-message-box">
+              {{ enquiry.contact_notes|linebreaksbr }}
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div
+      class="modal fade"
+      id="updateModal{{ enquiry.id }}"
+      tabindex="-1"
+      aria-labelledby="updateModalLabel{{ enquiry.id }}"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="{% url 'home_enquiry_update' enquiry.id %}">
+            {% csrf_token %}
+
+            <div class="modal-header">
+              <h5 class="modal-title" id="updateModalLabel{{ enquiry.id }}">
+                Update Enquiry
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Name</label>
+                <div class="form-control bg-light">
+                  {{ enquiry.full_name|default:'-' }}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Phone</label>
+                <div class="form-control bg-light">
+                  {{ enquiry.phone_number|default:'-' }}
+                </div>
+              </div>
+
+              <div class="form-check mb-3">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  name="is_contacted"
+                  id="is_contacted_{{ enquiry.id }}"
+                  {% if enquiry.is_contacted %}checked{% endif %}
+                >
+                <label class="form-check-label" for="is_contacted_{{ enquiry.id }}">
+                  Mark as contacted
+                </label>
+              </div>
+
+              <div>
+                <label class="form-label fw-semibold">Contact Notes</label>
+                <textarea
+                  name="contact_notes"
+                  class="form-control"
+                  rows="4"
+                  placeholder="Write contact notes"
+                >{{ enquiry.contact_notes|default:'' }}</textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<style>
+.home-enquiries-page {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding-left: .35rem;
+  padding-right: .35rem;
+}
+
+.home-enquiries-table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+#homeEnquiriesTable {
+  min-width: 1280px;
+  font-size: .84rem;
+  table-layout: fixed;
+}
+
+#homeEnquiriesTable th,
+#homeEnquiriesTable td {
+  padding: .42rem .55rem;
+  vertical-align: middle;
+  line-height: 1.25;
+}
+
+#homeEnquiriesTable tbody tr {
+  height: 40px;
+}
+
+.col-no {
+  width: 42px;
+}
+
+.col-name {
+  width: 185px;
+}
+
+.col-phone {
+  width: 135px;
+}
+
+.col-email {
+  width: 210px;
+}
+
+.col-location {
+  width: 145px;
+}
+
+.col-description {
+  width: 270px;
+}
+
+.col-status {
+  width: 115px;
+}
+
+.col-date {
+  width: 125px;
+}
+
+.col-user {
+  width: 120px;
+}
+
+.col-notes {
+  width: 180px;
+}
+
+.col-action {
+  width: 95px;
+}
+
+.description-cell,
+.notes-cell {
+  white-space: normal;
+  overflow: visible;
+}
+
+.short-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.short-text {
+  display: inline-block;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: #212529;
+}
+
+.notes-cell .short-text {
+  max-width: 95px;
+}
+
+.read-more-label {
+  border: 0;
+  background: transparent;
+  color: #0d6efd;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 0;
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.read-more-label:hover {
+  text-decoration: underline;
+}
+
+.compact-badge {
+  font-size: .72rem;
+  padding: .38rem .5rem;
+  white-space: nowrap;
+}
+
+.compact-action-btn {
+  padding: .25rem .55rem;
+  font-size: .78rem;
+}
+
+.modal-message-box {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: .65rem;
+  padding: 1rem;
+  line-height: 1.6;
+  color: #212529;
+  white-space: normal;
+  word-break: break-word;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 991px) {
+  .home-enquiries-page {
+    padding-left: .15rem;
+    padding-right: .15rem;
+  }
+
+  #homeEnquiriesTable {
+    min-width: 1200px;
+  }
+}
+</style>
+{% endblock %}

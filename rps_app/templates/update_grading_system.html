@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grading System Update</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .form-container {
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .form-label {
+            font-weight: bold;
+        }
+        .form-control {
+            margin-bottom: 15px;
+        }
+        .submit-btn {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <form action="{% url 'update_grading_system' grades.id %}" method="POST" id="GradingSystemForm">{% csrf_token %}
+            {% if message %}
+            <div class="alert alert-info" role="alert">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="is_advance" class="form-label">TRUE, If System Is For Advance</label>
+                <input type="checkbox" id="is_advance" name="is_advance" class="form-check-input" value="{{ grades.is_advance }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="grade_a" class="form-label">Grade A start at ?</label>
+                <input type="number" name="grade_a" class="form-control" value="{{ grades.grade_a }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_b" class="form-label">Grade B start at ?</label>
+                <input type="number" name="grade_b" class="form-control" value="{{ grades.grade_b }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_c" class="form-label">Grade C start at ?</label>
+                <input type="number" name="grade_c" class="form-control" value="{{ grades.grade_c }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_d" class="form-label">Grade D start at ?</label>
+                <input type="number" name="grade_d" class="form-control" value="{{ grades.grade_d }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_e" class="form-label">Grade E start at ?</label>
+                <input type="number" name="grade_e" class="form-control" value="{{ grades.grade_e }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_s" class="form-label">Grade S start at ?</label>
+                <input type="number" name="grade_s" class="form-control" value="{{ grades.grade_s }}" max="100" min="0">
+            </div>
+            <div class="mb-3">
+                <label for="grade_f" class="form-label">Grade F start at ?</label>
+                <input type="number" name="grade_f" class="form-control" value="{{ grades.grade_f }}" max="100" min="0">
+            </div>
+
+            <div class="mb-3">
+                <label for="division_1" class="form-label">Division I end at ?</label>
+                <input type="number" name="division_1" class="form-control" required max="37" min="3" value="{{ grades.division_1 }}">
+            </div>
+            <div class="mb-3">
+                <label for="division_2" class="form-label">Division II end at ?</label>
+                <input type="number" name="division_2" class="form-control" required max="37" min="3" value="{{ grades.division_2 }}">
+            </div>
+            <div class="mb-3">
+                <label for="division_3" class="form-label">Division III end at ?</label>
+                <input type="number" name="division_3" class="form-control" required max="37" min="3" value="{{ grades.division_3 }}">
+            </div>
+            <div class="mb-3">
+                <label for="division_4" class="form-label">Division IV end at ?</label>
+                <input type="number" name="division_4" class="form-control" required max="37" min="3" value="{{ grades.division_4 }}">
+            </div>
+
+            <button type="submit" class="btn btn-outline-primary rounded-pill" id="submitButton">Update</button>
+        </form>
+        <script>
+            document.getElementById('GradingSystemForm').addEventListener('submit', function(event) {
+                const button = document.getElementById('submitButton');
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Wait...';
+            });
+        </script>
+    </div>
+</body>
+</html>
+{% endblock %}

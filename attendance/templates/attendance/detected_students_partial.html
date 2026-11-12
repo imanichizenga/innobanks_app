@@ -1,0 +1,26 @@
+{% load custom_filters %}
+<div class="card-body" id="detectedStudentsContainer" hx-get="{% url 'attendance:student_attendance_with_class' class_id|default_if_none:0 %}?view={{ view_type }}&week={{ week_number }}&detected_only=true" hx-trigger="every 5s">
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+    </div>
+    {% elif detected_students %}
+    <ul class="list-group">
+        {% for student in detected_students %}
+        <li class="list-group-item d-flex align-items-center">
+            <div class="attendance-avatar-sm me-3">
+                <span class="attendance-avatar-title attendance-bg-soft-success rounded-circle">
+                    <i class="bi bi-person-fill attendance-text-success"></i>
+                </span>
+            </div>
+            <div>
+                <h6 class="mb-0">{{ student.fullName }}</h6>
+                <small class="text-muted">{{ student.indexNumber }} - Present on {{ current_date|date:"Y-m-d" }}</small>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No students detected as present today.</p>
+    {% endif %}
+</div>

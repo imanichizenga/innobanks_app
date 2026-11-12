@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Student Fee List
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-wallet me-2"></i>Student Fee List</h2>
+        <!-- Class Selection Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-outline-primary rounded-pill dropdown-toggle" type="button" id="classDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                Select Class
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="classDropdown">
+                {% if teacher_classes %}
+                    {% for teacher_class in teacher_classes %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'finance:student_fee_list' class_id=teacher_class.id %}">
+                                {{ teacher_class|default:"Unnamed Class" }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <li><span class="dropdown-item-text">No classes available</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="mb-4">
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+            <input type="text" id="studentSearch" class="form-control rounded-end" placeholder="Search Students...">
+            <button class="btn btn-outline-secondary rounded-end" type="button" onclick="document.getElementById('studentSearch').value=''; filterTable('');">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Student Fees</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#studentFeeTable" aria-expanded="true" aria-controls="studentFeeTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="studentFeeTable">
+            <div class="card-body p-0">
+                {% if student_fee_data %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle m-0 table-bordered" id="studentFeeTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center" style="width: 5%; cursor: pointer;" onclick="sortTable(0, 'number')">#</th>
+                                    <th scope="col" style="width: 20%; cursor: pointer;" onclick="sortTable(1, 'text')">Student Name</th>
+                                    <th scope="col" style="width: 20%; cursor: pointer;" onclick="sortTable(2, 'text')">Class</th>
+                                    <th scope="col" style="width: 35%;">Fees Assigned</th>
+                                    <th scope="col" class="text-center" style="width: 20%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentFeeTableBody">
+                                {% for student, data in student_fee_data.items %}
+                                    <tr data-student-id="{{ student.id }}" class="animate__animated animate__fadeIn">
+                                        <td class="text-center">{{ forloop.counter }}</td>
+                                        <td>{{ student.fullName|default:"Unnamed Student" }}</td>
+                                        <td>
+                                            {{ data.class_name|default:"Unnamed Class" }}
+                                            {% if data.teacherclass.academicclassyear and not data.teacherclass.academicclassyear.active_year %}
+                                                (Inactive)
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% for fee_data in data.fee_list %}
+                                                <div>{{ fee_data.fee.fee_name }} ({{ fee_data.amount_required|floatformat:2 }}) [{{ fee_data.start_date|date:"Y-m-d" }} - {{ fee_data.end_date|date:"Y-m-d" }}]</div>
+                                            {% empty %}
+                                                No fees assigned
+                                            {% endfor %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if data.teacherclass.academicclassyear and data.teacherclass.academicclassyear.active_year %}
+                                                <a href="{% url 'finance:assign_fees_to_students' class_id=class_id %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                    <i class="fas fa-plus-circle me-1"></i>Assign
+                                                </a>
+                                                <a href="{% url 'finance:fee_update' fee_id=0 %}?student_id={{ student.id }}&class_id={{ class_id }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                    <i class="fas fa-edit me-1"></i>
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="openDeleteModal('{{ student.id }}', '{{ student.fullName|default:"Unnamed Student" }}', '{{ class_id }}')">
+                                                    <i class="fas fa-trash-alt me-1"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-secondary rounded-pill" disabled>
+                                                    <i class="fas fa-plus-circle me-1"></i>Assign (Inactive)
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary rounded-pill" disabled>
+                                                    <i class="fas fa-edit me-1"></i>Edit (Inactive)
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary rounded-pill" disabled>
+                                                    <i class="fas fa-trash-alt me-1"></i>Delete (Inactive)
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-exclamation-circle me-2"></i>No students or fees available.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel"><i class="fas fa-trash-alt me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Are you sure you want to delete fees for <span id="deleteStudentName"></span>?</p>
+                    <form method="post" id="deleteForm" action="{% url 'finance:fee_delete' fee_id=0 %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="student_id" id="deleteStudentId">
+                        <input type="hidden" name="class_id" id="deleteClassId">
+                        <div class="d-flex gap-3">
+                            <button type="submit" name="delete" class="btn btn-danger flex-1 rounded-pill">
+                                <i class="fas fa-trash-alt me-2"></i>Delete
+                            </button>
+                            <button type="button" class="btn btn-secondary flex-1 rounded-pill" data-bs-dismiss="modal">
+                                <i class="fas fa-times-circle me-2"></i>Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .container {
+        max-width: 1200px;
+    }
+    .btn-primary, .btn-outline-primary, .btn-outline-danger, .btn-outline-secondary {
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover, .btn-outline-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+        color: #fff;
+    }
+    .btn-outline-danger:hover {
+        background-color: #dc3545;
+        color: #fff;
+    }
+    .table {
+        background-color: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .table-dark {
+        background-color: #343a40;
+    }
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .card-header {
+        border-radius: 12px 12px 0 0;
+    }
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    .input-group-text {
+        border-radius: 0.5rem 0 0 0.5rem;
+    }
+    .rounded-end {
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .dropdown-menu {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('studentSearch');
+    const tableBody = document.getElementById('studentFeeTableBody');
+    const rows = tableBody ? tableBody.getElementsByTagName('tr') : [];
+
+    function filterTable(searchTerm) {
+        for (let row of rows) {
+            const studentName = row.cells[1].textContent.toLowerCase();
+            const className = row.cells[2].textContent.toLowerCase();
+            row.style.display = (studentName.includes(searchTerm.toLowerCase()) || className.includes(searchTerm.toLowerCase())) ? '' : 'none';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            filterTable(this.value);
+        });
+    }
+
+    function sortTable(columnIndex, type) {
+        const table = document.getElementById('studentFeeTable');
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+
+        const sortedRows = Array.from(rows).sort((a, b) => {
+            let aValue = a.cells[columnIndex].textContent.trim();
+            let bValue = b.cells[columnIndex].textContent.trim();
+            if (type === 'number') {
+                aValue = parseInt(aValue) || 0;
+                bValue = parseInt(bValue) || 0;
+            } else {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+            return isAscending ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+        });
+
+        tableBody.innerHTML = '';
+        sortedRows.forEach(row => tableBody.appendChild(row));
+    }
+
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+
+    function openDeleteModal(studentId, studentName, classId) {
+        document.getElementById('deleteStudentId').value = studentId;
+        document.getElementById('deleteClassId').value = classId;
+        document.getElementById('deleteStudentName').textContent = studentName;
+        document.getElementById('deleteForm').action = `{% url 'finance:fee_delete' fee_id=0 %}?student_id=${studentId}&class_id=${classId}`;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    window.sortTable = sortTable;
+    window.openDeleteModal = openDeleteModal;
+});
+</script>
+{% endblock %}

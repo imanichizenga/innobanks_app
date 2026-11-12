@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Segments Monitor{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h4 class="mb-3">Payment Segments Monitor</h4>
+      <form method="get" class="row g-3 align-items-end" id="segment-filter-form">
+        <div class="col-md-3">
+          <label class="form-label">Teacher Class</label>
+          <select class="form-select" name="class_id" id="class_id" required>
+            <option value="">Select class</option>
+            {% for tc in teacher_classes %}
+              <option value="{{ tc.id }}" {% if selected_class_id == tc.id %}selected{% endif %}>
+                {{ tc.ClassName.class_name|default:'Unnamed Class' }}{% if tc.academicclassyear %} ({{ tc.academicclassyear.academic_year_name }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fee</label>
+          <select class="form-select" name="fee_id" id="fee_id" {% if not selected_class_id %}disabled{% endif %} required>
+            <option value="">Select fee</option>
+            {% for fee in fees %}
+              <option value="{{ fee.id }}" {% if selected_fee_id == fee.id %}selected{% endif %}>{{ fee.fee_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Search Student</label>
+          <input class="form-control" type="text" name="search" value="{{ search|default:'' }}" placeholder="Name / username / contact">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">From Date</label>
+          <input class="form-control" type="date" name="date_from" value="{{ date_from|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">To Date</label>
+          <input class="form-control" type="date" name="date_to" value="{{ date_to|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-primary w-100" type="submit">Load Segments</button>
+        </div>
+        <div class="col-md-3">
+          <a class="btn btn-outline-secondary w-100" href="{% url 'finance:payment_segments_monitor' %}">Reset</a>
+        </div>
+        <div class="col-md-3">
+          <a class="btn btn-outline-success w-100 {% if not students %}disabled{% endif %}" href="{% url 'finance:payment_segments_monitor_pdf' %}?{{ request.GET.urlencode }}">Download PDF Report</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Students</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0 align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>#</th>
+              <th>Full Name</th>
+              <th>Phone Number</th>
+              <th>Required Amount</th>
+              <th>Fee Paid in Segments</th>
+              <th>Total Paid</th>
+              <th>Balance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if students %}
+              {% for row in students %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ row.student.fullName|default:row.student.user.username }}</td>
+                  <td>{{ row.student.contact|default:'-' }}</td>
+                  <td>{{ row.required_amount }}</td>
+                  <td>
+                    {% if row.payment_entries %}
+                      <ul class="mb-0 ps-3">
+                        {% for entry in row.payment_entries %}
+                          <li>{{ entry.amount }} - {{ entry.time|date:'Y-m-d H:i' }}</li>
+                        {% endfor %}
+                      </ul>
+                    {% else %}
+                      <span class="text-muted">No segment payments</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ row.paid_amount }}</td>
+                  <td class="{% if row.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">{{ row.remaining_amount }}</td>
+                  <td>
+                    <span class="badge bg-{% if row.status == 'complete' %}success{% else %}warning text-dark{% endif %}">{{ row.status }}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">Select class and fee to view segment progress.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Summary</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4"><strong>Total Payments Done:</strong> {{ summary.total_paid }}</div>
+        <div class="col-md-4"><strong>Total Payments Required:</strong> {{ summary.total_required }}</div>
+        <div class="col-md-4"><strong>Total Balance:</strong> {{ summary.total_balance }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById('segment-filter-form');
+    const classSelect = document.getElementById('class_id');
+    const feeSelect = document.getElementById('fee_id');
+
+    if (classSelect && form) {
+      classSelect.addEventListener('change', function () {
+        if (feeSelect) {
+          feeSelect.value = '';
+        }
+        form.submit();
+      });
+    }
+
+    if (feeSelect && form) {
+      feeSelect.addEventListener('change', function () {
+        if (feeSelect.value) {
+          form.submit();
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-file-signature me-2"></i>Manage Source Document</h2>
+    </div>
+
+    <!-- Upload/Update Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'manage_source_document' %}" method="POST" enctype="multipart/form-data" class="row g-3" id="documentForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-4">
+                    <label for="comment" class="form-label fw-semibold"><i class="fas fa-comment me-2"></i>Comment</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-comment-alt"></i></span>
+                        <input type="text" name="comment" class="form-control rounded-end" id="comment" placeholder="Enter comment" value="{{ doc.comment|default:'' }}">
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="file_signature" class="form-label fw-semibold"><i class="fas fa-upload me-2"></i>Signature File (Image or PDF)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-file-upload"></i></span>
+                        <input type="file" name="file_signature" class="form-control rounded-end" id="file_signature" accept="image/*,.pdf">
+                    </div>
+                    {% if doc.file_signature %}
+                    <small class="text-muted">Current signature: <a href="{{ doc.file_signature.url }}" target="_blank">{{ doc.file_signature.name }}</a></small>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="file_stamp" class="form-label fw-semibold"><i class="fas fa-upload me-2"></i>Stamp File (Image or PDF)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-file-upload"></i></span>
+                        <input type="file" name="file_stamp" class="form-control rounded-end" id="file_stamp" accept="image/*,.pdf">
+                    </div>
+                    {% if doc.file_stamp %}
+                    <small class="text-muted">Current stamp: <a href="{{ doc.file_stamp.url }}" target="_blank">{{ doc.file_stamp.name }}</a></small>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="allow_to_be_used" class="form-label fw-semibold"><i class="fas fa-toggle-on me-2"></i>Allow Use in Reports</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="allow_to_be_used" id="allow_to_be_used" {% if doc.allow_to_be_used %}checked{% endif %}>
+                        <label class="form-check-label" for="allow_to_be_used">Enable to allow document use in reports</label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-save me-2"></i>{% if doc %}Update and Extract{% else %}Upload and Extract{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Documents Table Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Uploaded Documents</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#documentsTable" aria-expanded="false" aria-controls="documentsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="documentsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 15%;">User</th>
+                                <th scope="col" style="width: 15%;">Comment</th>
+                                <th scope="col" style="width: 15%;">Signature File</th>
+                                <th scope="col" style="width: 15%;">Stamp File</th>
+                                <th scope="col" style="width: 15%;">Extracted Signature</th>
+                                <th scope="col" style="width: 15%;">Extracted Stamp</th>
+                                <th scope="col" style="width: 10%;">Allow Use</th>
+                                <th scope="col" style="width: 10%;">Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ doc.user.username }}</td>
+                                <td>{{ doc.comment|default:"No comment" }}</td>
+                                <td>
+                                    {% if doc.file_signature %}
+                                    <a href="{{ doc.file_signature.url }}" target="_blank">View Signature</a>
+                                    {% else %}
+                                    None
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if doc.file_stamp %}
+                                    <a href="{{ doc.file_stamp.url }}" target="_blank">View Stamp</a>
+                                    {% else %}
+                                    None
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if doc.extracted_signature %}
+                                    <a href="{{ doc.extracted_signature.url }}" target="_blank">
+                                        <img src="{{ doc.extracted_signature.url }}" alt="Extracted Signature" style="max-height: 50px;" class="rounded">
+                                    </a>
+                                    {% else %}
+                                    None
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if doc.extracted_stamp %}
+                                    <a href="{{ doc.extracted_stamp.url }}" target="_blank">
+                                        <img src="{{ doc.extracted_stamp.url }}" alt="Extracted Stamp" style="max-height: 50px;" class="rounded">
+                                    </a>
+                                    {% else %}
+                                    None
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if doc.allow_to_be_used %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ doc.allow_to_be_used|yesno:"Yes,No" }}
+                                    </span>
+                                </td>
+                                <td>{{ doc.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No documents uploaded yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.getElementById('documentForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    // Add hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">Register Installment</h2>
+                    {% if messages %}
+                        <div class="messages mb-3">
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <form method="post" action="{% url 'finance:register_installment' %}" id="installmentForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="academic_year" class="form-label">Academic Year</label>
+                            <select id="academic_year" name="academic_year" class="form-select rounded-pill" required>
+                                {% for year in academic_years %}
+                                    <option value="{{ year.id }}">{{ year.year }}({{ year.teacherclass }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="teacherclass" class="form-label">Class</label>
+                            <select id="teacherclass" name="teacherclass" class="form-select rounded-pill" required>
+                                {% for class in teacher_classes %}
+                                    <option value="{{ class.id }}">{{ class.ClassName|default:"Unnamed Class" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="installment_name" class="form-label">Installment Name</label>
+                            <input type="text" id="installment_name" name="installment_name" class="form-control rounded-pill" placeholder="e.g., First Term Fees" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-control rounded-pill" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-control rounded-pill" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="fees" class="form-label">Fees</label>
+                            <input type="number" id="fees" name="fees" step="0.01" class="form-control rounded-pill" placeholder="e.g., 5000.00" required>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-pill w-100" id="submitBtn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" id="spinner" role="status" aria-hidden="true"></span>
+                            Save Installment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">Registered Installments</h3>
+                    {% if installments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>Academic Year</th>
+                                        <th>Class</th>
+                                        <th>Installment Name</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Fees</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for installment in installments %}
+                                        <tr>
+                                            <td>{{ installment.academic_year.year }}</td>
+                                            <td>{{ installment.teacherclass.ClassName|default:"Unnamed Class" }}</td>
+                                            <td>{{ installment.installment_name }}</td>
+                                            <td>{{ installment.start_date|date:"Y-m-d" }}</td>
+                                            <td>{{ installment.end_date|date:"Y-m-d" }}</td>
+                                            <td>{{ installment.fees|floatformat:2 }}</td>
+                                            <td>
+                                                <a href="{% url 'finance:update_installment' installment.id %}" class="btn btn-outline-warning btn-sm btn-pill me-2">Update</a>
+                                                <form action="{% url 'finance:delete_installment' installment.id %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete {{ installment.installment_name }}?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm btn-pill">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-center">No installments registered yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-pill {
+        border-radius: 50rem !important;
+        padding: 10px 20px;
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .messages .alert {
+        border-radius: 10px;
+    }
+</style>
+
+<script>
+    document.getElementById('installmentForm').addEventListener('submit', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+    });
+</script>
+{% endblock %}

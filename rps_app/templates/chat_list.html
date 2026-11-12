@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Chats{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-comments me-2"></i>Your Chats</h2>
+        <span class="badge bg-danger" id="global-unread-badge" style="display: {% if unread_count == 0 %}none{% endif %};">{{ unread_count }}</span>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="chatTabs" role="tablist">
+
+        <!-- Manager Tab -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if tab == 'manager' %}active{% endif %}"
+                    id="manager-tab" data-bs-toggle="tab" data-bs-target="#manager" type="button">
+                <i class="fas fa-user-tie me-1"></i>Manager ({{ managers|length }})
+            </button>
+        </li>
+
+        <!-- Staff Tab -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if tab == 'staff' or not managers and not students %}active{% endif %}"
+                    id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button">
+                <i class="fas fa-chalkboard-teacher me-1"></i>Staff ({{ staff|length }})
+            </button>
+        </li>
+
+        <!-- Students Tab -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if tab == 'students' or not managers and not staff %}active{% endif %}"
+                    id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button">
+                <i class="fas fa-users me-1"></i>Students ({{ students|length }})
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="chatTabContent">
+
+        <!-- Manager Tab -->
+        <div class="tab-pane fade {% if tab == 'manager' %}show active{% endif %}" id="manager" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="list-group list-group-flush">
+                    {% for partner in managers %}
+                    <a href="{% url 'chat_room' partner.user.username %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;">
+                                {{ partner.user.username|first|upper }}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-1">{{ partner.name }}</h6>
+                                {% if partner.last_message %}
+                                <small class="text-muted">{{ partner.last_message }}</small>
+                                {% endif %}
+                            </div>
+                            {% if partner.unread_count > 0 %}
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">New messages</small>
+                                <span class="badge bg-danger">{{ partner.unread_count }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="text-center py-4 text-muted">No manager</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Tab -->
+        <div class="tab-pane fade {% if tab == 'staff' or not managers and not students %}show active{% endif %}" id="staff" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="list-group list-group-flush">
+                    {% for partner in staff %}
+                    <a href="{% url 'chat_room' partner.user.username %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            {% if partner.avatar %}
+                            <img src="{{ partner.avatar.url }}" class="rounded-circle" width="40" height="40" style="object-fit:cover;">
+                            {% else %}
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;">
+                                {{ partner.user.username|first|upper }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-1">{{ partner.name }}</h6>
+                                {% if partner.last_message %}
+                                <small class="text-muted">{{ partner.last_message }}</small>
+                                {% endif %}
+                            </div>
+                            {% if partner.unread_count > 0 %}
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">New messages</small>
+                                <span class="badge bg-danger">{{ partner.unread_count }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="text-center py-4 text-muted">No staff</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Tab -->
+        <div class="tab-pane fade {% if tab == 'students' or not managers and not staff %}show active{% endif %}" id="students" role="tabpanel">
+
+            <!-- Bulk Message (Only for Teacher/Manager) -->
+            {% if role in 'teacher,manager' %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-broadcast-tower me-2"></i>Bulk Message</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Select Students</label>
+                                <select name="selected_students" class="form-select" multiple size="5" required>
+                                    {% for partner in students %}
+                                    <option value="{{ partner.user.id }}">{{ partner.name }} {% if partner.teacherclass %}({{ partner.teacherclass.ClassName.class_name }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Message</label>
+                                <textarea name="bulk_message" class="form-control" rows="3" placeholder="Type message..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Attach File</label>
+                                <input type="file" name="bulk_file" class="form-control">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-info w-100 rounded-pill">
+                                    <i class="fas fa-paper-plane me-2"></i>Send Bulk
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Class Filter -->
+            {% if teacher_classes %}
+            <div class="mb-3">
+                <label for="class-filter" class="form-label fw-semibold">Filter by Class:</label>
+                <select id="class-filter" class="form-select">
+                    <option value="">All Classes</option>
+                    {% for tc in teacher_classes %}
+                    <option value="{{ tc.id }}" {% if selected_class_id == tc.id|stringformat:"s" %}selected{% endif %}>
+                        {{ tc.ClassName.class_name }} {% if tc.academicclassyear %}({{ tc.academicclassyear.academic_year_name }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- Student List -->
+            <div class="card shadow-sm">
+                <div class="list-group list-group-flush">
+                    {% for partner in students %}
+                    <a href="{% url 'chat_room' partner.user.username %}" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            {% with s_profile=partner.user.student_profile.first %}
+                                {% if s_profile.photo %}
+                                <img src="{{ s_profile.photo.url }}" class="rounded-circle" width="40" height="40" style="object-fit:cover;">
+                                {% else %}
+                                <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width:40px;height:40px;font-size:0.8rem;">
+                                    {{ partner.user.username|first|upper }}
+                                </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-1">{{ partner.name }} {% if partner.teacherclass and role != 'student' %}({{ partner.teacherclass.ClassName.class_name }}){% endif %}</h6>
+                                {% if partner.last_message %}
+                                <small class="text-muted">{{ partner.last_message }}</small>
+                                {% endif %}
+                            </div>
+                            {% if partner.unread_count > 0 %}
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">New messages</small>
+                                <span class="badge bg-danger">{{ partner.unread_count }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="text-center py-4 text-muted">No students</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script>
+    // Global unread via WebSocket
+    let notifSocket = null;
+    function connectNotifications() {
+        const wsScheme = (window.location.protocol === 'https:' || location.hostname.includes('github.dev')) ? 'wss' : 'ws';
+        notifSocket = new WebSocket(`${wsScheme}://${location.host}/ws/notifications/`);
+        notifSocket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.type === 'new_message_notification') {
+                let badge = document.getElementById('global-unread-badge');
+                let count = (parseInt(badge.textContent) || 0) + 1;
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            }
+        };
+        notifSocket.onclose = () => setTimeout(connectNotifications, 3000);
+    }
+    connectNotifications();
+
+    // Class filter
+    document.getElementById('class-filter')?.addEventListener('change', function() {
+        const url = new URL(location);
+        if (this.value) {
+            url.searchParams.set('class_id', this.value);
+        } else {
+            url.searchParams.delete('class_id');
+        }
+        location.href = url;
+    });
+
+    // Tab persistence via URL
+    document.querySelectorAll('#chatTabs button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function (e) {
+            const url = new URL(location);
+            url.searchParams.set('tab', e.target.id.replace('-tab', ''));
+            history.replaceState(null, '', url);
+        });
+    });
+
+    // Restore tab from URL on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab) {
+            const target = document.querySelector(`#${tab}-tab`);
+            if (target) {
+                const bsTab = new bootstrap.Tab(target);
+                bsTab.show();
+            }
+        }
+    });
+</script>
+{% endblock %}

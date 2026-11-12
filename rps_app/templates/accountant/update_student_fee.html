@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Update Fees - {{ student.fullName|default:"Unnamed Student" }}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-wallet me-2"></i>Update Fees for {{ student.fullName|default:"Unnamed Student" }}</h2>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Form Errors -->
+    {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>Please correct the following errors:
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>{{ field|title }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+
+    <!-- Update Fee Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form method="POST" id="updateFeeForm" class="row g-3">
+                {% csrf_token %}
+                <!-- Fee Selection -->
+                <div class="col-12">
+                    <label for="id_fee" class="form-label fw-semibold">
+                        <i class="fas fa-tag me-2"></i>Select Fees for {{ student.fullName|default:"Unnamed Student" }} (Class: {{ teacherclass.ClassName|default:"Unnamed Class" }})
+                    </label>
+                    <div class="student-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
+                        {{ form.fee }}
+                        {% if form.fee.errors %}
+                            <div class="invalid-feedback d-block">{{ form.fee.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <!-- Submit and Cancel Buttons -->
+                <div class="col-12 col-md-6 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-check-circle me-2"></i>Save Changes
+                    </button>
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-end">
+                    <a href="{% url 'finance:student_fee_list' class_id=teacherclass.id %}" class="btn btn-secondary w-100 rounded-pill">
+                        <i class="fas fa-arrow-left me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .form-select, .form-control {
+        border: 1px solid #ced4da;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    .btn-primary, .btn-secondary {
+        transition: background-color 0.3s, color 0.3s;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+        color: #fff;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        color: #fff;
+    }
+    .btn-primary:disabled {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        opacity: 0.7;
+    }
+    .student-list {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.85rem;
+    }
+    .d-none {
+        display: none;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const updateForm = document.getElementById('updateFeeForm');
+    const submitButton = document.getElementById('submitButton');
+    const feeSelect = document.getElementById('id_fee');
+
+    if (updateForm) {
+        updateForm.addEventListener('submit', function(event) {
+            let hasError = false;
+            if (!feeSelect.value) {
+                feeSelect.classList.add('is-invalid');
+                hasError = true;
+            }
+            if (hasError) {
+                event.preventDefault();
+            } else if (!submitButton.disabled) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            }
+        });
+    }
+
+    if (feeSelect) {
+        feeSelect.addEventListener('change', function() {
+            this.classList.remove('is-invalid');
+        });
+    }
+});
+</script>
+{% endblock %}

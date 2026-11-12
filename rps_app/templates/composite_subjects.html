@@ -1,0 +1,119 @@
+<!-- templates/composite_subjects.html -->
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<!-- Include Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <h2 class="fw-bold text-primary mb-4"><i class="fas fa-layer-group me-2"></i>Composite Subjects</h2>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Create Composite Subject Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Create New Composite Subject</h5>
+        </div>
+        <div class="card-body">
+            <form action="{% url 'composite_subjects' %}" method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12 col-md-4">
+                    <label for="subject_name" class="form-label fw-semibold"><i class="fas fa-tag me-2"></i>Composite Subject Name</label>
+                    <input type="text" name="subject_name" id="subject_name" class="form-control" value="{{ last_subject_name|default:'' }}" placeholder="e.g., Science Group" required>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="subjects" class="form-label fw-semibold"><i class="fas fa-book me-2"></i>Select Subjects (Hold Ctrl/Cmd to select multiple)</label>
+                    <select name="subjects" id="subjects" class="form-select" multiple required size="5">
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if last_selected_subjects and subject.id|stringformat:"s" in last_selected_subjects %}selected{% endif %}>
+                            {{ subject.nameSubject|default:"Unnamed Subject" }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label for="allow_to_use" class="form-label fw-semibold"><i class="fas fa-toggle-on me-2"></i>Allow to Use</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="allow_to_use" id="allow_to_use" {% if last_allow_to_use %}checked{% endif %}>
+                        <label class="form-check-label" for="allow_to_use">
+                            Enable for reports/grading
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" type="submit" name="create">
+                        <i class="fas fa-plus-circle me-2"></i>Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Composite Subjects Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Your Composite Subjects</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped align-middle m-0 table-bordered" id="composite-subjects-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="text-center" style="width: 10%;">#</th>
+                            <th scope="col" style="width: 20%;">Name</th>
+                            <th scope="col" style="width: 40%;">Included Subjects</th>
+                            <th scope="col" style="width: 10%;">Allow to Use</th>
+                            <th scope="col" class="text-center" style="width: 20%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for composite in composite_subjects %}
+                        <tr>
+                            <td class="text-center">{{ forloop.counter }}</td>
+                            <td>{{ composite.subject_name|default:"Unnamed Composite" }}</td>
+                            <td>
+                                {% for subject in composite.subjects.all %}
+                                    <span class="badge bg-secondary me-1">{{ subject.nameSubject|default:"Unnamed" }}</span>
+                                {% empty %}
+                                    <span class="text-muted">No subjects</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <i class="fas {% if composite.allow_to_use %}fa-check text-success{% else %}fa-times text-danger{% endif %}"></i>
+                                {{ composite.allow_to_use|yesno:"Yes,No" }}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'update_composite_subject' composite.id %}" class="btn btn-primary btn-sm me-1">
+                                    <i class="fas fa-edit me-1"></i>Update
+                                </a>
+                                <a href="{% url 'delete_composite_subject' composite.id %}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt me-1"></i>Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>No composite subjects found. Create one above.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

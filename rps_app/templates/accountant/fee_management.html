@@ -1,0 +1,719 @@
+{% extends 'base.html' %}
+{% block title %}
+    Fee Management
+{% endblock %}
+{% block content %}
+<div class="container-fluid my-4 px-3 px-md-4">
+
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-primary mb-0"><i class="fas fa-wallet me-2"></i>Fee Management</h2>
+            {% if selected_class_id %}
+                <small class="text-muted">Manage fees, payments, and notifications for the selected class.</small>
+            {% endif %}
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            {% if selected_class_id %}
+                <a href="{% url 'finance:download_general_student_fee_pdf' class_id=selected_class_id %}"
+                   class="btn btn-primary btn-sm rounded-pill btn-soft">
+                    <i class="fas fa-file-pdf me-2"></i>All Fees PDF
+                </a>
+            {% endif %}
+
+            {% if selected_class_id and selected_fee_id %}
+                <a href="{% url 'finance:download_student_fee_pdf' class_id=selected_class_id fee_id=selected_fee_id %}"
+                   class="btn btn-primary btn-sm rounded-pill btn-soft">
+                    <i class="fas fa-file-pdf me-2"></i>Selected Fee PDF
+                </a>
+            {% endif %}
+
+            {% if selected_class_id %}
+                <button class="btn btn-outline-primary btn-sm rounded-pill btn-soft" id="sendRemainingFeeSMSButton">
+                    <i class="fas fa-sms me-2"></i>Remaining Fee SMS
+                </button>
+                <button class="btn btn-outline-primary btn-sm rounded-pill btn-soft" id="sendStudentFeeSMSButton">
+                    <i class="fas fa-sms me-2"></i>Fee Status SMS
+                </button>
+                <button class="btn btn-outline-primary btn-sm rounded-pill btn-soft" id="sendStudentFeeEmailButton">
+                    <i class="fas fa-envelope me-2"></i>Fee Email
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ✅ LIVE Notifications Area (AJAX will insert messages here) -->
+    <div id="ajax-messages" class="mb-4"></div>
+
+    <!-- Django Messages (will show on normal page reload actions) -->
+    {% if messages %}
+        <div class="mb-4" id="django-messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Filter Options Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Options</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{% url 'finance:fee_management' %}" class="row g-3">
+                <div class="col-12 col-lg-3 col-md-6">
+                    <label for="class_select" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select id="class_select" name="class_id" class="form-select rounded-end" onchange="this.form.submit()">
+                            <option value="" {% if not selected_class_id %}selected{% endif %}>Select a Class</option>
+                            {% for tc in teacher_classes %}
+                                <option value="{{ tc.id }}" {% if tc.id|stringformat:"s" == selected_class_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ tc.ClassName.class_name }} ({{ tc.academicclassyear.academic_year_name|default:"No Year" }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-3 col-md-6">
+                    <label for="fee_select" class="form-label fw-semibold"><i class="fas fa-money-bill me-2"></i>Fee</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-money-check-alt"></i></span>
+                        <select id="fee_select" name="fee_id" class="form-select rounded-end" onchange="this.form.submit()">
+                            <option value="" {% if not selected_fee_id %}selected{% endif %}>Select a Fee</option>
+                            {% for fee in fees %}
+                                <option value="{{ fee.id }}" {% if fee.id|stringformat:"s" == selected_fee_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ fee.fee_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-3 col-md-6">
+                    <label for="status_filter" class="form-label fw-semibold"><i class="fas fa-filter me-2"></i>Status</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                        <select id="status_filter" name="status" class="form-select rounded-end" onchange="this.form.submit()">
+                            <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+                            <option value="Complete" {% if status_filter == "Complete" %}selected{% endif %}>Complete</option>
+                            <option value="Complete & Exceed" {% if status_filter == "Complete & Exceed" %}selected{% endif %}>Complete & Exceed</option>
+                            <option value="Remain" {% if status_filter == "Remain" %}selected{% endif %}>Remain</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-3 col-md-6">
+                    <label for="focus_filter" class="form-label fw-semibold"><i class="fas fa-graduation-cap me-2"></i>Focus</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select id="focus_filter" name="focus" class="form-select rounded-end" onchange="this.form.submit()">
+                            <option value="" {% if not focus_filter %}selected{% endif %}>All Focuses</option>
+                            <option value="science" {% if focus_filter == "science" %}selected{% endif %}>Science</option>
+                            <option value="arts" {% if focus_filter == "arts" %}selected{% endif %}>Arts</option>
+                            <option value="commerce" {% if focus_filter == "commerce" %}selected{% endif %}>Commerce</option>
+                            <option value="technical" {% if focus_filter == "technical" %}selected{% endif %}>Technical</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-8 col-lg-9">
+                    <label for="date_range_start" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-2"></i>Joined Date Range</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar-day"></i></span>
+                        <input type="date" id="date_range_start" name="date_range_start" class="form-control"
+                               value="{{ date_range_start|default_if_none:'' }}" onchange="this.form.submit()">
+                        <span class="input-group-text bg-light">to</span>
+                        <input type="date" id="date_range_end" name="date_range_end" class="form-control"
+                               value="{{ date_range_end|default_if_none:'' }}" onchange="this.form.submit()">
+                        <a href="{% url 'finance:fee_management' %}?class_id={{ selected_class_id }}&fee_id={{ selected_fee_id }}"
+                           class="btn btn-outline-secondary rounded-pill btn-soft" title="Clear date filter">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-4 col-lg-3 d-flex align-items-end">
+                    <div class="w-100 small text-muted">
+                        Tip: On small screens, columns will stack automatically to avoid sideways scrolling.
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Message Card -->
+    {% if selected_class_id %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-comment me-2"></i>Custom Message</h5>
+            </div>
+            <div class="card-body">
+                <label for="custom_message" class="form-label fw-semibold">
+                    <i class="fas fa-paper-plane me-2"></i>Custom Message (max 160 characters for SMS)
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fas fa-paper-plane"></i></span>
+                    <textarea id="custom_message" class="form-control rounded-end" rows="3" maxlength="160"
+                              placeholder="Enter a custom message to prepend to notifications"></textarea>
+                </div>
+                <small class="text-muted">Character count: <span id="char_count">0</span>/160</small>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- No Data Warning -->
+    <div id="no-data-warning" class="alert alert-warning alert-dismissible fade show {% if student_fee_data %}d-none{% endif %}" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>Please select a class and fee to view data.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Search Container -->
+    <div class="mb-3 {% if not student_fee_data %}d-none{% endif %}" id="search-container">
+        <form method="get" action="{% url 'finance:fee_management' %}">
+            <input type="hidden" name="class_id" value="{{ selected_class_id }}">
+            <input type="hidden" name="fee_id" value="{{ selected_fee_id }}">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="hidden" name="focus" value="{{ focus_filter }}">
+            <input type="hidden" name="date_range_start" value="{{ date_range_start }}">
+            <input type="hidden" name="date_range_end" value="{{ date_range_end }}">
+
+            <div class="input-group" style="max-width: 420px;">
+                <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                <input type="text" id="studentSearch" name="search" class="form-control rounded-end"
+                       placeholder="Search Student..." value="{{ search_query|default_if_none:'' }}">
+                <a href="{% url 'finance:fee_management' %}?class_id={{ selected_class_id }}&fee_id={{ selected_fee_id }}&status={{ status_filter }}&focus={{ focus_filter }}&date_range_start={{ date_range_start }}&date_range_end={{ date_range_end }}"
+                   class="btn btn-outline-secondary rounded-pill btn-soft" title="Clear search">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Student Fee Details -->
+    <div class="card shadow-sm {% if not student_fee_data %}d-none{% endif %}" id="feeTableCard">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Student Fee Details</h5>
+
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-white-50 small d-none d-md-inline">Select all</span>
+                <input type="checkbox" id="select_all_students" class="form-check-input nice-check">
+
+                <button class="btn btn-sm btn-light rounded-pill btn-soft" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#feeTable" aria-expanded="true" aria-controls="feeTable">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="collapse show" id="feeTable">
+            <div class="card-body p-0">
+
+                <!-- Desktop table -->
+                <div class="table-responsive d-none d-lg-block">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered table-fixed" id="studentTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 48px;">
+                                    <input type="checkbox" id="header_select_all" class="form-check-input nice-check">
+                                </th>
+                                <th scope="col" class="text-center" style="width: 60px;">#</th>
+                                <th scope="col" style="width: 260px;">Student</th>
+                                <th scope="col" class="text-end" style="width: 140px;">Required</th>
+                                <th scope="col" class="text-end" style="width: 120px;">Paid</th>
+                                <th scope="col" class="text-end" style="width: 120px;">Balance</th>
+                                <th scope="col" style="width: 140px;">Status</th>
+                                <th scope="col" style="width: 160px;">Pay Status</th>
+                                <th scope="col" class="text-center" style="min-width: 360px;">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="studentTableBody">
+                            {% for data in student_fee_data %}
+                                <tr data-student-id="{{ data.student_id }}" class="animate__animated animate__fadeIn student-row">
+                                    <td class="text-center">
+                                        <input type="checkbox"
+                                               class="form-check-input student-checkbox nice-check"
+                                               id="student_{{ data.student_id }}"
+                                               value="{{ data.student_id }}">
+                                    </td>
+                                    <td class="text-center">{{ forloop.counter }}</td>
+                                    <td class="small">
+                                        <div class="fw-semibold text-truncate-2">{{ data.student_name }}</div>
+                                        <div class="small text-muted">
+                                            {{ data.joined_date|default:"Not registered" }} • {{ data.focus|default:"No focus" }}
+                                            <span class="fst-italic"> (Init: {{ data.initial_payment|floatformat:2|default:"0.00" }})</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">{{ data.amount_required|floatformat:2 }}</td>
+                                    <td class="text-end">{{ data.total_paid|floatformat:2 }}</td>
+                                    <td class="text-end">{{ data.balance|floatformat:2 }}</td>
+                                    <td>{{ data.status }}</td>
+                                    <td>{{ data.payment_status }}</td>
+
+                                    <td class="text-center p-2">
+                                        <div class="d-flex flex-nowrap gap-2 justify-content-center overflow-x-auto actions-wrap">
+                                            <form method="post"
+                                                  action="{% url 'finance:apply_discount' student_id=data.student_id fee_id=selected_fee.id class_id=selected_class.id %}"
+                                                  class="d-inline-flex align-items-center">
+                                                {% csrf_token %}
+                                                <div class="input-group input-group-sm discount-group">
+                                                    <input type="number" name="discount_amount"
+                                                           value="{{ data.discount_amount|floatformat:2 }}"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="Disc"
+                                                           min="0" step="0.01">
+                                                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 btn-soft" title="Apply Discount">
+                                                        <i class="fas fa-percent"></i>
+                                                    </button>
+                                                </div>
+                                            </form>
+
+                                            <a href="{% url 'finance:pay_fee' student_id=data.student_id fee_id=selected_fee.id %}"
+                                               class="btn btn-success btn-sm rounded-pill px-3 btn-soft" title="Pay Fee">
+                                                <i class="fas fa-money-bill-wave"></i>
+                                            </a>
+
+                                            <a href="{% url 'finance:view_payment_records' student_id=data.student_id fee_id=selected_fee.id class_id=selected_class.id %}"
+                                               class="btn btn-info btn-sm rounded-pill px-3 btn-soft view-payment-btn" title="View Payments">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+
+                                            {% if data.total_paid > 0 %}
+                                                <button class="btn btn-danger btn-sm rounded-pill px-3 btn-soft"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#deletePaymentModal{{ data.student_id }}"
+                                                        title="Delete All Payments">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="fas fa-exclamation-circle me-2"></i>No students assigned to this fee.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile/Tablet cards -->
+                <div class="d-block d-lg-none p-3">
+                    {% for data in student_fee_data %}
+                        <div class="card border-0 shadow-sm mb-3 animate__animated animate__fadeIn student-row"
+                             data-student-id="{{ data.student_id }}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <input type="checkbox"
+                                               class="form-check-input student-checkbox nice-check mt-1"
+                                               id="student_m_{{ data.student_id }}"
+                                               value="{{ data.student_id }}">
+                                        <div>
+                                            <div class="fw-semibold">{{ data.student_name }}</div>
+                                            <div class="small text-muted">
+                                                {{ data.joined_date|default:"Not registered" }} • {{ data.focus|default:"No focus" }}
+                                            </div>
+                                            <div class="small text-muted fst-italic">
+                                                Init: {{ data.initial_payment|floatformat:2|default:"0.00" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-dark rounded-pill">#{{ forloop.counter }}</span>
+                                </div>
+
+                                <hr class="my-3">
+
+                                <div class="row g-2 small">
+                                    <div class="col-6"><span class="text-muted">Required</span><div class="fw-semibold">{{ data.amount_required|floatformat:2 }}</div></div>
+                                    <div class="col-6"><span class="text-muted">Paid</span><div class="fw-semibold">{{ data.total_paid|floatformat:2 }}</div></div>
+                                    <div class="col-6"><span class="text-muted">Balance</span><div class="fw-semibold">{{ data.balance|floatformat:2 }}</div></div>
+                                    <div class="col-6"><span class="text-muted">Status</span><div class="fw-semibold">{{ data.status }}</div></div>
+                                    <div class="col-12"><span class="text-muted">Payment Status</span><div class="fw-semibold">{{ data.payment_status }}</div></div>
+                                </div>
+
+                                <div class="mt-3 d-flex flex-wrap gap-2">
+                                    <form method="post"
+                                          action="{% url 'finance:apply_discount' student_id=data.student_id fee_id=selected_fee.id class_id=selected_class.id %}"
+                                          class="d-flex align-items-center gap-2">
+                                        {% csrf_token %}
+                                        <input type="number" name="discount_amount"
+                                               value="{{ data.discount_amount|floatformat:2 }}"
+                                               class="form-control form-control-sm rounded-pill"
+                                               style="max-width: 120px;"
+                                               placeholder="Disc"
+                                               min="0" step="0.01">
+                                        <button type="submit" class="btn btn-primary btn-sm rounded-pill btn-soft" title="Apply Discount">
+                                            <i class="fas fa-percent me-1"></i>Apply
+                                        </button>
+                                    </form>
+
+                                    <a href="{% url 'finance:pay_fee' student_id=data.student_id fee_id=selected_fee.id %}"
+                                       class="btn btn-success btn-sm rounded-pill btn-soft">
+                                        <i class="fas fa-money-bill-wave me-1"></i>Pay
+                                    </a>
+
+                                    <a href="{% url 'finance:view_payment_records' student_id=data.student_id fee_id=selected_fee.id class_id=selected_class.id %}"
+                                       class="btn btn-info btn-sm rounded-pill btn-soft">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+
+                                    {% if data.total_paid > 0 %}
+                                        <button class="btn btn-danger btn-sm rounded-pill btn-soft"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deletePaymentModal{{ data.student_id }}">
+                                            <i class="fas fa-trash-alt me-1"></i>Delete
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-exclamation-circle me-2"></i>No students assigned to this fee.
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Payment Modals -->
+    {% for data in student_fee_data %}
+        <div class="modal fade" id="deletePaymentModal{{ data.student_id }}" tabindex="-1" aria-labelledby="deletePaymentModalLabel{{ data.student_id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="deletePaymentModalLabel{{ data.student_id }}">
+                            <i class="fas fa-trash-alt me-2"></i>Delete Payment for {{ data.student_name }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">Are you sure you want to delete all payments for this student?</p>
+                        <form method="post" action="{% url 'finance:delete_payment' student_id=data.student_id class_id=selected_class.id fee_id=selected_fee.id %}">
+                            {% csrf_token %}
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-danger w-100 rounded-pill btn-soft">
+                                    <i class="fas fa-trash-alt me-2"></i>Delete
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill btn-soft" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
+    <!-- Summary Card -->
+    {% if summary %}
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong><i class="fas fa-money-bill me-2"></i>Total Initial Payments:</strong> {{ summary.total_initial_payments|floatformat:2 }}</p>
+                        <p class="mb-2"><strong><i class="fas fa-users me-2"></i>Students with Initial Payments:</strong> {{ summary.students_with_initial_payments }}</p>
+                        <p class="mb-0"><strong><i class="fas fa-money-check me-2"></i>Total Payments:</strong> {{ summary.total_payments|floatformat:2 }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong><i class="fas fa-coins me-2"></i>Total Expected Fees:</strong> {{ summary.total_expected_fees|floatformat:2 }}</p>
+                        <p class="mb-2"><strong><i class="fas fa-check-circle me-2"></i>Complete Payments:</strong> {{ summary.complete_count }} ({{ summary.total_complete_amount|floatformat:2 }})</p>
+                        <p class="mb-0"><strong><i class="fas fa-exclamation-circle me-2"></i>Remaining Payments:</strong> {{ summary.remain_count }} ({{ summary.total_remaining_amount|floatformat:2 }})</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-2"><strong><i class="fas fa-arrow-up me-2"></i>Exceeding Payments:</strong> {{ summary.students_exceeded }} ({{ summary.total_exceed|floatformat:2 }})</p>
+                        <p class="mb-0"><strong><i class="fas fa-percent me-2"></i>Discounts Applied:</strong> {{ summary.students_with_discounts }} ({{ summary.total_discount_amount|floatformat:2 }})</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Include Font Awesome and Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<style>
+    .btn-soft{
+        box-shadow: 0 6px 18px rgba(0,0,0,.06);
+        transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+    .btn-soft:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.10); }
+    .btn-soft:active{ transform: translateY(0px); box-shadow: 0 6px 18px rgba(0,0,0,.06); opacity: .95; }
+
+    .nice-check{
+        float: none !important;
+        margin-left: 0 !important;
+        position: static !important;
+        cursor: pointer;
+    }
+    input.nice-check{ width: 20px; height: 20px; }
+
+    .text-truncate-2{
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .actions-wrap{ min-height: 40px; padding: 2px 0; }
+    .discount-group{ width: 140px; min-width: 140px; }
+    .discount-group .form-control{ border-radius: 999px 0 0 999px; }
+    .discount-group .btn{ border-radius: 0 999px 999px 0; }
+
+    body{ overflow-x: hidden; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const studentSearch = document.getElementById('studentSearch');
+    const selectAllCheckbox = document.getElementById('select_all_students');
+    const headerSelectAllCheckbox = document.getElementById('header_select_all');
+    const customMessage = document.getElementById('custom_message');
+    const charCount = document.getElementById('char_count');
+
+    const sendRemainingFeeSMSButton = document.getElementById('sendRemainingFeeSMSButton');
+    const sendStudentFeeSMSButton = document.getElementById('sendStudentFeeSMSButton');
+    const sendStudentFeeEmailButton = document.getElementById('sendStudentFeeEmailButton');
+
+    const ajaxMessages = document.getElementById('ajax-messages');
+
+    let originalCheckboxStates = new Map();
+
+    function iconByTag(tag){
+        if(tag === 'success') return 'check-circle';
+        if(tag === 'warning') return 'exclamation-triangle';
+        return 'exclamation-circle';
+    }
+
+    // ✅ Render messages returned by your JsonResponse
+    function renderAjaxMessages(messagesArr){
+        if(!ajaxMessages) return;
+
+        ajaxMessages.innerHTML = '';
+
+        if(!messagesArr || !messagesArr.length){
+            return;
+        }
+
+        messagesArr.forEach(m => {
+            const tags = (m.tags || 'info').split(' ')[0]; // success/warning/error/...
+            const icon = iconByTag(tags);
+
+            const div = document.createElement('div');
+            div.className = `alert alert-${tags} alert-dismissible fade show animate__animated animate__fadeIn`;
+            div.setAttribute('role', 'alert');
+            div.innerHTML = `
+                <i class="fas fa-${icon} me-2"></i>${m.message || ''}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            ajaxMessages.appendChild(div);
+        });
+
+        // scroll user to notifications
+        ajaxMessages.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Character counter
+    if (customMessage && charCount) {
+        customMessage.addEventListener('input', function() {
+            charCount.textContent = customMessage.value.length;
+        });
+    }
+
+    // Store original checkbox states
+    function storeOriginalStates() {
+        document.querySelectorAll('.student-checkbox').forEach(cb => {
+            originalCheckboxStates.set(cb.id, cb.checked);
+        });
+    }
+
+    // Restore hidden checkbox states
+    function restoreHiddenCheckboxStates() {
+        document.querySelectorAll('.student-row').forEach(row => {
+            if (row.style.display === 'none') {
+                const cb = row.querySelector('.student-checkbox');
+                if (cb) cb.checked = originalCheckboxStates.get(cb.id) || false;
+            }
+        });
+    }
+
+    function updateSendButtons() {
+        const anyChecked = document.querySelectorAll('.student-checkbox:checked').length > 0;
+        if (sendRemainingFeeSMSButton) sendRemainingFeeSMSButton.disabled = !anyChecked;
+        if (sendStudentFeeSMSButton) sendStudentFeeSMSButton.disabled = !anyChecked;
+        if (sendStudentFeeEmailButton) sendStudentFeeEmailButton.disabled = !anyChecked;
+    }
+
+    function updateSelectAllState() {
+        const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+        const visibleCheckboxes = Array.from(studentCheckboxes).filter(cb => cb.closest('.student-row').style.display !== 'none');
+
+        if (visibleCheckboxes.length === 0) {
+            if (selectAllCheckbox) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
+            if (headerSelectAllCheckbox) { headerSelectAllCheckbox.checked = false; headerSelectAllCheckbox.indeterminate = false; }
+            updateSendButtons();
+            return;
+        }
+
+        const allChecked = visibleCheckboxes.every(cb => cb.checked);
+        const someChecked = visibleCheckboxes.some(cb => cb.checked);
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        }
+        if (headerSelectAllCheckbox) {
+            headerSelectAllCheckbox.checked = allChecked;
+            headerSelectAllCheckbox.indeterminate = someChecked && !allChecked;
+        }
+
+        updateSendButtons();
+    }
+
+    // Search
+    if (studentSearch) {
+        storeOriginalStates();
+        studentSearch.addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            document.querySelectorAll('.student-row').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+            restoreHiddenCheckboxStates();
+            updateSelectAllState();
+        });
+    }
+
+    function toggleAllCheckboxes(isChecked) {
+        document.querySelectorAll('.student-row').forEach(row => {
+            if (row.style.display !== 'none') {
+                const cb = row.querySelector('.student-checkbox');
+                if (cb) {
+                    cb.checked = isChecked;
+                    originalCheckboxStates.set(cb.id, isChecked);
+                }
+            }
+        });
+        updateSelectAllState();
+    }
+
+    // Select all
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            toggleAllCheckboxes(this.checked);
+        });
+    }
+    if (headerSelectAllCheckbox) {
+        headerSelectAllCheckbox.addEventListener('change', function() {
+            toggleAllCheckboxes(this.checked);
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = this.checked;
+                selectAllCheckbox.indeterminate = this.indeterminate;
+            }
+        });
+    }
+
+    // Individual checkbox events
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            originalCheckboxStates.set(this.id, this.checked);
+            updateSelectAllState();
+        });
+    });
+
+    // ✅ Send request + show success/error messages returned by your views
+    async function sendRequest(url, button) {
+        const studentIds = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value).join(',');
+        if (!studentIds) {
+            renderAjaxMessages([{message: 'Please select at least one student.', tags: 'warning'}]);
+            return;
+        }
+
+        const payload = {
+            class_id: '{{ selected_class_id }}',
+            student_ids: studentIds,
+            custom_message: customMessage ? customMessage.value : ''
+        };
+
+        const originalButtonContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            let data = null;
+            try {
+                data = await resp.json();
+            } catch (e) {
+                // not json
+            }
+
+            if (!resp.ok) {
+                const msg = (data && data.message) ? data.message : `Request failed (${resp.status}).`;
+                renderAjaxMessages([{message: msg, tags: 'error'}]);
+            } else {
+                // ✅ this is the key: show server-returned messages
+                if (data && data.messages) {
+                    renderAjaxMessages(data.messages);
+                } else if (data && data.message) {
+                    renderAjaxMessages([{message: data.message, tags: data.success ? 'success' : 'warning'}]);
+                } else {
+                    renderAjaxMessages([{message: 'Done.', tags: 'success'}]);
+                }
+            }
+
+        } catch (err) {
+            renderAjaxMessages([{message: `Network error: ${err}`, tags: 'error'}]);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalButtonContent;
+        }
+    }
+
+    if (sendRemainingFeeSMSButton) {
+        sendRemainingFeeSMSButton.addEventListener('click', function() {
+            sendRequest('{% url "finance:send_remaining_fee_sms" %}', this);
+        });
+    }
+    if (sendStudentFeeSMSButton) {
+        sendStudentFeeSMSButton.addEventListener('click', function() {
+            sendRequest('{% url "finance:send_student_fee_sms" %}', this);
+        });
+    }
+    if (sendStudentFeeEmailButton) {
+        sendStudentFeeEmailButton.addEventListener('click', function() {
+            sendRequest('{% url "finance:send_student_fee_email" %}', this);
+        });
+    }
+
+    updateSelectAllState();
+});
+</script>
+{% endblock %}

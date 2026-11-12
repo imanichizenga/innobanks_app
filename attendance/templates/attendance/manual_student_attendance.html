@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between mb-3">
+    <div><h3>Manual Student Attendance</h3><p class="text-muted mb-0">Capture exact check-in/out time and late arrivals.</p></div>
+    <a class="btn btn-outline-primary" href="{% url 'attendance:student_attendance_report' %}">Student Reports</a>
+  </div>
+  <form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4"><label class="form-label">Class</label><select name="class_id" class="form-select" required><option value="">Choose</option>{% for class in classes %}<option value="{{ class.id }}" {% if selected_class and selected_class.id == class.id %}selected{% endif %}>{{ class.ClassName }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" name="date" value="{{ selected_date|date:'Y-m-d' }}"></div>
+      <div class="col-md-3"><label class="form-label">Late cutoff time</label><input type="time" class="form-control" name="cutoff_time" value="{% if cutoff_time %}{{ cutoff_time|time:'H:i' }}{% endif %}"></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100">Load</button></div>
+    </div>
+  </form>
+
+  <div class="row g-2 mb-3">
+    <div class="col"><div class="card card-body"><small>Total</small><h5>{{ total_students }}</h5></div></div>
+    <div class="col"><div class="card card-body"><small class="text-success">Present</small><h5 class="text-success" id="presentCount">{{ present_count }}</h5></div></div>
+    <div class="col"><div class="card card-body"><small class="text-danger">Absent</small><h5 class="text-danger" id="absentCount">{{ absent_count }}</h5></div></div>
+  </div>
+
+  <form method="post" class="card" id="studentAttendanceForm">
+    {% csrf_token %}
+    <input type="hidden" name="class_id" value="{{ selected_class.id|default:'' }}"><input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}"><input type="hidden" name="cutoff_time" value="{% if cutoff_time %}{{ cutoff_time|time:'H:i' }}{% endif %}">
+    <div class="card-header d-flex justify-content-between"><span>{{ selected_class|default:'Select class' }}</span><button class="btn btn-success btn-sm" {% if not selected_class %}disabled{% endif %}>Save</button></div>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>#</th><th>Name</th><th>Index</th><th>Date</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Present</th></tr></thead><tbody>
+      {% for student in students %}
+      {% with row=existing_map|get_item:student.id %}
+      <tr class="attendance-row {% if row.status == 'present' %}table-success{% endif %}" data-row-type="student">
+        <td>{{ forloop.counter }}<input type="hidden" name="student_ids" value="{{ student.id }}"></td><td>{{ student.fullName }}</td><td>{{ student.indexNumber|default:'-' }}</td><td>{{ selected_date|date:'Y-m-d' }}</td>
+        <td><input type="time" class="form-control form-control-sm check-in-input" name="check_in_{{ student.id }}" value="{% if row and row.check_in_time %}{{ row.check_in_time|time:'H:i' }}{% endif %}" data-initial="{% if row and row.check_in_time %}1{% else %}0{% endif %}"></td>
+        <td><input type="time" class="form-control form-control-sm" name="check_out_{{ student.id }}" value="{% if row and row.check_out_time %}{{ row.check_out_time|time:'H:i' }}{% endif %}"></td>
+        <td>
+          <span class="badge status-badge {% if row.status == 'present' %}bg-success{% else %}bg-danger{% endif %}">{% if row.status == 'present' %}Present{% else %}Absent{% endif %}</span>
+        </td>
+        <td class="text-center">
+          <input type="hidden" class="present-hidden" name="present_{{ student.id }}" value="{% if row.status == 'present' %}1{% else %}0{% endif %}">
+          <input class="form-check-input attendance-check" type="checkbox" {% if row.status == 'present' %}checked{% endif %}>
+        </td>
+      </tr>
+      {% endwith %}
+      {% empty %}<tr><td colspan="8" class="text-center text-muted py-3">No students found.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('studentAttendanceForm');
+  if (!form) return;
+
+  const rows = form.querySelectorAll('tr.attendance-row');
+
+  function nowHHMM() {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
+
+  function updateCounts() {
+    const present = form.querySelectorAll('.attendance-check:checked').length;
+    const absent = rows.length - present;
+    const presentNode = document.getElementById('presentCount');
+    const absentNode = document.getElementById('absentCount');
+    if (presentNode) presentNode.textContent = present;
+    if (absentNode) absentNode.textContent = absent;
+  }
+
+  function updateRow(row) {
+    const checkbox = row.querySelector('.attendance-check');
+    const hidden = row.querySelector('.present-hidden');
+    const checkIn = row.querySelector('.check-in-input');
+    const badge = row.querySelector('.status-badge');
+
+    if (checkbox.checked) {
+      hidden.value = '1';
+      if (!checkIn.value) checkIn.value = nowHHMM();
+      badge.textContent = 'Present';
+      badge.classList.remove('bg-danger');
+      badge.classList.add('bg-success');
+      row.classList.add('table-success');
+    } else {
+      hidden.value = '0';
+      if (checkIn.dataset.initial !== '1') checkIn.value = '';
+      badge.textContent = 'Absent';
+      badge.classList.remove('bg-success');
+      badge.classList.add('bg-danger');
+      row.classList.remove('table-success');
+    }
+
+    updateCounts();
+  }
+
+  rows.forEach((row) => {
+    const checkbox = row.querySelector('.attendance-check');
+    updateRow(row);
+    checkbox.addEventListener('change', function () {
+      updateRow(row);
+    });
+  });
+})();
+</script>
+{% endblock %}

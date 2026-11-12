@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-chart-bar me-2"></i>Grade Distribution</h2>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <i class="fas fa-info-circle me-2"></i>{{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Grade Distribution Table -->
+    {% if subject_grade_counts %}
+    <div class="card shadow-sm border-0 rounded-4 mb-5">
+        <div class="card-header bg-primary text-white fw-medium rounded-top-4">
+            <i class="fas fa-table me-2"></i>Subject Grade Distribution for {{ selected_class.ClassName|default:"Unnamed Class" }} ({{ level|default:"Unknown Level" }} - {{ selected_examination.exam_name }})
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Subject</th>
+                            {% for grade in grade_list %}
+                            <th>{{ grade }}</th>
+                            {% endfor %}
+                            <th>Total Students</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject_data in subject_grade_counts %}
+                        <tr class="animate__animated animate__fadeIn">
+                            <td>{{ subject_data.subject }}</td>
+                            {% for grade in grade_list %}
+                            <td class="text-center">{{ subject_data|get_item:grade }}</td>
+                            {% endfor %}
+                            <td class="text-center">{{ subject_data.total_students }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ grade_list|length|add:2 }}" class="text-center text-muted py-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>No subjects or marks found for this class at {{ level|default:"the selected level" }}.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <!-- Summary Row -->
+                        {% if summary_grade_counts.total_students > 0 %}
+                        <tr class="table-info fw-bold animate__animated animate__fadeIn">
+                            <td>{{ summary_grade_counts.subject }}</td>
+                            {% for grade in grade_list %}
+                            <td class="text-center">{{ summary_grade_counts|get_item:grade }}</td>
+                            {% endfor %}
+                            <td class="text-center">{{ summary_grade_counts.total_students }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Form for Filtering -->
+    <div class="card shadow-sm border-0 rounded-4 mb-5 bg-light">
+        <div class="card-body">
+            <form method="POST" action="{% url 'subject_grade_distribution' %}" class="row g-3" id="gradeDistributionForm">
+                {% csrf_token %}
+                <div class="col-12 col-md-6">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select class="form-select rounded-end" id="class_id" name="class_id" required>
+                            <option value="" disabled {% if not selected_class %}selected{% endif %}>Select a class</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}" {% if selected_class.id == class.id %}selected{% endif %}>{{ class.ClassName|default:"Unnamed Class" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="grade_id" class="form-label fw-semibold"><i class="fas fa-graduation-cap me-2"></i>Select Grading System</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select class="form-select rounded-end" id="grade_id" name="grade_id" required>
+                            <option value="" disabled {% if not grading_system %}selected{% endif %}>Select a grading system</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}" {% if grading_system.id == grade.id %}selected{% endif %}>
+                                {% if grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-file-alt me-2"></i>Select Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                        <select class="form-select rounded-end" id="examination_id" name="examination_id" required>
+                            <option value="" disabled {% if not selected_examination %}selected{% endif %}>Select an examination</option>
+                            {% for exam in examinations %}
+                            <option value="{{ exam.id }}" {% if selected_examination.id == exam.id %}selected{% endif %}>{{ exam.exam_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill shadow-sm" type="submit" id="submitButton">
+                        <i class="fas fa-search me-2"></i>View Grade Distribution
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Buttons Section -->
+    <div class="text-center mb-4">
+        <a href="{% url 'subject_grade_distribution' %}" class="btn btn-secondary rounded-pill fw-medium px-4 me-2"><i class="fas fa-arrow-left me-2"></i>Back to Selection</a>
+        {% if selected_class and grading_system and selected_examination %}
+        <a href="{% url 'download_grade_distribution_pdf' selected_class.id grading_system.id selected_examination.id %}" class="btn btn-primary rounded-pill fw-medium px-4 me-2"><i class="fas fa-download me-2"></i>Get PDF</a>
+        <a href="{% url 'division_summary' %}" class="btn btn-info rounded-pill fw-medium px-4 me-2"><i class="fas fa-chart-pie me-2"></i>View Division Summary</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const gradeDistributionForm = document.getElementById('gradeDistributionForm');
+        const submitButton = document.getElementById('submitButton');
+
+        if (gradeDistributionForm) {
+            gradeDistributionForm.addEventListener('submit', function() {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            });
+        }
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+
+<style>
+    body {
+        background: #f4f7fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .btn {
+        transition: all 0.3s;
+    }
+    .btn:hover {
+        transform: scale(1.05);
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}

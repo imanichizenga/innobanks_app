@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student ID Details</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f2f7ff; color: #10243f; }
+    .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card {
+      width: 100%; max-width: 460px; background: #fff; border-radius: 16px;
+      border: 2px solid #0a5c9f; box-shadow: 0 8px 24px rgba(16, 36, 63, 0.12); overflow: hidden;
+    }
+    .head { background: linear-gradient(135deg, #0a5c9f, #0f79cb); color: #fff; padding: 16px; }
+    .head h1 { margin: 0 0 4px; font-size: 20px; }
+    .head p { margin: 0; font-size: 13px; opacity: 0.95; }
+    .body { padding: 16px; }
+    .row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid #e6eef9; }
+    .row:last-child { border-bottom: 0; }
+    .label { width: 128px; font-size: 13px; font-weight: 700; color: #355279; flex-shrink: 0; }
+    .value { font-size: 14px; word-break: break-word; }
+    .message { font-size: 15px; color: #b00020; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <header class="head">
+        <h1>{{ school_name|default:"THE BRITISH SCHOOL" }}</h1>
+        <p>Public Student ID Verification</p>
+      </header>
+      <div class="body">
+        {% if message %}
+          <p class="message">{{ message }}</p>
+        {% else %}
+          <div class="row"><div class="label">Name</div><div class="value">{{ student_name }}</div></div>
+          <div class="row"><div class="label">ID</div><div class="value">{{ student_index }}</div></div>
+          <div class="row"><div class="label">Class</div><div class="value">{{ class_name }}</div></div>
+          <div class="row"><div class="label">Reg No</div><div class="value">{{ registration_number }}</div></div>
+          <div class="row"><div class="label">Issued</div><div class="value">{{ issued_date_text }}</div></div>
+          <div class="row"><div class="label">Expire</div><div class="value">{{ expiry_text }}</div></div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-3 student-info-page">
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+      <div>
+        <h4 class="mb-1">Student Additional Information</h4>
+        <p class="text-muted mb-0">{{ student.fullName|default:student.user.username }}{% if student.teacherclass %} • {{ student.teacherclass.ClassName.class_name }}{% endif %}</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ student_list_url }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Students</a>
+        <a href="{% url 'student_id_card_view' student.id %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-person-vcard me-1"></i>ID Card</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      {% include 'partials/student_information_forms.html' %}
+    </div>
+  </div>
+</div>
+
+<script>
+function getCsrfToken(){return document.querySelector('[name=csrfmiddlewaretoken]')?.value;}
+function setupCameraCapture(config){
+  const fileInput=document.getElementById(config.fileInputId),hiddenInput=document.getElementById(config.hiddenInputId),previewImage=document.getElementById(config.previewImageId),previewPlaceholder=document.getElementById(config.previewPlaceholderId),video=document.getElementById(config.videoId),videoPlaceholder=document.getElementById(config.videoPlaceholderId),startBtn=document.getElementById(config.startButtonId),captureBtn=document.getElementById(config.captureButtonId),stopBtn=document.getElementById(config.stopButtonId);
+  let stream=null;
+  if(!fileInput||!hiddenInput||!previewImage||!video||fileInput.dataset.cameraBound==='1')return;
+  fileInput.dataset.cameraBound='1';
+  const showPreview=(src)=>{previewImage.src=src;previewImage.classList.remove('d-none');previewPlaceholder?.classList.add('d-none');};
+  const stopStream=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.classList.add('d-none');videoPlaceholder?.classList.remove('d-none');if(captureBtn)captureBtn.disabled=true;if(stopBtn)stopBtn.disabled=true;};
+  fileInput.addEventListener('change',function(){hiddenInput.value='';const [file]=this.files;if(file){showPreview(URL.createObjectURL(file));}});
+  startBtn?.addEventListener('click',async function(){try{stream=await navigator.mediaDevices.getUserMedia({video:true});video.srcObject=stream;video.classList.remove('d-none');videoPlaceholder?.classList.add('d-none');if(captureBtn)captureBtn.disabled=false;if(stopBtn)stopBtn.disabled=false;}catch(e){alert('Unable to access camera');}});
+  captureBtn?.addEventListener('click',function(){if(!stream)return;const c=document.createElement('canvas');c.width=video.videoWidth||640;c.height=video.videoHeight||480;c.getContext('2d').drawImage(video,0,0,c.width,c.height);const dataUrl=c.toDataURL('image/png');hiddenInput.value=dataUrl;fileInput.value='';showPreview(dataUrl);stopStream();});
+  stopBtn?.addEventListener('click',stopStream);
+  window.addEventListener('beforeunload',stopStream,{once:true});
+}
+function setupPassportPhotoCapture(studentId){setupCameraCapture({fileInputId:'id_passport_photo',hiddenInputId:`passportCapturedPhotoData-${studentId}`,previewImageId:`passportPhotoPreview-${studentId}`,previewPlaceholderId:`passportPreviewPlaceholder-${studentId}`,videoId:`passportCameraPreview-${studentId}`,videoPlaceholderId:`passportCameraPlaceholder-${studentId}`,startButtonId:`passportStartCamera-${studentId}`,captureButtonId:`passportCaptureCamera-${studentId}`,stopButtonId:`passportStopCamera-${studentId}`});}
+function bindEntityInfoForms(root=document){
+  root.querySelectorAll('.entity-info-form').forEach(form=>{
+    if(form.dataset.bound==='1')return;
+    form.dataset.bound='1';
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      const entity=this.dataset.entity,entityId=this.dataset.entityId;
+      const fd=new FormData(this);
+      const btn=this.querySelector('[type="submit"]');
+      const originalHtml=btn?.innerHTML;
+      if(btn){btn.disabled=true;btn.innerHTML='Saving...';}
+      fetch(`/${entity}s/${entityId}/information/save/`,{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrfToken()||''}})
+        .then(async r=>({ok:r.ok,data:await r.json()}))
+        .then(({ok,data})=>{if(ok&&data.success){window.location.reload();return;}alert(data.message||JSON.stringify(data.errors)||'Unable to save student information.');})
+        .catch(()=>alert('Unable to save student information. Please try again.'))
+        .finally(()=>{if(btn){btn.disabled=false;btn.innerHTML=originalHtml;}});
+    });
+  });
+}
+function deleteEntityInfo(entity,entityId,modelKey,recordId){
+  if(!confirm('Delete this record?'))return;
+  fetch(`/${entity}s/${entityId}/information/delete/${modelKey}/${recordId}/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()||''}})
+    .then(r=>r.json())
+    .then(data=>{if(data.success){window.location.reload();return;}alert(data.message||'Unable to delete this record.');})
+    .catch(()=>alert('Unable to delete this record.'));
+}
+document.addEventListener('DOMContentLoaded',function(){
+  bindEntityInfoForms(document);
+  setupPassportPhotoCapture('{{ student.id }}');
+});
+</script>
+
+<style>
+.student-info-page{max-width:1180px;margin:0 auto}
+.student-info-page .accordion-button{font-weight:600}
+</style>
+{% endblock %}

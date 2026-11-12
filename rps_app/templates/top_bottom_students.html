@@ -1,0 +1,465 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}
+Top & Bottom Students Report (
+    {% if selected_class %}
+        {{ selected_class.ClassName.class_name|default:"All Classes" }}
+        {% if selected_class.academicclassyear %} ({{ selected_class.academicclassyear.academic_year_name }}){% endif %}
+    {% elif selected_classes %}
+        {{ selected_classes.0.ClassName.class_name|default:"All Classes" }}
+        {% if selected_classes.0.academicclassyear %} ({{ selected_classes.0.academicclassyear.academic_year_name }}){% endif %}
+    {% else %}
+        All Classes
+    {% endif %}
+    - {{ selected_examination.exam_name|default:"All Examinations" }}
+)
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-trophy me-2"></i>Top & Bottom Students Report</h2>
+    </div>
+
+    <!-- Messages Section -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Info Alert -->
+    <div class="alert alert-info alert-dismissible fade show mb-5" role="alert">
+        <i class="fas fa-info-circle me-2"></i>Showing data entered by you and all teachers you created.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form method="GET" class="row g-3" id="filterForm">
+                <div class="col-12 col-md-4">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Class{% if selected_classes or selected_class %}{% if selected_class_ids|length > 1 %}es ({{ selected_class_ids|length }} selected){% else %} (1 selected){% endif %}{% else %}es{% endif %}</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select name="class_id" id="class_id" class="form-select rounded-end" multiple size="5" onchange="this.form.submit()">
+                            <option value="">-- All Classes --</option>
+                            {% for class in teacher_classes %}
+                            <option value="{{ class.id }}" {% if class.id in selected_class_ids %}selected{% endif %}>
+                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple classes. Leave empty for all classes.</small>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-file-alt me-2"></i>Select Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-check"></i></span>
+                        <select name="examination_id" id="examination_id" class="form-select rounded-end" onchange="this.form.submit()">
+                            <option value="">-- All Examinations --</option>
+                            {% for exam in examinations %}
+                            <option value="{{ exam.id }}" {% if selected_examination.id == exam.id %}selected{% endif %}>
+                                {{ exam.exam_name|default:"Unnamed Exam" }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-secondary w-100 rounded-pill me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                    <button class="btn btn-primary w-100 rounded-pill" type="button" id="downloadButton">
+                        <i class="fas fa-download me-2"></i>Download PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Display -->
+    {% if selected_class or selected_classes %}
+        {% if selected_class %}
+            <div class="mb-5">
+                <h3 class="fw-bold text-primary mb-4 text-center">
+                    {{ selected_class.ClassName.class_name|default:"Unnamed Class" }}{% if selected_class.academicclassyear %} ({{ selected_class.academicclassyear.academic_year_name }}){% endif %}{% if selected_examination %} - {{ selected_examination.exam_name|default:"Unnamed Exam" }}{% endif %}
+                </h3>
+
+                <!-- Top 10 Students -->
+                <div class="card shadow-sm mb-5">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-award me-2"></i>Top 10 Students</h5>
+                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#topStudentsTable" aria-expanded="false" aria-controls="topStudentsTable">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="topStudentsTable">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center" style="width: 10%;">Position</th>
+                                            <th scope="col" style="width: 40%;">Student Name</th>
+                                            <th scope="col" class="text-center" style="width: 10%;">Sex</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                            <th scope="col" class="text-center" style="width: 25%;">Average Mark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in top_students %}
+                                        <tr class="animate__animated animate__fadeIn">
+                                            <td class="text-center">{{ student.position }}</td>
+                                            <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                            <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                            <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom 10 Students -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-arrow-down me-2"></i>Bottom 10 Students</h5>
+                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#bottomStudentsTable" aria-expanded="false" aria-controls="bottomStudentsTable">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="bottomStudentsTable">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center" style="width: 10%;">Position</th>
+                                            <th scope="col" style="width: 40%;">Student Name</th>
+                                            <th scope="col" class="text-center" style="width: 10%;">Sex</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                            <th scope="col" class="text-center" style="width: 25%;">Average Mark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in bottom_students %}
+                                        <tr class="animate__animated animate__fadeIn">
+                                            <td class="text-center">{{ student.position }}</td>
+                                            <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                            <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                            <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="mb-5">
+                <h3 class="fw-bold text-primary mb-4 text-center">
+                    Selected Classes: {% for c in selected_classes %}{{ c.ClassName.class_name|default:"Unnamed Class" }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if selected_examination %} - {{ selected_examination.exam_name|default:"Unnamed Exam" }}{% endif %}
+                </h3>
+
+                <!-- Top 10 Students -->
+                <div class="card shadow-sm mb-5">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-award me-2"></i>Top 10 Students (Combined)</h5>
+                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#topStudentsCombinedTable" aria-expanded="false" aria-controls="topStudentsCombinedTable">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="topStudentsCombinedTable">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center" style="width: 8%;">Position</th>
+                                            <th scope="col" style="width: 30%;">Student Name</th>
+                                            <th scope="col" class="text-center" style="width: 8%;">Sex</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Class</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                            <th scope="col" class="text-center" style="width: 24%;">Average Mark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in top_students %}
+                                        <tr class="animate__animated animate__fadeIn">
+                                            <td class="text-center">{{ student.position }}</td>
+                                            <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                            <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__class_name|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                            <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom 10 Students -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-arrow-down me-2"></i>Bottom 10 Students (Combined)</h5>
+                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#bottomStudentsCombinedTable" aria-expanded="false" aria-controls="bottomStudentsCombinedTable">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="bottomStudentsCombinedTable">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center" style="width: 8%;">Position</th>
+                                            <th scope="col" style="width: 30%;">Student Name</th>
+                                            <th scope="col" class="text-center" style="width: 8%;">Sex</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Class</th>
+                                            <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                            <th scope="col" class="text-center" style="width: 24%;">Average Mark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in bottom_students %}
+                                        <tr class="animate__animated animate__fadeIn">
+                                            <td class="text-center">{{ student.position }}</td>
+                                            <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                            <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__class_name|default:"-" }}</td>
+                                            <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                            <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        {% for class, data in class_data.items %}
+        <div class="mb-5">
+            <h3 class="fw-bold text-primary mb-4 text-center">
+                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}{% if selected_examination %} - {{ selected_examination.exam_name|default:"Unnamed Exam" }}{% endif %}
+            </h3>
+
+            <!-- Top 10 Students -->
+            <div class="card shadow-sm mb-5">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-award me-2"></i>Top 10 Students</h5>
+                    <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#topStudentsTable{{ forloop.counter }}" aria-expanded="false" aria-controls="topStudentsTable{{ forloop.counter }}">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="topStudentsTable{{ forloop.counter }}">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" class="text-center" style="width: 10%;">Position</th>
+                                        <th scope="col" style="width: 40%;">Student Name</th>
+                                        <th scope="col" class="text-center" style="width: 10%;">Sex</th>
+                                        <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                        <th scope="col" class="text-center" style="width: 25%;">Average Mark</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in data.top_students %}
+                                    <tr class="animate__animated animate__fadeIn">
+                                        <td class="text-center">{{ student.position }}</td>
+                                        <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                        <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                        <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                        <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom 10 Students -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-arrow-down me-2"></i>Bottom 10 Students</h5>
+                    <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#bottomStudentsTable{{ forloop.counter }}" aria-expanded="false" aria-controls="bottomStudentsTable{{ forloop.counter }}">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="bottomStudentsTable{{ forloop.counter }}">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" class="text-center" style="width: 10%;">Position</th>
+                                        <th scope="col" style="width: 40%;">Student Name</th>
+                                        <th scope="col" class="text-center" style="width: 10%;">Sex</th>
+                                        <th scope="col" class="text-center" style="width: 15%;">Index No.</th>
+                                        <th scope="col" class="text-center" style="width: 25%;">Average Mark</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in data.bottom_students %}
+                                    <tr class="animate__animated animate__fadeIn">
+                                        <td class="text-center">{{ student.position }}</td>
+                                        <td>{{ student.student__fullName|default:"Unnamed Student" }}</td>
+                                        <td class="text-center">{{ student.student__sex|default:"-" }}</td>
+                                        <td class="text-center">{{ student.student__indexNumber|default:"-" }}</td>
+                                        <td class="text-center">{{ student.avg_mark|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="fas fa-exclamation-circle me-2"></i>No data available
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning alert-dismissible fade show mt-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>No classes available
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if no_subjects_configured %}
+    <div class="alert alert-warning alert-dismissible fade show mt-4" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>No required subjects configured for the selected class{% if selected_classes %}es{% endif %}. Please configure required subjects in the admin panel.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterForm = document.getElementById('filterForm');
+        const downloadButton = document.getElementById('downloadButton');
+        const downloadSpinner = document.getElementById('downloadSpinner');
+        const btnText = downloadButton ? downloadButton.querySelector('.btn-text') : null;
+
+        if (filterForm) {
+            filterForm.addEventListener('submit', function(event) {
+                const button = document.getElementById('submitButton');
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+                }
+            });
+        }
+
+        if (downloadButton) {
+            let downloadUrl = '';
+            {% if selected_class %}
+                {% if selected_examination %}
+                    downloadUrl = "{% url 'download_top_and_bottom_students_pdf_class_exam' class_id=selected_class.id examination_id=selected_examination.id %}";
+                {% else %}
+                    downloadUrl = "{% url 'download_top_and_bottom_students_pdf_class' class_id=selected_class.id %}";
+                {% endif %}
+            {% elif selected_classes %}
+                downloadUrl = "{% url 'download_top_and_bottom_students_pdf_all' %}?class_ids={{ class_ids_str }}{% if selected_examination %}&examination_id={{ selected_examination.id }}{% endif %}";
+            {% elif selected_examination %}
+                downloadUrl = "{% url 'download_top_and_bottom_students_pdf_exam' examination_id=selected_examination.id %}";
+            {% else %}
+                downloadUrl = "{% url 'download_top_and_bottom_students_pdf_all' %}";
+            {% endif %}
+
+            downloadButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                // Disable the button and show spinner
+                downloadButton.disabled = true;
+                if (downloadSpinner) downloadSpinner.classList.remove('d-none');
+                if (btnText) btnText.classList.add('d-none');
+                downloadButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Generating PDF...';
+
+                // Use window.location.href for direct download since it's a PDF response
+                window.location.href = downloadUrl;
+
+                // Re-enable button after a delay (since it's a direct download, no fetch needed)
+                setTimeout(() => {
+                    downloadButton.disabled = false;
+                    if (downloadSpinner) downloadSpinner.classList.add('d-none');
+                    if (btnText) btnText.classList.remove('d-none');
+                    downloadButton.innerHTML = '<i class="fas fa-download me-2"></i>Download PDF';
+                }, 1000);
+            });
+        }
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+{% endblock %}

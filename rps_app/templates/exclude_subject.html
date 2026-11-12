@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-ban me-2"></i>Manage Excluded Subjects</h2>
+    </div>
+
+    <!-- Excluded Subjects Card -->
+    <div class="card shadow-sm mb-5 animate__animated animate__fadeInUp">
+        <div class="card-body">
+            <h5 class="card-title text-primary mb-4"><i class="fas fa-list-ul me-2"></i>Subjects Excluded from Division Implementation</h5>
+
+            {% if exclude_subjects %}
+            <ul class="list-group list-group-flush mb-4">
+                {% for exclude_subject in exclude_subjects %}
+                <li class="list-group-item d-flex justify-content-between align-items-center animate__animated animate__fadeIn">
+                    <span><i class="fas fa-book me-2"></i>{{ exclude_subject.exclude_subject }}</span>
+                    <a href="{% url 'delete_excluded_subject' exclude_subject.id %}" class="btn btn-danger btn-sm rounded-pill">
+                        <i class="fas fa-trash-alt me-1"></i>Remove
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted"><i class="fas fa-exclamation-circle me-2"></i>No subjects excluded yet.</p>
+            {% endif %}
+
+            <form method="POST" action="{% url 'exclude_subject' %}" class="row g-3 mt-4" id="excludeSubjectForm">
+                {% csrf_token %}
+                <div class="col-12 col-md-8">
+                    <label for="subject" class="form-label fw-semibold"><i class="fas fa-book-open me-2"></i>Select Subject to Exclude</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select name="subject" id="subject" class="form-select rounded-end" required>
+                            <option value="" disabled selected>Select a Subject</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject.id }}">{{ subject }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill" id="submitButton">
+                        <i class="fas fa-plus-circle me-2"></i>Exclude Subject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Form submission handling
+    document.getElementById('excludeSubjectForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    // Add hover effect for list items
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('mouseenter', () => {
+            item.classList.add('bg-light', 'shadow-sm');
+        });
+        item.addEventListener('mouseleave', () => {
+            item.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+
+    // Add hover effect for select elements and buttons
+    document.querySelectorAll('.form-select, .btn').forEach(element => {
+        element.addEventListener('mouseenter', () => {
+            element.classList.add('shadow-sm');
+        });
+        element.addEventListener('mouseleave', () => {
+            element.classList.remove('shadow-sm');
+        });
+    });
+});
+</script>
+{% endblock %}

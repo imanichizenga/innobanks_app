@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Payment{% endblock %}
+
+{% block content %}
+    <style>
+        /* Scoped styles for edit_payment.html */
+        .edit-payment-container {
+            padding: 3rem 0;
+        }
+        .edit-payment-container .card {
+            border: 2px solid #dee2e6; /* Bootstrap's border color */
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); /* Bootstrap's shadow-sm */
+        }
+        .edit-payment-container .alert {
+            border: 2px solid #dee2e6;
+        }
+        .edit-payment-container .form-control {
+            border: 1px solid #6c757d; /* Bootstrap's secondary border */
+        }
+        .edit-payment-container a {
+            text-decoration: none; /* Prevent underlines on links */
+        }
+        .edit-payment-container * {
+            box-sizing: border-box;
+        }
+    </style>
+
+    <div class="container py-5 d-flex justify-content-center edit-payment-container">
+        <div class="col-md-6">
+            <h2 class="mb-4 text-center"><i class="bi bi-pencil-square me-2"></i>Edit Payment for {{ student.fullName }} - {{ fee.fee_name }}</h2>
+
+            <!-- Display Messages -->
+            {% if messages %}
+                <div class="mt-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show border border-2" role="alert">
+                            <i class="bi bi-info-circle me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Form -->
+            <div class="card shadow-sm border border-2">
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <!-- Preserve filter parameters -->
+                        <input type="hidden" name="class_id" value="{{ class_id }}">
+                        <input type="hidden" name="fee_id" value="{{ fee_id }}">
+
+                        <div class="mb-3">
+                            <label for="payer_account_no" class="form-label"><i class="bi bi-person-circle me-2"></i>Payer Account Number</label>
+                            <input type="text" class="form-control rounded-pill" name="payer_account_no" id="payer_account_no" value="{{ form.payer_account_no.value|default_if_none:'' }}" placeholder="e.g., 1234567890" required>
+                            <div class="invalid-feedback">
+                                Please enter a valid payer account number.
+                            </div>
+                            {% if form.payer_account_no.errors %}
+                                <div class="text-danger">{{ form.payer_account_no.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label"><i class="bi bi-chat-left-text me-2"></i>Description</label>
+                            <textarea class="form-control rounded-pill" name="description" id="description" placeholder="e.g., Tuition Payment" required>{{ form.description.value|default_if_none:'' }}</textarea>
+                            <div class="invalid-feedback">
+                                Please provide a description.
+                            </div>
+                            {% if form.description.errors %}
+                                <div class="text-danger">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="amount_paid" class="form-label"><i class="bi bi-currency-dollar me-2"></i>Amount Paid</label>
+                            <input type="number" class="form-control rounded-pill" name="amount_paid" id="amount_paid" value="{{ form.amount_paid.value|default_if_none:'' }}" step="0.01" min="0" required>
+                            <div class="invalid-feedback">
+                                Please enter a valid amount (minimum 0).
+                            </div>
+                            {% if form.amount_paid.errors %}
+                                <div class="text-danger">{{ form.amount_paid.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="date_paid" class="form-label"><i class="bi bi-calendar-date me-2"></i>Date Paid</label>
+                            <input type="date" class="form-control rounded-pill" name="date_paid" id="date_paid" value="{{ form.date_paid.value|default_if_none:''|date:'Y-m-d' }}" required>
+                            <div class="invalid-feedback">
+                                Please select a valid date.
+                            </div>
+                            {% if form.date_paid.errors %}
+                                <div class="text-danger">{{ form.date_paid.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <a href="{% url 'finance:fee_management' %}?class_id={{ class_id }}&fee_id={{ fee_id }}" class="btn btn-secondary rounded-pill"><i class="bi bi-x-circle me-2"></i>Cancel</a>
+                            <button type="submit" name="action" value="update" class="btn btn-primary rounded-pill"><i class="bi bi-check-circle me-2"></i>Update Payment</button>
+                            <button type="submit" name="action" value="update_notify" class="btn btn-outline-success rounded-pill"><i class="bi bi-whatsapp me-2"></i>Update &amp; Notify</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap CSS (only include if not already in base.html) -->
+    {% if not bootstrap_loaded %}
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    {% endif %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz9ATKxIep9tiCxS/Z9fNfEXiDAYTujMAeBAsjFuCZSmKbSSUnQlmh/jp3" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js" integrity="sha384-fbbOQedDUMZZ5KreZpsbe1LCZPVmfTnH7ois6mU1QK+m14rQ1l2bGBq41eYeM/fS" crossorigin="anonymous"></script>
+
+    <!-- Form Validation Script -->
+    <script>
+        (function () {
+            'use strict';
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    </script>
+{% endblock %}

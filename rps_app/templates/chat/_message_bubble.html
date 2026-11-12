@@ -1,0 +1,29 @@
+{% load static %}
+<div class="p-3 {% if msg.sender == user %}text-end{% else %}text-start{% endif %}"
+     data-message-id="{{ msg.id }}">
+  <div class="d-inline-block chat-bubble
+       {% if msg.sender == user %}bg-primary text-white{% else %}bg-light text-dark{% endif %}
+       rounded p-3 mb-1 shadow-sm position-relative" style="max-width:80%;">
+    {% if msg.message %}<div class="small">{{ msg.message|linebreaksbr }}</div>{% endif %}
+    {% if msg.file %}
+      <a href="{{ msg.file.url }}" target="_blank"
+         class="d-block mt-1 small text-decoration-none {% if msg.sender == user %}text-white{% else %}text-primary{% endif %}">
+        <i class="fas fa-paperclip me-1"></i>{{ msg.file.name|slice:":20" }}
+      </a>
+    {% endif %}
+    <div class="reaction-list position-absolute bottom-0 start-50 translate-middle-x"
+         style="display:{% if msg.reactions.all %}flex{% else %}none{% endif %};gap:2px;z-index:10;">
+      {% for r in msg.reactions.all %}
+        <span class="badge bg-light text-dark me-1 reaction-btn" data-emoji="{{ r.emoji }}">{{ r.emoji }} {{ r|length }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="text-muted small mt-1 d-flex align-items-center {% if msg.sender == user %}justify-content-end{% endif %}">
+    {{ msg.timestamp|time:"H:i" }}
+    {% if msg.sender == user %}
+      {% if msg.status == 2 %}<i class="fas fa-check-double text-info ms-1"></i>
+      {% elif msg.status == 1 %}<i class="fas fa-check-double ms-1"></i>
+      {% else %}<i class="fas fa-check ms-1"></i>{% endif %}
+    {% endif %}
+  </div>
+</div>

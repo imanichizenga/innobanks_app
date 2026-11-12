@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+
+            <!-- Header Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white" style="background: linear-gradient(135deg, #3a7bd5, #00d2ff) !important;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h4 class="h5 mb-0 fw-bold">
+                            <i class="bi bi-search me-2"></i>Student Results Portal
+                        </h4>
+                        {% if user.is_authenticated %}
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="bi bi-person-fill me-1"></i>
+                            {{ user.get_full_name|default:user.username }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Search Form -->
+                {% if user.is_authenticated and not user|is_student and request.session.teacher_role != 'Accountant' %}
+                <div class="card-body p-4">
+                    <form method="POST" action="{% url 'search_result' %}" class="needs-validation" id="searchForm" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Student Name -->
+                        <div class="mb-3">
+                            <label for="studentNameInput" class="form-label fw-semibold">
+                                <i class="bi bi-person-fill text-primary me-1"></i> Student Name
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control rounded-end" id="studentNameInput"
+                                       name="searched_student" placeholder="Enter student name"
+                                       value="{{ request.POST.searched_student|default:'' }}" required>
+                            </div>
+                            <div class="invalid-feedback">Please enter a student name.</div>
+                        </div>
+
+                        <!-- Class -->
+                        <div class="mb-3">
+                            <label for="classSelect" class="form-label fw-semibold">
+                                <i class="bi bi-mortarboard-fill text-primary me-1"></i> Class
+                            </label>
+                            <select class="form-select" id="classSelect" name="class_id" required>
+                                <option value="" disabled {% if not request.POST.class_id %}selected{% endif %}>Select Class</option>
+                                {% for class in class_names %}
+                                <option value="{{ class.id }}" {% if request.POST.class_id|add:0 == class.id %}selected{% endif %}>
+                                    {{ class.ClassName.class_name }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                                </option>
+                                {% empty %}
+                                <option value="" disabled>No classes available</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a class.</div>
+                        </div>
+
+                        <!-- Examination -->
+                        <div class="mb-3">
+                            <label for="examSelect" class="form-label fw-semibold">
+                                <i class="bi bi-journal-text text-primary me-1"></i> Examination
+                            </label>
+                            <select class="form-select" id="examSelect" name="examination_id" required>
+                                <option value="" disabled {% if not request.POST.examination_id %}selected{% endif %}>Select Examination</option>
+                                {% for exam in examination_names %}
+                                <option value="{{ exam.id }}" {% if request.POST.examination_id|add:0 == exam.id %}selected{% endif %}>
+                                    {{ exam.exam_name }}
+                                </option>
+                                {% empty %}
+                                <option value="" disabled>No examinations available</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select an examination.</div>
+                        </div>
+
+                        <!-- Grading System -->
+                        <div class="mb-4">
+                            <label for="gradeSelect" class="form-label fw-semibold">
+                                <i class="bi bi-clipboard-check text-primary me-1"></i> Grading System
+                            </label>
+                            <select class="form-select" id="gradeSelect" name="grade_id" required>
+                                <option value="" disabled {% if not request.POST.grade_id %}selected{% endif %}>Select Grading System</option>
+                                {% for grade in grades %}
+                                <option value="{{ grade.id }}" {% if request.POST.grade_id|add:0 == grade.id %}selected{% endif %}>
+                                    {{ grade }}
+                                </option>
+                                {% empty %}
+                                <option value="" disabled>No grading systems available</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a grading system.</div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 rounded-pill fw-semibold py-2 d-flex align-items-center justify-content-center shadow-sm"
+                                style="height: 48px; background: linear-gradient(135deg, #3a7bd5, #00d2ff); border: none;">
+                            <span id="btnText"><i class="bi bi-search me-2"></i> Search Results</span>
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="card-body p-4">
+                    <div class="alert alert-danger d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div>You do not have permission to access this page.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Messages -->
+            {% if message %}
+            <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center mb-4">
+                <i class="bi bi-exclamation-circle-fill me-2"></i>
+                <div>{{ message }}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+
+            <!-- Results Display -->
+            {% if student %}
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom">
+                    <div class="d-flex flex-column d-md-row justify-content-between align-items-start align-items-md-center gap-3-2">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="bi bi-person-badge text-primary me-2"></i>
+                            Results: <strong>{{ student.fullName|default:"Unnamed Student" }}</strong>
+                        </h5>
+                        <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+                            <span class="badge bg-primary">{{ selected_class.ClassName.class_name }}{% if selected_class.academicclassyear %} ({{ selected_class.academicclassyear.academic_year_name }}){% endif %}</span>
+                            <span class="badge bg-info">{{ selected_exam.exam_name }}</span>
+                            <span class="badge bg-secondary">{{ selected_grade }}</span>
+                            <span class="badge bg-dark">Index: {{ student.indexNumber|default:"N/A" }}</span>
+                            <span class="badge bg-success">Pos: {{ student_position|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4"><i class="bi bi-book-fill text-primary"></i> Subject</th>
+                                    <th class="text-end"><i class="bi bi-pencil text-primary"></i> Mark</th>
+                                    <th class="text-end"><i class="bi bi-award text-primary"></i> Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mark_item in student_marks %}
+                                <tr {% if mark_item.is_excluded %}class="text-muted text-decoration-line-through"{% endif %}>
+                                    <td class="ps-4 fw-medium">{{ mark_item.subject_name }}</td>
+                                    <td class="text-end">{{ mark_item.mark|default:"–"|floatformat:0 }}</td>
+                                    <td class="text-end fw-bold">{{ mark_item.grade|default:"–" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox"></i> No subjects found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light">
+                    <div class="row text-center text-md-start">
+                        <div class="col-md-4 mb-2 mb-md-0">
+                            <strong>Total:</strong> {{ total_marks|floatformat:0 }}
+                        </div>
+                        <div class="col-md-4 mb-2 mb-md-0">
+                            <strong>Average:</strong> {{ average_marks|floatformat:2 }} <span class="text-primary fw-bold">({{ overall_grade }})</span>
+                        </div>
+                        {% if not is_primary %}
+                        <div class="col-md-4">
+                            <strong>Division:</strong> <span class="text-primary fw-bold">{{ division }}</span>
+                            {% if total_points != "-" %} ({{ total_points }} pts){% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <small class="text-muted">
+                            <i class="bi bi-list-ul"></i> {{ student_marks|length }} subject{{ student_marks|length|pluralize }}
+                        </small>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="window.print()">
+                            <i class="bi bi-printer-fill"></i> Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById('searchForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+            } else {
+                submitBtn.disabled = true;
+                btnText.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Searching...';
+                btnSpinner.style.display = 'inline-block';
+            }
+            form.classList.add('was-validated');
+        });
+
+        window.addEventListener('pageshow', function() {
+            submitBtn.disabled = false;
+            btnText.innerHTML = '<i class="bi bi-search me-2"></i> Search Results';
+            btnSpinner.style.display = 'none';
+        });
+    }
+});
+</script>
+
+<style>
+.card { border-radius: 16px; overflow: hidden; }
+.form-control, .form-select { border-radius: 0.5rem; }
+.btn-primary { transition: all 0.2s; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0.3rem 0.6rem rgba(58,123,213,.3); }
+@media (max-width: 768px) {
+    .badge { font-size: 0.7rem; }
+    .card-header h4 { font-size: 1.1rem; }
+}
+</style>
+{% endblock %}

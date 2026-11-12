@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Payment{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="card shadow-sm col-md-6 mx-auto">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Record Payment for {{ student.fullName }} - {{ fee.fee_name }}</h5>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="class_id" value="{{ class_id }}">
+                <div class="mb-3">
+                    <label for="payer_account_no" class="form-label fw-semibold"><i class="fas fa-credit-card me-2"></i>Payer Account Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-credit-card"></i></span>
+                        <input type="text" class="form-control rounded-end" name="payer_account_no" id="payer_account_no" placeholder="e.g., 1234567890">
+                        <div class="invalid-feedback">
+                            Please enter a valid payer account number.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label fw-semibold"><i class="fas fa-comment me-2"></i>Description</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-comment-alt"></i></span>
+                        <textarea name="description" id="description" class="form-control rounded-end" placeholder="e.g., Tuition Payment"></textarea>
+                        <div class="invalid-feedback">
+                            Please provide a description.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="amount_paid" class="form-label fw-semibold"><i class="fas fa-dollar-sign me-2"></i>Amount Paid</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-dollar-sign"></i></span>
+                        <input type="number" class="form-control rounded-end" name="amount_paid" id="amount_paid" step="0.01" min="0" required>
+                        <div class="invalid-feedback">
+                            Please enter a valid amount (minimum 0).
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="payment_method" class="form-label fw-semibold"><i class="fab fa-whatsapp me-2"></i>Payment Method</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-money-check-alt"></i></span>
+                        <select class="form-select rounded-end" name="payment_method" id="payment_method" required>
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="mobile_money">Mobile Money</option>
+                            <option value="card">Card</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            Please select a payment method.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="payment_reference" class="form-label fw-semibold"><i class="fas fa-hashtag me-2"></i>Reference Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-receipt"></i></span>
+                        <input type="text" class="form-control rounded-end" name="payment_reference" id="payment_reference" placeholder="e.g., TXN123456">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="date_paid" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-2"></i>Date Paid</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar-day"></i></span>
+                        <input type="date" class="form-control rounded-end" name="date_paid" id="date_paid" required>
+                        <div class="invalid-feedback">
+                            Please select a valid date.
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'finance:fee_management' %}?class_id={{ class_id }}&fee_id={{ fee.id }}" class="btn btn-secondary flex-fill rounded-pill"><i class="fas fa-times me-2"></i>Cancel</a>
+                    <button type="submit" name="action" value="save" class="btn btn-success flex-fill rounded-pill">
+    <i class="fas fa-save me-2"></i>Save Payment
+</button>
+
+<button type="submit" name="action" value="save_notify" class="btn btn-outline-success flex-fill rounded-pill">
+    <i class="fab fa-whatsapp me-2"></i>Save & Notify
+</button>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Transactions{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">Gateway Payment Transactions</h2>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold">Visible Columns:</span>
+                <div id="columnToggles" class="d-flex flex-wrap gap-3"></div>
+                <button type="button" id="resetColumns" class="btn btn-sm btn-outline-secondary">Reset</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Completed</div>
+                    <div class="fs-4 fw-bold text-success">{{ summary.completed|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Pending</div>
+                    <div class="fs-4 fw-bold text-warning">{{ summary.pending|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Failed</div>
+                    <div class="fs-4 fw-bold text-danger">{{ summary.failed|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">From</label>
+                    <input type="date" class="form-control" name="from" value="{{ filters.from }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To</label>
+                    <input type="date" class="form-control" name="to" value="{{ filters.to }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="tx_status">
+                        <option value="">All</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if filters.tx_status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Method</label>
+                    <select class="form-select" name="method">
+                        <option value="">All</option>
+                        {% for value, label in method_choices %}
+                            <option value="{{ value }}" {% if filters.method == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Teacher Class</label>
+                    <select class="form-select" name="teacherclass">
+                        <option value="">All</option>
+                        {% for tc in teacher_classes %}
+                            <option value="{{ tc.id }}" {% if filters.teacherclass == tc.id|stringformat:"s" %}selected{% endif %}>
+                                {{ tc.ClassName.class_name|default:"Unnamed Class" }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fee</label>
+                    <select class="form-select" name="fee">
+                        <option value="">All</option>
+                        {% for fee in fees %}
+                            <option value="{{ fee.id }}" {% if filters.fee == fee.id|stringformat:"s" %}selected{% endif %}>
+                                {{ fee.fee_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" name="search" value="{{ filters.search }}" placeholder="Student name / admission / ref">
+                </div>
+                <div class="col-12 text-end">
+                    <button class="btn btn-primary" type="submit">Apply Filters</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'finance:transaction_list' %}">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0" id="transactionsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th data-col="c0">Student</th>
+                            <th data-col="c1">Created</th>
+                            <th data-col="c2">Completed</th>
+                            <th data-col="c3">Status</th>
+                            <th data-col="c4">Gateway ID</th>
+                            <th data-col="c5">Reference</th>
+                            <th data-col="c6">External Ref</th>
+                            <th data-col="c7">Order ID</th>
+                            <th data-col="c8">Phone</th>
+                            <th data-col="c9">Email</th>
+                            <th data-col="c10">Class</th>
+                            <th data-col="c11">Fee</th>
+                            <th data-col="c12">Method</th>
+                            <th data-col="c13">Payment Type</th>
+                            <th data-col="c14">Provider</th>
+                            <th data-col="c15">Channel</th>
+                            <th data-col="c16">Amount</th>
+                            <th data-col="c17">Token / Bill Pay</th>
+                            <th data-col="c18">Gateway URL</th>
+                            <th data-col="c19">Settlement (Fee/Gross/Net)</th>
+                            <th data-col="c20">API</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in page_obj %}
+                            <tr>
+                                <td data-col="c0">{{ row.customer_name }}</td>
+                                <td data-col="c1">{{ row.gateway_created_at|default:row.tx.created_at|date:"Y-m-d H:i" }}</td>
+                                <td data-col="c2">{{ row.gateway_completed_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                                <td data-col="c3"><span class="badge bg-{% if row.gateway_status|lower == 'success' or row.gateway_status|lower == 'completed' %}success{% elif row.gateway_status|lower == 'failed' %}danger{% elif row.gateway_status|lower == 'expired' %}secondary{% else %}warning text-dark{% endif %}">{{ row.gateway_status|default:"pending" }}</span></td>
+                                <td data-col="c4">{{ row.gateway_id }}</td>
+                                <td data-col="c5">{{ row.gateway_reference }}</td>
+                                <td data-col="c6">{{ row.external_reference }}</td>
+                                <td data-col="c7">{{ row.order_id }}</td>
+                                <td data-col="c8">{{ row.customer_phone }}</td>
+                                <td data-col="c9">{{ row.customer_email }}</td>
+                                <td data-col="c10">{{ row.tx.payment.teacherclass.ClassName.class_name|default:"-" }}</td>
+                                <td data-col="c11">{{ row.tx.payment.fee.fee_name|default:"-" }}</td>
+                                <td data-col="c12">{{ row.tx.get_method_display }}</td>
+                                <td data-col="c13">{{ row.payment_type }}</td>
+                                <td data-col="c14">{{ row.channel_provider }}</td>
+                                <td data-col="c15">{{ row.channel_type }}</td>
+                                <td data-col="c16">{{ row.amount_value }} {{ row.amount_currency }}</td>
+                                <td data-col="c17">{{ row.payment_token }}</td>
+                                <td data-col="c18">{% if row.payment_url %}<a href="{{ row.payment_url }}" target="_blank" rel="noopener">Open</a>{% else %}-{% endif %}</td>
+                                <td data-col="c19">{{ row.settlement_fee }}/{{ row.settlement_gross }}/{{ row.settlement_net }} {{ row.settlement_currency }}</td>
+                                <td data-col="c20">{{ row.api_version }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="21" class="text-center text-muted py-4">No transactions found.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer">
+            <nav aria-label="Transaction pages">
+                <ul class="pagination justify-content-end mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?{% if request.GET %}{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?{% if request.GET %}{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Next</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(() => {
+  const table = document.getElementById('transactionsTable');
+  if (!table) return;
+
+  const headers = Array.from(table.querySelectorAll('thead th[data-col]'));
+  const toggleBox = document.getElementById('columnToggles');
+  const resetBtn = document.getElementById('resetColumns');
+  const key = 'transactions-visible-columns';
+  const defaultVisible = headers.map((header) => header.dataset.col);
+
+  const labelMap = Object.fromEntries(
+    headers.map((header) => [header.dataset.col, header.textContent.trim()])
+  );
+
+  function setVisibility(visibleCols) {
+    headers.forEach((header) => {
+      header.classList.toggle('d-none', !visibleCols.includes(header.dataset.col));
+    });
+
+    table.querySelectorAll('tbody tr').forEach((row) => {
+      row.querySelectorAll('td[data-col]').forEach((cell) => {
+        cell.classList.toggle('d-none', !visibleCols.includes(cell.dataset.col));
+      });
+    });
+  }
+
+  const savedVisible = (() => {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(value) && value.length ? value : defaultVisible;
+    } catch (error) {
+      return defaultVisible;
+    }
+  })();
+
+  toggleBox.innerHTML = headers
+    .map((header) => {
+      const col = header.dataset.col;
+      const checked = savedVisible.includes(col) ? 'checked' : '';
+      return `<label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" value="${col}" ${checked}><span class="form-check-label">${labelMap[col]}</span></label>`;
+    })
+    .join('');
+
+  setVisibility(savedVisible);
+
+  toggleBox.addEventListener('change', () => {
+    const visibleCols = Array.from(
+      toggleBox.querySelectorAll('input[type="checkbox"]:checked')
+    ).map((input) => input.value);
+
+    const effectiveVisible = visibleCols.length ? visibleCols : [defaultVisible[0]];
+    setVisibility(effectiveVisible);
+    localStorage.setItem(key, JSON.stringify(effectiveVisible));
+  });
+
+  resetBtn.addEventListener('click', () => {
+    toggleBox.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.checked = true;
+    });
+    setVisibility(defaultVisible);
+    localStorage.setItem(key, JSON.stringify(defaultVisible));
+  });
+})();
+</script>
+{% endblock %}

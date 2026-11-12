@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Change Logs{% endblock %}
+
+{% block content %}
+<div class="container py-5 d-flex justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4 text-center"><i class="bi bi-clock-history me-2"></i>Activity Logs</h2>
+        {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="card shadow-sm border border-2">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle border border-secondary">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="border-end">#</th>
+                                <th scope="col" class="border-end"><i class="bi bi-person me-2"></i>User</th>
+                                <th scope="col" class="border-end"><i class="bi bi-gear me-2"></i>Action</th>
+                                <th scope="col" class="border-end"><i class="bi bi-database me-2"></i>Model</th>
+                                <th scope="col" class="border-end"><i class="bi bi-chat-left-text me-2"></i>Description</th>
+                                <th scope="col"><i class="bi bi-calendar-date me-2"></i>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                                <tr>
+                                    <td class="border-end">{{ forloop.counter }}</td>
+                                    <td class="border-end">{{ log.user.username|default:"N/A" }}</td>
+                                    <td class="border-end">
+                                        <span class="badge rounded-pill 
+                                            {% if log.action == 'Created' %}bg-success
+                                            {% elif log.action == 'Updated' %}bg-warning
+                                            {% elif log.action == 'Deleted' %}bg-danger
+                                            {% else %}bg-info{% endif %}">
+                                            {{ log.action }}
+                                        </span>
+                                    </td>
+                                    <td class="border-end">{{ log.model_name|default:"N/A" }}</td>
+                                    <td class="border-end">{{ log.description|default:"No description provided" }}</td>
+                                    <td>{{ log.created_at|date:"M d, Y H:i" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4 border">
+                                        <i class="bi bi-exclamation-circle me-2"></i>No change logs available.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

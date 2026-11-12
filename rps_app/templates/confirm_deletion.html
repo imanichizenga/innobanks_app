@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+
+<style>
+    
+    .card {
+        border: none;
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-body">
+                    <form method="POST" id="deleteForm">
+                        {% csrf_token %}
+                        <h3 class="card-title text-center text-danger">
+                            Are you sure you want to delete "{{ message }}"?
+                        </h3>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-outline-danger rounded-pill" id="submitButton">
+                                Confirm
+                            </button>
+                        </div>
+                    </form>
+
+                    <script>
+                        document.getElementById('deleteForm').addEventListener('submit', function() {
+                            const button = document.getElementById('submitButton');
+                            button.disabled = true;
+                            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Wait...';
+                        });
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

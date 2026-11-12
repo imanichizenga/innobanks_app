@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Notifications{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-bell me-2"></i>Payment Notifications</h2>
+    </div>
+
+    {% if messages %}
+        <div class="col-12 mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Notifications Table Section -->
+    {% if notifications %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Your Payment History</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#notificationsTable" aria-expanded="false" aria-controls="notificationsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="notificationsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 15%;">User</th>
+                                <th scope="col" style="width: 15%;">Order ID</th>
+                                <th scope="col" style="width: 15%;">Amount (TZS)</th>
+                                <th scope="col" style="width: 15%;">Status</th>
+                                <th scope="col" style="width: 15%;">Success</th>
+                                <th scope="col" style="width: 20%;">Created At</th>
+                                <th scope="col" class="text-center" style="width: 10%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for notification in notifications %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ notification.user|default:"N/A" }}</td>
+                                <td>{{ notification.order_id|default:"N/A" }}</td>
+                                <td>{{ notification.amount }}</td>
+                                <td>
+                                    <span class="badge bg-{% if notification.status == 'SUCCESS' %}success{% elif notification.status == 'FAILED' %}danger{% else %}warning{% endif %}">
+                                        {{ notification.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if notification.success_payment %}success{% else %}secondary{% endif %}">
+                                        {{ notification.success_payment|yesno:"Yes,No" }}
+                                    </span>
+                                </td>
+                                <td>{{ notification.created_at|date:"Y-m-d H:i" }}</td>
+                                <td class="text-center">
+                                    {% if notification.payment %}
+                                        <a href="{% url 'payment_success' transaction_id=notification.payment.transaction_id %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-exclamation-circle text-muted" style="font-size: 4rem;"></i>
+            <h5 class="text-muted mt-3">No notifications yet</h5>
+            <p class="text-muted">Start by making a payment to see your history here.</p>
+            <a href="{% url 'payment_form' %}" class="btn btn-primary rounded-pill">
+                <i class="fas fa-plus-circle me-2"></i>New Payment
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{% url 'payment_form' %}" class="btn btn-primary rounded-pill px-4">
+            <i class="fas fa-credit-card me-2"></i>New Payment
+        </a>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    // Add hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

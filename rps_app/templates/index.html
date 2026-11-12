@@ -1,0 +1,841 @@
+{% load static %}
+{% load pwa %}
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    {% progressive_web_app_meta %}
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <title>inno</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+
+
+    <!-- Additional CSS Files -->
+    <link rel="stylesheet" href="{% static 'assets_website/css/fontawesome.css' %}">
+    <link rel="stylesheet" href="{% static 'assets_website/css/templatemo-scholar.css' %}">
+    <link rel="stylesheet" href="{% static 'assets_website/css/owl.css' %}">
+    <link rel="stylesheet" href="{% static 'assets_website/css/animate.css' %}">
+    <link rel="stylesheet"href="https://unpkg.com/swiper@7/swiper-bundle.min.css"/>
+
+    <style>
+  .logo {
+    display: inline-flex;      /* ensures horizontal alignment */
+    align-items: center;       /* vertically center image and text */
+    gap: 8px;                  /* space between image and text */
+    text-decoration: none;     /* remove underline */
+    white-space: nowrap;       /* prevents text from breaking to next line */
+}
+
+.logo-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.logo-text {
+    font-weight: bold;
+    font-size: 1.2rem;
+    background: linear-gradient(90deg, #ff00cc, #3333ff, #00ffff, #ff00cc);
+    background-size: 400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 6s linear infinite;
+}
+
+/* Animate the gradient moving left to right */
+@keyframes shine {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 400% 50%;
+    }
+}
+
+
+
+
+    </style>
+<!--
+
+TemplateMo 586 Scholar
+
+https://templatemo.com/tm-586-scholar
+
+-->
+  </head>
+
+<body>
+
+  <!-- ***** Preloader Start ***** -->
+  <div id="js-preloader" class="js-preloader">
+    <div class="preloader-inner">
+      <span class="dot"></span>
+      <div class="dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+  <!-- ***** Preloader End ***** -->
+
+  <!-- ***** Header Area Start ***** -->
+  <header class="header-area header-sticky">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <nav class="main-nav">
+                    <!-- ***** Logo Start ***** -->
+                    <a href="#" class="logo">
+    <img src="{% static 'innobanks.png' %}" alt="Innobanks Logo" class="logo-img">
+    <span class="logo-text">INNOBANKS</span>
+</a>
+
+
+                    <!-- ***** Logo End ***** -->
+                    <!-- ***** Serach Start ***** -->
+                   
+                    <!-- ***** Serach Start ***** -->
+                    <!-- ***** Menu Start ***** -->
+                    <ul class="nav">
+                      <li class="scroll-to-section"><a href="#top" class="active">Home</a></li>
+                      <li class="scroll-to-section"><a href="#services">Services</a></li>
+                      <li class="scroll-to-section"><a href="#courses">Courses</a></li>
+                      <li class="scroll-to-section"><a href="#team">Team</a></li>
+                      <li class="scroll-to-section"><a href="#events">Events</a></li>
+                      <li class="scroll-to-section"><a href="#contact">Register Now!</a></li>
+                      <li class="scroll-to-section"><a href="{% url 'login_view' %}">Login</a></li>
+                  
+                      
+                   
+
+                  </ul>
+                      <div class="search-input">
+                      <form id="search" action="#">
+                        <input type="text" placeholder="Type Something" id='searchText' name="searchKeyword" onkeypress="handle" />
+                        <i class="fa fa-search"></i>
+                      </form>
+                    </div>   
+                    <a class='menu-trigger'>
+                        <span>Menu</span>
+                    </a>
+                    <!-- ***** Menu End ***** -->
+                </nav>
+            </div>
+        </div>
+    </div>
+  </header>
+  <!-- ***** Header Area End ***** -->
+
+  <div class="main-banner" id="top">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="owl-carousel owl-banner">
+            <div class="item item-1">
+              <div class="header-text">
+                <span class="category">Academics</span>
+                <h2>Smart Result Management</h2>
+                <p>
+    Innobanks App makes result management simple with bulk SMS alerts, instant report forms, performance analysis, and student accounts for easy result access,
+</p>
+
+                <div class="buttons">
+                  <div class="main-button">
+                    <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">Request Demo</a>
+                  </div>
+                  <div class="icon-button">
+                    <a href="#"><i class="fa fa-play"></i> What's Scholar?</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="item item-2">
+              <div class="header-text">
+                                <span class="category">Attendance</span>
+<h2>Smart Attendance with Facial Recognition</h2>
+<p>
+    Innobanks App uses advanced facial recognition to ensure accurate attendance tracking for both students and staff. Attendance reports are generated instantly and integrated into each student’s profile, with detailed analysis to monitor trends and improve accountability.
+</p>
+
+                <div class="buttons">
+                  <div class="main-button">
+                    <a href="#">Request Demo</a>
+                  </div>
+                  <div class="icon-button">
+                    <a href="#"><i class="fa fa-play"></i> What's the best result?</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="item item-3">
+              <div class="header-text">
+
+<span class="category">Finance</span>
+<h2>Smart Finance and Academic Integration</h2>
+<p>
+    Innobanks App unites academic and financial data in one place. Each student’s report form and profile show both results and fee details. The system supports SMS fee alerts, detailed fee reports per student, general fee summaries, and smart analysis to easily track payment completion.
+</p>
+
+                <div class="buttons">
+                  <div class="main-button">
+                    <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">Request Demo</a>
+                  </div>
+                  <div class="icon-button">
+                    <a href="#"><i class="fa fa-play"></i> What's Online Course?</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="services section" id="services">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-4 col-md-6">
+          <div class="service-item">
+            <div class="icon">
+              <img src="{% static 'assets_website/images/service-01.png' %}" alt="online degrees">
+            </div>
+            <div class="main-content">
+              <h4>Student Attendance</h4>
+              <p>Attendance system that use facial recognition to ensure high accuracy</p>
+              <div class="main-button">
+                <a href="#">Read More</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+          <div class="service-item">
+            <div class="icon">
+              <img src="{% static 'assets_website/images/service-02.png' %}" alt="short courses">
+            </div>
+            <div class="main-content">
+              <h4>Finance Management</h4>
+<p>Comprehensive student finance management that guarantees precise and effective fee processing.</p>
+
+              <div class="main-button">
+                <a href="#">Read More</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+          <div class="service-item">
+            <div class="icon">
+              <img src="{% static 'assets_website/images/service-03.png' %}" alt="web experts">
+            </div>
+            <div class="main-content">
+              <h4>Academic Management</h4>
+<p>Streamline student results and records for precise performance tracking and reporting.</p>
+
+              <div class="main-button">
+                <a href="#">Read More</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section about-us">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-6 offset-lg-1">
+          <div class="accordion" id="accordionExample">
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                  About Payments
+                </button>
+              </h2>
+              <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+                  <div class="accordion-body">
+  Our service is <strong>trusted</strong> and <strong>smartly designed</strong> to simplify your tasks and ensure accuracy. 
+  The system is available with flexible payment options:
+  <ul>
+    <li><strong>One-time payment:</strong> 1,000,000 Tsh per year</li>
+    <li><strong>Monthly payment:</strong> 200,000 Tsh per month</li>
+    <li><strong>To purchase project:</strong> 10,000,000 (LifeTime)</li>
+  </ul>
+  To get started and enjoy our reliable service, 
+  <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">
+    click here to chat on WhatsApp
+  </a>.
+</div>
+
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingTwo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                  Why innobanks APP is the best?
+                </button>
+              </h2>
+              <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
+                <div class="accordion-body">
+  Our service is <strong>reliable</strong> and <strong>intelligently designed</strong> to make your experience smooth and efficient. 
+  To get started and enjoy our trusted solutions, 
+  <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">
+    click here to chat on WhatsApp
+  </a>.
+</div>
+
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingThree">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                  About Accuracy?
+                </button>
+              </h2>
+              <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+                <div class="accordion-body"><p>
+              Our App  Powered by modern machine learning and smart data processing, Innobanks delivers exceptional accuracy in every calculation and report. From exam results to attendance records and financial statements, every detail is verified and processed with the highest precision — so you can trust your data completely.
+                </P>
+</div>
+
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingFour">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                Our Customer Care
+                </button>
+              </h2>
+              <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
+                <div class="accordion-body">
+  Our system is <strong>trusted</strong> and <strong>intelligently designed</strong> to simplify your tasks and make your experience effortless. 
+  You will receive <strong>excellent customer care</strong> and <strong>direct support from the developer</strong>, ensuring everything runs smoothly and efficiently.
+  To start enjoying our smart, reliable service, 
+  <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">
+    click here to chat on WhatsApp
+  </a>.
+</div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5 align-self-center">
+          <div class="section-heading">
+            <h6>About Us</h6>
+<h2>What makes us the best PlatForm?</h2>
+<p>Innobanks is designed to make managing your academy easier, smarter, and more efficient. Our app seamlessly handles <strong>academic results</strong>, <strong>financial management</strong>, and <strong>student attendance</strong>—all in one place. With intelligent automation and real-time reporting, you save time, reduce errors, and make better decisions for your institution.</p>
+<p>Experience a system trusted by educators and administrators, offering <strong>accurate, instant insights</strong> and <strong>excellent support</strong> whenever you need it.</p>
+<div class="main-button">
+  <a href="https://wa.me/255629645877" target="_blank" rel="noopener noreferrer">Get Started on WhatsApp</a>
+</div>
+
+             
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section courses" id="courses" >
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12 text-center">
+          <div class="section-heading">
+            <h6>Explore about innobanks company</h6>
+            <h2>Other Services</h2>
+          </div>
+        </div>
+      </div>
+      <ul class="event_filter">
+        <li>
+          <a class="is_active" href="#!" data-filter="*">Show All</a>
+        </li>
+        <li>
+          <a href="#!" data-filter=".design">Learning</a>
+        </li>
+        <li>
+          <a href="#!" data-filter=".development">Development</a>
+        </li>
+        <li>
+          <a href="#!" data-filter=".wordpress">Products</a>
+        </li>
+      </ul>
+      <div class="row event_box">
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6 design">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/custom-software.png' %}" alt=""></a>
+              <span class="category">Custom Software</span>
+              <span class="price"><h6><em>Tsh</em>1M</h6></span>
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Learn Software Dev</h4>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6  development">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/django-development.png' %}" alt=""></a>
+              <span class="category">Learn Django</span>
+              <span class="price"><h6><em>Tsh</em>1M</h6></span>
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Become expert in DJANGO</h4>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6 design wordpress">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/machine-learning.png' %}" alt=""></a>
+              <span class="category">Machine Learning</span>
+              <span class="price"><h6><em>Tsh</em>1M</h6></span>
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Learn ML</h4>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6 development">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/sim-development.png' %}" alt=""></a>
+              <span class="category">innobanks</span>
+              <span class="price"><h6><em>Tsh</em>2M</h6></span>
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Smartest SIMS</h4>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6 wordpress development">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/web-development.png' %}" alt=""></a>
+              <span class="category">Website</span>
+              <span class="price"><h6><em>Tsh</em>1M</h6></span>
+              
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Be a WordPress Master</h4>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 align-self-center mb-30 event_outer col-md-6 wordpress design">
+          <div class="events_item">
+            <div class="thumb">
+              <a href="#"><img src="{% static 'assets_website/images/mobile-development.png' %}" alt=""></a>
+              <span class="category">Mobile App</span>
+              <span class="price"><h6><em>Tsh</em>1M</h6></span>
+            </div>
+            <div class="down-content">
+              <span class="author">A.Innocent</span>
+              <h4>Mobile App Dev</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section fun-facts">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="wrapper">
+            <div class="row">
+              <div class="col-lg-3 col-md-6">
+                <div class="counter">
+                  <h2 class="timer count-title count-number" data-to="9000" data-speed="10000"></h2>
+                   <p class="count-text ">Student Served</p>
+                </div>
+              </div>
+              <div class="col-lg-3 col-md-6">
+                <div class="counter">
+                  <h2 class="timer count-title count-number" data-to="8" data-speed="1000"></h2>
+                  <p class="count-text ">Schools That Already Use</p>
+                </div>
+              </div>
+              <div class="col-lg-3 col-md-6">
+                <div class="counter">
+                  <h2 class="timer count-title count-number" data-to="20" data-speed="1000"></h2>
+                  <p class="count-text ">Customer Care</p>
+                </div>
+              </div>
+              <div class="col-lg-3 col-md-6">
+                <div class="counter end">
+                  <h2 class="timer count-title count-number" data-to="3" data-speed="1000"></h2>
+                  <p class="count-text ">Years Experience</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="team section" id="team">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="team-member">
+            <div class="main-content">
+              <img src="{% static 'assets_website/images/ux.png' %}" alt="">
+              <span class="category">UX Expert</span>
+              <h4>Ester</h4>
+              <ul class="social-icons">
+<li><a href="#"><i class="fab fa-facebook"></i></a></li>
+                <li><a href="#"><i class="fab fa-twitter"></i></a></li>
+                <li><a href="#"><i class="fab fa-linkedin"></i></a></li>
+</ul>
+
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="team-member">
+            <div class="main-content">
+              <img src="{% static 'assets_website/images/graphics.png' %}" alt="">
+              <span class="category">Graphic Design</span>
+              <h4>Miriam</h4>
+              <ul class="social-icons">
+                <li><a href="#"><i class="fab fa-facebook"></i></a></li>
+                <li><a href="#"><i class="fab fa-twitter"></i></a></li>
+                <li><a href="#"><i class="fab fa-linkedin"></i></a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="team-member">
+            <div class="main-content">
+              <img src="{% static 'assets_website/images/visual.png' %}" alt="">
+              <span class="category">Data Visualization & Django</span>
+              <h4>A.Innocent</h4>
+              <ul class="social-icons">
+                <li><a href="#"><i class="fab fa-facebook"></i></a></li>
+                <li><a href="#"><i class="fab fa-twitter"></i></a></li>
+                <li><a href="#"><i class="fab fa-linkedin"></i></a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="team-member">
+            <div class="main-content">
+              <img src="{% static 'assets_website/images/full-stack.png' %}" alt="">
+              <span class="category">Full Stack Dev</span>
+              <h4>Daniel E Mshana</h4>
+              <ul class="social-icons">
+                <li><a href="#"><i class="fab fa-facebook"></i></a></li>
+                <li><a href="#"><i class="fab fa-twitter"></i></a></li>
+                <li><a href="#"><i class="fab fa-linkedin"></i></a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> 
+
+  <div class="section testimonials">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-7">
+          <div class="owl-carousel owl-testimonials">
+            <div class="item">
+              <p>“Innobanks integrates advanced machine learning (ML) and intelligent automation to process large amounts of academic and financial data with remarkable precision. The system continuously learns and adapts, ensuring accuracy and consistency across all operations — from grading to student attendance analysis.”</p>
+              <div class="author">
+                <img src="{% static 'assets_website/images/full-stack.png' %}" alt="">
+                <span class="category">Full Stack Master</span>
+                <h4>Daniel E Mshana</h4>
+              </div>
+            </div>
+            <div class="item">
+              <p>“What users love most is the unmatched reliability of Innobanks. It eliminates manual errors, saves time for teachers and administrators, and provides real-time insights that help schools make data-driven decisions. With Innobanks, managing education becomes not just easier — it becomes smarter, faster, and future-ready”</p>
+              <div class="author">
+                <img src="{% static 'assets_website/images/ux.png' %}" alt="">
+                <span class="category">UI Expert</span>
+                <h4>Ester</h4>
+              </div>
+            </div>
+            <div class="item">
+              <p>“At the heart of Innobanks is cutting-edge machine learning technology that ensures every result, record, and financial report is processed with exceptional precision. The system learns from patterns in your data, improving accuracy over time and giving administrators deeper insights for better decision-making.”</p>
+              <div class="author">
+                <img src="{% static 'assets_website/images/machine-learning.png' %}" alt="">
+                <span class="category">AI and ML</span>
+                <h4>A.Innocent</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5 align-self-center">
+          <div class="section-heading">
+            <h6>TESTIMONIALS</h6>
+            <h2>What they say about us?</h2>
+            <p>the smartest school management system built for the modern era. Schools appreciate how it simplifies result processing, attendance tracking, and finance management, making every administrative task faster, easier, and more reliable.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section events" id="events">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12 text-center">
+          <div class="section-heading">
+            <h6>Schedule</h6>
+            <h2>Upcoming Events</h2>
+          </div>
+        </div>
+        <div class="col-lg-12 col-md-6">
+          <div class="item">
+            <div class="row">
+              <div class="col-lg-3">
+                <div class="image">
+                  <img src="{% static 'assets_website/images/web-development.png' %}" alt="">
+                </div>
+              </div>
+              <div class="col-lg-9">
+                <ul>
+                  <li>
+                    <span class="category">Web Design</span>
+                    <h4>UI Best Practices</h4>
+                  </li>
+                  <li>
+                    <span>Date:</span>
+                    <h6>16 Dec 2025</h6>
+                  </li>
+                  <li>
+                    <span>Duration:</span>
+                    <h6>10 Hours</h6>
+                  </li>
+                  <li>
+                    <span>Price:</span>
+                    <h6>Tsh 700,000</h6>
+                  </li>
+                </ul>
+                <a href="#"><i class="fa fa-angle-right"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-12 col-md-6">
+          <div class="item">
+            <div class="row">
+              <div class="col-lg-3">
+                <div class="image">
+                  <img src="{% static 'assets_website/images/machine-learning.png' %}" alt="">
+                </div>
+              </div>
+              <div class="col-lg-9">
+                <ul>
+                  <li>
+                    <span class="category">Machine Learning</span>
+                    <h4>AI and ML</h4>
+                  </li>
+                  <li>
+                    <span>Date:</span>
+                    <h6>24 Feb 2026</h6>
+                  </li>
+                  <li>
+                    <span>Duration:</span>
+                    <h6>10 Hours</h6>
+                  </li>
+                  <li>
+                    <span>Price:</span>
+                    <h6>1,000,000</h6>
+                  </li>
+                </ul>
+                <a href="#"><i class="fa fa-angle-right"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-12 col-md-6">
+          <div class="item">
+            <div class="row">
+              <div class="col-lg-3">
+                <div class="image">
+                  <img src="{% static 'assets_website/images/visual.png' %}" alt="">
+                </div>
+              </div>
+              <div class="col-lg-9">
+                <ul>
+                  <li>
+                    <span class="category">Visualization</span>
+                    <h4>Data Visualization</h4>
+                  </li>
+                  <li>
+                    <span>Date:</span>
+                    <h6>12 Nov 2025</h6>
+                  </li>
+                  <li>
+                    <span>Duration:</span>
+                    <h6>10 Hours</h6>
+                  </li>
+                  <li>
+                    <span>Price:</span>
+                    <h6>Tsh 1,000,000</h6>
+                  </li>
+                </ul>
+                <a href="#"><i class="fa fa-angle-right"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="contact-us section" id="contact">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-6  align-self-center">
+          <div class="section-heading">
+            <h6>Contact Us</h6>
+            <h2>Feel free to contact us anytime</h2>
+            <p>At Innobanks, we’re dedicated to giving you the best service and support whenever you need it. Have questions or want to get started?
+📱 Reach us anytime on WhatsApp: +255 629 645 877
+ — our team is always ready to assist you and help your school grow smarter every day.</p>
+            <div class="special-offer">
+              <span class="offer">off<br><em>50%</em></span>
+              <h6>Valide: <em>24 Nov 2025</em></h6>
+              <h4>Special Offer <em>50%</em> OFF!</h4>
+              <a href="#"><i class="fa fa-angle-right"></i></a>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="contact-us-content">
+            <form id="contact-form" action="" method="post">
+              <div class="row">
+                <div class="col-lg-12">
+                  <fieldset>
+                    <input type="name" name="name" id="name" placeholder="Your Name..." autocomplete="on" required>
+                  </fieldset>
+                </div>
+                <div class="col-lg-12">
+                  <fieldset>
+                    <input type="text" name="email" id="email" pattern="[^ @]*@[^ @]*" placeholder="Your E-mail..." required="">
+                  </fieldset>
+                </div>
+                <div class="col-lg-12">
+                  <fieldset>
+                    <textarea name="message" id="message" placeholder="Your Message"></textarea>
+                  </fieldset>
+                </div>
+                <div class="col-lg-12">
+                  <fieldset>
+                    <button type="submit" id="form-submit" class="orange-button">Send Message Now</button>
+                  </fieldset>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="col-lg-12">
+        <p>Copyright © 2036 innobanks APP. All rights reserved. &nbsp;&nbsp;&nbsp; <a href="innobanks.store" rel="nofollow" target="_blank"></a> Developer: <a href="https://wa.me/255629645877" rel="nofollow" target="_blank">WhatsApp</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <!-- Bootstrap core JavaScript -->
+  <script src="{% static 'vendor/jquery/jquery.min.js' %}"></script>
+  <script src="{% static 'vendor/bootstrap/js/bootstrap.min.js' %}"></script>
+  <script src="{% static 'assets_website/js/isotope.min.js' %}"></script>
+  <script src="{% static 'assets_website/js/owl-carousel.js' %}"></script>
+  <script src="{% static 'assets_website/js/counter.js' %}"></script>
+  <script src="{% static 'assets_website/js/custom.js' %}"></script>
+  <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const searchInput = document.getElementById("searchText");
+  let lastMarks = [];
+
+  // Clear previous highlights
+  function clearHighlights() {
+    lastMarks.forEach(el => {
+      const parent = el.parentNode;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
+      parent.normalize();
+    });
+    lastMarks = [];
+  }
+
+  // Highlight all matches
+  function highlightText(keyword) {
+    if (!keyword.trim()) return;
+    const body = document.body;
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
+    const regex = new RegExp(keyword, "gi");
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentNode && !["SCRIPT", "STYLE"].includes(node.parentNode.nodeName)) {
+        const match = node.nodeValue.match(regex);
+        if (match) {
+          const replacedText = node.nodeValue.replace(regex, (m) => `<mark>${m}</mark>`);
+          const wrapper = document.createElement("span");
+          wrapper.innerHTML = replacedText;
+          node.parentNode.replaceChild(wrapper, node);
+        }
+      }
+    }
+    lastMarks = Array.from(document.querySelectorAll("mark"));
+  }
+
+  // Scroll to the first match
+  function scrollToFirst() {
+    const first = document.querySelector("mark");
+    if (first) {
+      setTimeout(() => {
+        first.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100); // wait a short moment for DOM to finish rendering
+    }
+  }
+
+  // Live search
+  searchInput.addEventListener("input", function (e) {
+    clearHighlights();
+    const keyword = e.target.value;
+    if (keyword.length > 1) {
+      highlightText(keyword);
+      // Scroll slightly delayed to ensure marks exist
+      setTimeout(scrollToFirst, 150);
+    }
+  });
+});
+</script>
+
+  
+
+  </body>
+</html>

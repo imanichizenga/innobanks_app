@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% block title %}
+    <title>Teacher subjects</title>
+    {% endblock %}
+</head>
+<body>
+    <table>
+    
+        {% for teacher in teachers %}
+        <tr>
+            <th>{{ teacher.teacherName }}</th>
+        
+        </tr>
+        {% endfor %}
+
+        {% for subject in subjects %}
+        <tr>
+            <td>{{ subject.nameSubject }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</body>
+</html>
+{% endblock %}

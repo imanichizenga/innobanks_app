@@ -1,0 +1,781 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block content %}
+<div class="attendance-page container-fluid py-4">
+    <div class="row">
+        <!-- Left Side - Photo Upload and Attendance Control -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header attendance-bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-camera me-2"></i>Student Photo Management</h5>
+                </div>
+                <div class="card-body">
+                    {% if selected_class %}
+                    <div class="mb-3">
+                        <label class="form-label">Attendance for {{ selected_class.ClassName }}</label>
+                        <button class="btn attendance-btn-success w-100" id="startAttendance">
+                            <i class="bi bi-play-circle me-2"></i>Start Attendance
+                        </button>
+                    </div>
+                    <div id="videoContainer" class="mb-3" style="display: none;">
+                        <video id="video" width="100%" height="auto" autoplay></video>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                        <form id="faceRecognitionForm" method="POST" action="{% url 'attendance:process_face_recognition' selected_class.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="image" id="imageInput">
+                            <div class="form-check form-check-inline mt-2">
+                                <input class="form-check-input" type="checkbox" name="sign_in" id="signIn" checked>
+                                <label class="form-check-label" for="signIn">Sign In</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="sign_out" id="signOut">
+                                <label class="form-check-label" for="signOut">Sign Out</label>
+                            </div>
+                        </form>
+                        <div id="attendanceResponse" class="mt-2"></div>
+                        <!-- WebSocket Status Indicator -->
+                        <div id="websocketStatus" class="alert alert-info small mt-2" style="display: none;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span id="websocketStatusText">Connecting to real-time updates...</span>
+                        </div>
+                    </div>
+                    <!-- PDF Download Button -->
+                    <div class="mb-3">
+                        <a href="{% url 'attendance:generate_attendance_pdf' selected_class.id %}?view={{ view_type }}&week={{ week_number }}" class="btn attendance-btn-primary w-100">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Download Present Students PDF
+                        </a>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Select a class to start managing attendance.</p>
+                    {% endif %}
+                    <p class="text-muted">Click a student to upload or update their photo for face recognition.</p>
+                </div>
+            </div>
+
+            <!-- Face Recognition Status Card -->
+            {% if selected_class %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header attendance-bg-warning text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Face Recognition Status</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small">
+                        <strong>{{ students_with_encodings.count }}</strong> of <strong>{{ students.count }}</strong> 
+                        students have face encodings stored.
+                    </p>
+                    {% if students_without_encodings %}
+                    <div class="alert alert-warning small">
+                        <strong>Students needing photos:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for student in students_without_encodings|slice:":5" %}
+                            <li>{{ student.fullName }}</li>
+                            {% endfor %}
+                            {% if students_without_encodings.count > 5 %}
+                            <li>... and {{ students_without_encodings.count|add:"-5" }} more</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Side - Classes and Attendance -->
+        <div class="col-lg-8">
+            <!-- Classes Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header attendance-bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-collection me-2"></i>Your Classes</h5>
+                </div>
+                <div class="card-body">
+                    {% if classes %}
+                    <div class="row">
+                        {% for class in classes %}
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'attendance:student_attendance_with_class' class.id %}?view={{ view_type }}&week={{ week_number }}" class="text-decoration-none">
+                                <div class="card attendance-class-card {% if selected_class and selected_class.id == class.id %}attendance-border-primary{% endif %} attendance-hover-shadow">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">
+                                            <i class="bi bi-people-fill me-2"></i>{{ class.ClassName|default:"Unnamed" }}
+                                        </h5>
+                                        <span class="badge attendance-bg-primary rounded-pill">
+                                            {{ class.student_set.count }} students
+                                        </span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>You have no classes assigned.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Detected Students Section -->
+            {% if selected_class %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header attendance-bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Detected Students (Present)</h5>
+                </div>
+                <div class="card-body" id="detectedStudentsContainer">
+                    {% if detected_students %}
+                    <ul class="list-group">
+                        {% for student in detected_students %}
+                        <li class="list-group-item d-flex align-items-center" data-student-id="{{ student.id }}">
+                            <div class="attendance-avatar-sm me-3">
+                                {% if student.photo %}
+                                <img src="{{ student.photo.url }}" alt="{{ student.fullName }}" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                {% else %}
+                                <span class="attendance-avatar-title attendance-bg-soft-success rounded-circle">
+                                    <i class="bi bi-person-fill attendance-text-success"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ student.fullName }}</h6>
+                                <small class="text-muted">{{ student.indexNumber }} - Present on {{ current_date|date:"Y-m-d" }}</small>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">No students detected as present today.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Attendance Table -->
+            {% if selected_class %}
+            <div class="card shadow-sm">
+                <div class="card-header attendance-bg-purple text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people-fill me-2"></i>
+                        Attendance for {{ selected_class.ClassName|default:"Unnamed Class" }} - {{ month_name }}
+                        <span class="badge attendance-bg-white attendance-text-purple ms-2">{{ students.count }}</span>
+                    </h5>
+                    <div>
+                        <select id="viewType" class="form-select form-select-sm d-inline-block w-auto" onchange="updateView(this.value)">
+                            <option value="monthly" {% if view_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                            <option value="weekly" {% if view_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                        </select>
+                        {% if view_type == 'weekly' %}
+                        <select id="weekNumber" class="form-select form-select-sm d-inline-block w-auto ms-2" onchange="updateWeek(this.value)">
+                            {% for i in "1234"|make_list %}
+                            <option value="{{ forloop.counter }}" {% if week_number == forloop.counter %}selected{% endif %}>Week {{ forloop.counter }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" id="attendanceTableContainer">
+                        <table class="table attendance-table-hover" id="attendanceTable">
+                            <thead class="attendance-table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th>Student Name</th>
+                                    {% for header in date_headers %}
+                                    <th class="text-center">{{ header.day }}</th>
+                                    {% endfor %}
+                                    <th class="text-center">No:P</th>
+                                    <th class="text-center">No:A</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in students %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#photoModal" 
+                                           data-student-id="{{ s.id }}" data-student-name="{{ s.fullName }}" 
+                                           data-photo-exists="{% if s.photo %}true{% else %}false{% endif %}">
+                                            <div class="d-flex align-items-center">
+                                                <div class="attendance-avatar-sm me-3">
+                                                    {% if s.photo %}
+                                                    <img src="{{ s.photo.url }}" alt="{{ s.fullName }}" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                                    {% else %}
+                                                    <span class="attendance-avatar-title attendance-bg-soft-primary rounded-circle">
+                                                        <i class="bi bi-person-fill attendance-text-primary"></i>
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0">{{ s.fullName }}</h6>
+                                                    <small class="text-muted">{{ s.indexNumber }}</small>
+                                                    {% if s.face_encoding %}
+                                                    <span class="badge bg-success ms-1" title="Face encoding stored">✓</span>
+                                                    {% else %}
+                                                    <span class="badge bg-warning ms-1" title="No face encoding">⚠️</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </td>
+                                    {% for header in date_headers %}
+                                    <td class="text-center" id="attendance-{{ s.id }}-{{ header.day }}" 
+                                        data-date="{{ header|date:'Y-m-d' }}"
+                                        data-student-id="{{ s.id }}">
+                                        {{ s|get_attendance_status:header }}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-center">{{ s|count_present:date_headers }}</td>
+                                    <td class="text-center">{{ s|count_absent:date_headers }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Photo Upload Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-camera me-2"></i><span id="modalTitle">Upload</span> Student Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="photoForm" method="POST" enctype="multipart/form-data" 
+                      action="{% url 'attendance:upload_student_photo' 0 %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="studentPhoto" class="form-label">Select Photo</label>
+                        <input type="file" class="form-control" id="studentPhoto" name="photo" 
+                               accept="image/*" required>
+                        <div class="form-text">
+                            For best face recognition results, use a clear front-facing photo with good lighting.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn attendance-btn-primary" id="submitPhoto">Save Photo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+        // Photo Upload Modal
+        const photoModal = document.getElementById('photoModal');
+        const photoForm = document.getElementById('photoForm');
+        const submitPhotoBtn = document.getElementById('submitPhoto');
+
+        photoModal.addEventListener('show.bs.modal', function(event) {
+            const link = event.relatedTarget;
+            const studentId = link.getAttribute('data-student-id');
+            const studentName = link.getAttribute('data-student-name');
+            const photoExists = link.getAttribute('data-photo-exists') === 'true';
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.textContent = photoExists ? 'Update' : 'Upload';
+            photoForm.action = `{% url 'attendance:upload_student_photo' 0 %}?view={{ view_type }}&week={{ week_number }}`.replace('0', studentId);
+        });
+
+        submitPhotoBtn.addEventListener('click', function() {
+            if (photoForm.checkValidity()) {
+                photoForm.submit();
+            } else {
+                photoForm.classList.add('was-validated');
+            }
+        });
+
+        // Checkbox Logic: Ensure only one checkbox is selected
+        const signInCheckbox = document.getElementById('signIn');
+        const signOutCheckbox = document.getElementById('signOut');
+
+        if (signInCheckbox && signOutCheckbox) {
+            signInCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    signOutCheckbox.checked = false;
+                }
+            });
+
+            signOutCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    signInCheckbox.checked = false;
+                }
+            });
+        }
+
+        // WebSocket Status Functions
+        function updateWebSocketStatus(status, message) {
+            const statusElement = document.getElementById('websocketStatus');
+            const statusText = document.getElementById('websocketStatusText');
+            
+            if (status === 'connected') {
+                statusElement.className = 'alert alert-success small mt-2';
+                statusText.innerHTML = '<i class="bi bi-check-circle me-1"></i>' + message;
+            } else if (status === 'error') {
+                statusElement.className = 'alert alert-warning small mt-2';
+                statusText.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + message;
+            } else {
+                statusElement.className = 'alert alert-info small mt-2';
+                statusText.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + message;
+            }
+            statusElement.style.display = 'block';
+        }
+
+        {% if selected_class %}
+        // WebSocket Setup with proper error handling
+        let ws = null;
+        try {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/attendance/{{ selected_class.id }}/`);
+            
+            ws.onopen = function() {
+                console.log('WebSocket connected for class {{ selected_class.id }}');
+                updateWebSocketStatus('connected', 'Real-time updates connected');
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket disconnected');
+                updateWebSocketStatus('error', 'Real-time updates disconnected. Attendance will still work.');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateWebSocketStatus('error', 'Real-time updates disabled. Attendance will still work normally.');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('WebSocket message received:', data);
+                    const attendanceResponse = document.getElementById('attendanceResponse');
+                    
+                    if (data.status === 'success') {
+                        attendanceResponse.innerHTML = `<div class="alert alert-success">Student ${data.student_name} ${data.action}!</div>`;
+                        
+                        // Update attendance table for Sign In
+                        if (data.action === 'signed in') {
+                            const today = new Date('{{ current_date|date:"Y-m-d" }}');
+                            const currentDay = today.getDate();
+                            const cell = document.getElementById(`attendance-${data.student_id}-${currentDay}`);
+                            
+                            if (cell) {
+                                cell.textContent = 'P';
+                                cell.classList.add('text-success', 'fw-bold');
+                            }
+                            
+                            // Update detected students list
+                            const detectedContainer = document.getElementById('detectedStudentsContainer');
+                            const exists = detectedContainer.querySelector(`li[data-student-id="${data.student_id}"]`);
+                            
+                            if (!exists) {
+                                const li = document.createElement('li');
+                                li.className = 'list-group-item d-flex align-items-center';
+                                li.setAttribute('data-student-id', data.student_id);
+                                li.innerHTML = `
+                                    <div class="attendance-avatar-sm me-3">
+                                        <span class="attendance-avatar-title attendance-bg-soft-success rounded-circle">
+                                            <i class="bi bi-person-fill attendance-text-success"></i>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">${data.student_name}</h6>
+                                        <small class="text-muted">Present on {{ current_date|date:"Y-m-d" }}</small>
+                                    </div>
+                                `;
+                                
+                                let ul = detectedContainer.querySelector('ul');
+                                if (!ul) {
+                                    ul = document.createElement('ul');
+                                    ul.className = 'list-group';
+                                    detectedContainer.innerHTML = '';
+                                    detectedContainer.appendChild(ul);
+                                }
+                                
+                                ul.appendChild(li);
+                                
+                                // Remove "no students" message if it exists
+                                const noStudentsMsg = detectedContainer.querySelector('.text-muted');
+                                if (noStudentsMsg && noStudentsMsg.textContent.includes('No students detected')) {
+                                    noStudentsMsg.remove();
+                                }
+                            }
+                        }
+                        
+                        setTimeout(() => {
+                            if (attendanceResponse.innerHTML.includes('alert-success')) {
+                                attendanceResponse.innerHTML = '';
+                            }
+                        }, 3000);
+                    } else {
+                        attendanceResponse.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                        setTimeout(() => {
+                            if (attendanceResponse.innerHTML.includes('alert-warning')) {
+                                attendanceResponse.innerHTML = '';
+                            }
+                        }, 3000);
+                    }
+                } catch (e) {
+                    console.error('Error processing WebSocket message:', e);
+                }
+            };
+        } catch (error) {
+            console.error('Failed to initialize WebSocket:', error);
+            updateWebSocketStatus('error', 'Real-time updates unavailable. Attendance will still work.');
+        }
+        {% endif %}
+
+        // Face Recognition
+        const startAttendanceBtn = document.getElementById('startAttendance');
+        const videoContainer = document.getElementById('videoContainer');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const imageInput = document.getElementById('imageInput');
+        const faceRecognitionForm = document.getElementById('faceRecognitionForm');
+        let stream = null;
+        let isScanning = false;
+
+        if (startAttendanceBtn) {
+            startAttendanceBtn.addEventListener('click', function() {
+                if (!isScanning) {
+                    isScanning = true;
+                    videoContainer.style.display = 'block';
+                    startAttendanceBtn.innerHTML = '<i class="bi bi-stop-circle me-2"></i>Stop Attendance';
+                    startAttendanceBtn.classList.remove('attendance-btn-success');
+                    startAttendanceBtn.classList.add('btn-danger');
+                    
+                    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+                        .then(function(s) {
+                            stream = s;
+                            video.srcObject = stream;
+                            console.log('Webcam started successfully');
+                            if (isScanning) {
+                                console.log('Starting face recognition');
+                                captureFrame();
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Error accessing webcam:', err);
+                            document.getElementById('attendanceResponse').innerHTML = '<div class="alert alert-danger">Failed to access webcam. Please ensure camera permissions are granted.</div>';
+                            videoContainer.style.display = 'none';
+                            startAttendanceBtn.innerHTML = '<i class="bi bi-play-circle me-2"></i>Start Attendance';
+                            startAttendanceBtn.classList.remove('btn-danger');
+                            startAttendanceBtn.classList.add('attendance-btn-success');
+                            isScanning = false;
+                        });
+                } else {
+                    isScanning = false;
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        stream = null;
+                    }
+                    videoContainer.style.display = 'none';
+                    startAttendanceBtn.innerHTML = '<i class="bi bi-play-circle me-2"></i>Start Attendance';
+                    startAttendanceBtn.classList.remove('btn-danger');
+                    startAttendanceBtn.classList.add('attendance-btn-success');
+                    document.getElementById('attendanceResponse').innerHTML = '';
+                    console.log('Stopped face recognition');
+                }
+            });
+        }
+
+        function captureFrame() {
+            if (!isScanning || !stream) {
+                console.log('Capture frame skipped: isScanning=', isScanning, 'stream=', !!stream);
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            
+            if (!context) {
+                console.error('Failed to get canvas 2D context');
+                document.getElementById('attendanceResponse').innerHTML = '<div class="alert alert-danger">Error: Unable to capture image from webcam.</div>';
+                isScanning = false;
+                startAttendanceBtn.click();
+                return;
+            }
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            if (!imageData || imageData.length < 50) {
+                console.error('Invalid or empty image data captured');
+                document.getElementById('attendanceResponse').innerHTML = '<div class="alert alert-danger">Error: Failed to capture valid image from webcam.</div>';
+                if (isScanning) {
+                    setTimeout(captureFrame, 1000);
+                }
+                return;
+            }
+
+            imageInput.value = imageData;
+            
+            const formData = new URLSearchParams();
+            formData.append('image', imageData);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            if (signInCheckbox.checked) {
+                formData.append('sign_in', 'on');
+            } else if (signOutCheckbox.checked) {
+                formData.append('sign_out', 'on');
+            }
+
+            const url = faceRecognitionForm.action;
+            
+            if (url === '#' || !url) {
+                console.error('Invalid URL for face recognition');
+                document.getElementById('attendanceResponse').innerHTML = '<div class="alert alert-danger">Error: No class selected for face recognition.</div>';
+                if (isScanning) {
+                    setTimeout(captureFrame, 1000);
+                }
+                return;
+            }
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData.toString()
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Server response:', data);
+                if (data.status === 'success') {
+                    // Update UI manually
+                    const attendanceResponse = document.getElementById('attendanceResponse');
+                    attendanceResponse.innerHTML = `<div class="alert alert-success">Student ${data.student_name} ${data.action}!</div>`;
+                    
+                    // Update attendance table for Sign In
+                    if (data.action === 'signed in') {
+                        const today = new Date('{{ current_date|date:"Y-m-d" }}');
+                        const currentDay = today.getDate();
+                        const cell = document.getElementById(`attendance-${data.student_id}-${currentDay}`);
+                        
+                        if (cell) {
+                            cell.textContent = 'P';
+                            cell.classList.add('text-success', 'fw-bold');
+                        }
+                        
+                        // Update detected students list
+                        const detectedContainer = document.getElementById('detectedStudentsContainer');
+                        const exists = detectedContainer.querySelector(`li[data-student-id="${data.student_id}"]`);
+                        
+                        if (!exists) {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex align-items-center';
+                            li.setAttribute('data-student-id', data.student_id);
+                            li.innerHTML = `
+                                <div class="attendance-avatar-sm me-3">
+                                    <span class="attendance-avatar-title attendance-bg-soft-success rounded-circle">
+                                        <i class="bi bi-person-fill attendance-text-success"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">${data.student_name}</h6>
+                                    <small class="text-muted">Present on {{ current_date|date:"Y-m-d" }}</small>
+                                </div>
+                            `;
+                            
+                            let ul = detectedContainer.querySelector('ul');
+                            if (!ul) {
+                                ul = document.createElement('ul');
+                                ul.className = 'list-group';
+                                detectedContainer.innerHTML = '';
+                                detectedContainer.appendChild(ul);
+                            }
+                            
+                            ul.appendChild(li);
+                            
+                            // Remove "no students" message if it exists
+                            const noStudentsMsg = detectedContainer.querySelector('.text-muted');
+                            if (noStudentsMsg && noStudentsMsg.textContent.includes('No students detected')) {
+                                noStudentsMsg.remove();
+                            }
+                        }
+                    }
+                    
+                    setTimeout(() => {
+                        if (attendanceResponse.innerHTML.includes('alert-success')) {
+                            attendanceResponse.innerHTML = '';
+                        }
+                    }, 3000);
+                } else {
+                    document.getElementById('attendanceResponse').innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
+                    setTimeout(() => {
+                        if (attendanceResponse.innerHTML.includes('alert-warning')) {
+                            document.getElementById('attendanceResponse').innerHTML = '';
+                        }
+                    }, 3000);
+                }
+                
+                if (isScanning) {
+                    setTimeout(captureFrame, 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error sending frame:', error);
+                document.getElementById('attendanceResponse').innerHTML = 
+                    '<div class="alert alert-danger">Error sending image to server. Please check connection.</div>';
+                if (isScanning) {
+                    setTimeout(captureFrame, 2000);
+                }
+            });
+        }
+
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                console.log('Cleaned up webcam stream on unload');
+            }
+            if (ws) {
+                ws.close();
+            }
+        });
+
+        function updateView(viewType) {
+            const url = new URL(window.location);
+            url.searchParams.set('view', viewType);
+            if (viewType === 'monthly') {
+                url.searchParams.delete('week');
+            } else {
+                url.searchParams.set('week', '1');
+            }
+            window.location = url;
+        }
+
+        function updateWeek(weekNumber) {
+            const url = new URL(window.location);
+            url.searchParams.set('week', weekNumber);
+            window.location = url;
+        }
+
+        // Form validation
+        (function () {
+            'use strict';
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    });
+</script>
+
+<style>
+    .attendance-page .attendance-bg-primary {
+        background-color: #0d6efd !important;
+    }
+    .attendance-page .attendance-bg-info {
+        background-color: #17a2b8 !important;
+    }
+    .attendance-page .attendance-bg-purple {
+        background-color: #6f42c1 !important;
+    }
+    .attendance-page .attendance-bg-success {
+        background-color: #28a745 !important;
+    }
+    .attendance-page .attendance-bg-warning {
+        background-color: #ffc107 !important;
+    }
+    .attendance-page .attendance-text-purple {
+        color: #6f42c1 !important;
+    }
+    .attendance-page .attendance-bg-soft-primary {
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    .attendance-page .attendance-bg-soft-success {
+        background-color: rgba(40, 167, 69, 0.1) !important;
+    }
+    .attendance-page .attendance-text-primary {
+        color: #0d6efd !important;
+    }
+    .attendance-page .attendance-text-success {
+        color: #28a745 !important;
+    }
+    .attendance-page .attendance-btn-success {
+        background-color: #28a745 !important;
+        border-color: #28a745 !important;
+    }
+    .attendance-page .attendance-btn-primary {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+    }
+    .attendance-page .attendance-bg-white {
+        background-color: #ffffff !important;
+    }
+    .attendance-page .attendance-hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        transition: box-shadow 0.2s ease;
+    }
+    .attendance-page .attendance-class-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .attendance-page .attendance-class-card:hover {
+        transform: translateY(-2px);
+    }
+    .attendance-page .attendance-border-primary {
+        border: 2px solid #0d6efd !important;
+    }
+    .attendance-page .attendance-avatar-sm {
+        width: 36px;
+        height: 36px;
+        font-size: 0.875rem;
+    }
+    .attendance-page .attendance-avatar-title {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+    .attendance-page .attendance-table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    .attendance-page .attendance-table-light {
+        background-color: #f8f9fa !important;
+    }
+    .attendance-page .attendance-table th,
+    .attendance-page .attendance-table td {
+        vertical-align: middle;
+        text-align: center;
+    }
+    .attendance-page #videoContainer {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+        position: relative;
+    }
+    .attendance-page .text-success {
+        color: #28a745 !important;
+        font-weight: bold;
+    }
+    .attendance-page .badge {
+        font-size: 0.7em;
+    }
+</style>
+{% endblock %}

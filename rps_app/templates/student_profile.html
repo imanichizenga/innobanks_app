@@ -1,0 +1,796 @@
+<!-- templates/student_profile.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Student Profile{% endblock %}
+
+{% block content %}
+{% load custom_filters %}
+<div class="container mt-4">
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Student Header (Twitter-like design with adjusted layout) -->
+    <div class="card mb-4 border-0 shadow-sm">
+        {% if display and display.image %}
+            <div class="card-img-top" style="height: 200px; background-image: url('{{ display.image.url }}'); background-size: cover; background-position: center;">
+                <div style="height: 200px; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%); display: flex; align-items: flex-end; padding: 20px;">
+                    <!-- Overlay for readability -->
+                </div>
+            </div>
+        {% else %}
+            <div class="card-header bg-primary text-white text-center py-4" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                <h1 class="display-5">Your Profile</h1>
+            </div>
+        {% endif %}
+        <div class="card-body pt-4">
+            <div class="row align-items-center">
+                <!-- Left: Profile Image -->
+                <div class="col-3 text-center">
+                    {% if student.photo %}
+                        <img src="{{ student.photo.url }}" alt="{{ student.fullName }}" class="rounded-circle border border-3 border-white shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-3 border-white shadow-sm" style="width: 120px; height: 120px; font-size: 2.5rem;">
+                            {{ student.fullName|first|upper }}
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- Center: Student Details -->
+                <div class="col-6 text-center">
+                    <h2 class="mb-1 fw-bold">{{ student.fullName }}</h2>
+                    <p class="text-muted mb-0 small">Index: {{ student.indexNumber }} | {{ student.sex }} | {{ student.contact }}</p>
+                    {% if display %}
+                        <p class="text-muted small mt-1">{{ display.body }}</p>
+                    {% endif %}
+                </div>
+                <!-- Right: Messages Button -->
+                <div class="col-3 text-end">
+                    <a href="{% url 'chat_list' %}" class="btn btn-primary rounded-pill px-4 py-2 position-relative" id="chat-btn">
+                        Messages
+                        {% if unread_count > 0 %}
+                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="unread-badge">{{ unread_count }}</span>
+                        {% else %}
+                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle d-none" id="unread-badge">0</span>
+                        {% endif %}
+                        <span class="spinner-border spinner-border-sm ms-2 d-none" id="chat-loader" role="status" aria-hidden="true"></span>
+                    </a>
+                    <p class="text-muted small mt-2 mb-0">Chat with Manager, Teachers, or Fellow Students</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Form -->
+    <form method="GET" class="mb-4">
+        <div class="row">
+            <div class="col-md-3">
+                <h6>Select Classes:</h6>
+                {% for cls in unique_classes %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="class_filter" value="{{ cls.id }}" id="class_{{ cls.id }}" {% if cls.id|stringformat:"s" in class_filters %}checked{% endif %}>
+                        <label class="form-check-label small" for="class_{{ cls.id }}">
+                            {{ cls.class_name }} ({{ cls.academic_year }})
+                        </label>
+                    </div>
+                {% empty %}
+                    <p class="small text-muted">No classes available.</p>
+                {% endfor %}
+            </div>
+            <div class="col-md-3">
+                <h6>Filter by Level:</h6>
+                <select class="form-select form-select-sm" name="grading_filter">
+                    <option value="">All Levels</option>
+                    {% for level in unique_levels %}
+                        <option value="{{ level }}" {% if grading_filter == level %}selected{% endif %}>{{ level }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <h6>Filter by Examination:</h6>
+                <select class="form-select form-select-sm" name="examination_filter">
+                    <option value="">All Examinations</option>
+                    {% for exam in unique_examinations %}
+                        <option value="{{ exam.id }}" {% if examination_filter == exam.id|stringformat:"s" %}selected{% endif %}>{{ exam.exam_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <h6>Rank by:</h6>
+                <select class="form-select form-select-sm" name="rank_by">
+                    <option value="class" {% if rank_by == 'class' %}selected{% endif %}>Class</option>
+                    <option value="stream" {% if rank_by == 'stream' %}selected{% endif %}>Stream</option>
+                    <option value="all" {% if rank_by == 'all' %}selected{% endif %}>All Streams</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Sidebar Subjects -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Subjects</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for subject in subjects %}
+                        <li class="list-group-item border-0 px-2 py-2 small">{{ subject.name }}</li>
+                    {% empty %}
+                        <li class="list-group-item border-0 text-center text-muted small">No subjects</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic" type="button" role="tab">Academic</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="financial-tab" data-bs-toggle="tab" data-bs-target="#financial" type="button" role="tab">Financial</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">Attendance</button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Academic Tab -->
+                <div class="tab-pane fade show active" id="academic" role="tabpanel">
+                    {% for ac_class in academic.classes %}
+                        <div class="card mb-4 shadow-sm border-0">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">{{ ac_class.class_name }} ({{ ac_class.academic_year }}) - Level: {{ ac_class.level }}</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for exam in ac_class.examinations %}
+                                    <div class="mb-4 p-3 border rounded">
+                                        <h6 class="mb-2">{{ exam.exam_name }}</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Subject</th>
+                                                        <th>Mark</th>
+                                                        <th>Grade</th>
+                                                        <th>Teacher</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for subject in exam.subjects %}
+                                                        <tr>
+                                                            <td>{{ subject.name }}</td>
+                                                            <td>{{ subject.mark }}</td>
+                                                            <td><span class="badge bg-secondary">{{ subject.grade }}</span></td>
+                                                            <td>{{ subject.teacher }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <p class="mt-2 mb-0"><strong>Total:</strong> {{ exam.total_marks }} | <strong>Avg:</strong> {{ exam.average_marks }} | <strong>Position:</strong> {{ exam.position }}{% if not ac_class.is_primary %} | <strong>Division:</strong> {{ exam.division }} ({{ exam.total_points }} pts){% endif %}</p>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-muted">No data for this exam.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-book text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">No academic data available.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Financial Tab -->
+                <div class="tab-pane fade" id="financial" role="tabpanel">
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-3"><strong class="text-primary">Total Required:</strong> {{ financial.total_required }} Tsh</div>
+                        <div class="col-md-3"><strong class="text-success">Total Paid:</strong> {{ financial.total_paid }} Tsh</div>
+                        <div class="col-md-3"><strong class="text-danger">Total Balance:</strong> {{ financial.total_balance }} Tsh</div>
+                        <div class="col-md-3"><strong class="text-info">Total Discount:</strong> {{ financial.total_discount }} Tsh</div>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <p class="text-muted mb-1">Total Payments Done</p>
+                                    <h5 class="mb-0">{{ financial.payment_summary.total_paid_amount }} Tsh</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <p class="text-muted mb-1">Total Incomplete Amount</p>
+                                    <h5 class="mb-0">{{ financial.payment_summary.total_incomplete_amount }} Tsh</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <p class="text-muted mb-1">Balance</p>
+                                    <h5 class="mb-0">{{ financial.payment_summary.balance_amount }} Tsh</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        <a class="btn btn-outline-primary btn-sm" href="{% url 'student_all_fees_receipt_pdf' %}">
+                            <i class="fas fa-file-pdf me-1"></i>Download All Fees Receipt
+                        </a>
+                    </div>
+                    {% for fin_class in financial.classes %}
+                        <div class="card mb-4 shadow-sm border-0">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">{{ fin_class.class_name }} ({{ fin_class.academic_year }})</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Fee</th>
+                                                <th>Required (Tsh)</th>
+                                                <th>Discount (Tsh)</th>
+                                                <th>Paid (Tsh)</th>
+                                                <th>Balance (Tsh)</th>
+                                                <th>Status</th>
+                                                <th>Receipt</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for fee in fin_class.fees %}
+                                                <tr>
+                                                    <td>{{ fee.fee_name }}</td>
+                                                    <td>{{ fee.amount_required }}</td>
+                                                    <td>{{ fee.discount }}</td>
+                                                    <td>{{ fee.paid }}</td>
+                                                    <td class="{% if fee.balance > 0 %}text-danger{% else %}text-success{% endif %}">{{ fee.balance }}</td>
+                                                    <td><span class="badge bg-{% if fee.status == 'Completed' %}success{% else %}warning{% endif %}">{{ fee.status }}</span></td>
+                                                    <td>
+                                                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'student_fee_receipt_pdf' fee.id %}">
+                                                            Receipt
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info">
+                                                <th>Total</th>
+                                                <th>{{ fin_class.total_required }} Tsh</th>
+                                                <th>{{ fin_class.total_discount }} Tsh</th>
+                                                <th>{{ fin_class.total_paid }} Tsh</th>
+                                                <th>{{ fin_class.total_balance }} Tsh</th>
+                                                <th></th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-wallet2 text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">No financial data available.</p>
+                        </div>
+                    {% endfor %}
+                    {% if financial.all_payments %}
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-light"><h5 class="mb-0">Manual Payments</h5></div>
+                            <div class="card-body">
+                                <form method="get" class="row g-3 align-items-end mb-3">
+                                    {% for cls in unique_classes %}
+                                        {% if cls.id|stringformat:"s" in class_filters %}
+                                            <input type="hidden" name="class_filter" value="{{ cls.id }}">
+                                        {% endif %}
+                                    {% endfor %}
+                                    <input type="hidden" name="grading_filter" value="{{ grading_filter }}">
+                                    <input type="hidden" name="examination_filter" value="{{ examination_filter }}">
+                                    <input type="hidden" name="rank_by" value="{{ rank_by }}">
+                                    <div class="col-md-4">
+                                        <label class="form-label">From</label>
+                                        <input type="date" class="form-control" name="payment_from" value="{{ financial.payment_filters.from }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">To</label>
+                                        <input type="date" class="form-control" name="payment_to" value="{{ financial.payment_filters.to }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="fas fa-filter me-2"></i>Filter Payments
+                                        </button>
+                                    </div>
+                                </form>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Fee</th>
+                                                <th>Class</th>
+                                                <th>Amount (Tsh)</th>
+                                                <th>Description</th>
+                                                <th>Account No</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for payment in financial.all_payments %}
+                                                <tr>
+                                                    <td>{{ payment.date|date:"Y-m-d" }}</td>
+                                                    <td>{{ payment.fee_name }}</td>
+                                                    <td>{{ payment.class_name }} ({{ payment.academic_year }})</td>
+                                                    <td class="fw-bold">{{ payment.amount }}</td>
+                                                    <td>
+                                                        {{ payment.description }}
+                                                        {% if payment.is_online %}
+                                                            <span class="badge bg-info text-dark ms-1">Online</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ payment.payer_account_no }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="card shadow-sm border-0 mt-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Payments</h5>
+                            <span class="text-muted small">Manage your bill pay numbers and mobile payments.</span>
+                        </div>
+                        <div class="card-body">
+                            {% if online_payments %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Fee</th>
+                                                <th>Required (Tsh)</th>
+                                                <th>Discount (Tsh)</th>
+
+                                                <th>Balance (Tsh)</th>
+                                               
+                                                <th>Amount Due</th>
+                                                <th>Payment Status</th>
+                                                <th>Transaction Status</th>
+                                                <th>Bill Pay Number</th>
+                                                <th>Actions</th>
+                                                <th>Receipt</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for payment in online_payments %}
+                                                <tr data-payment-id="{{ payment.id }}">
+                                                    <td>{{ payment.fee_name }}</td>
+                                                    <td>{{ payment.amount_required }}</td>
+                                                    <td>{{ payment.discount }}</td>
+                                                   
+                                                    <td class="{% if payment.balance > 0 %}text-danger{% else %}text-success{% endif %}">{{ payment.balance }}</td>
+                                                   
+                                                    <td>{{ payment.amount_due }}</td>
+                                                    <td>
+                                                        <span class="badge bg-{% if payment.status == 'paid' or payment.status == 'completed' or payment.status == 'success' %}success{% elif payment.status == 'failed' %}danger{% elif payment.status == 'partial' %}info text-dark{% else %}warning text-dark{% endif %}">
+                                                            {{ payment.status }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-{% if payment.transaction_status == "success" or payment.transaction_status == "completed" %}success{% elif payment.transaction_status == "failed" %}danger{% elif payment.transaction_status == "expired" %}secondary{% else %}warning text-dark{% endif %}">
+                                                            {{ payment.transaction_status|default:"pending" }}
+                                                        </span>
+                                                        {% if payment.transaction_completed_at %}<div class="small text-muted mt-1">{{ payment.transaction_completed_at|date:"Y-m-d H:i" }}</div>{% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if payment.payment_token %}
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span class="billpay-number">{{ payment.payment_token }}</span>
+                                                                <button class="btn btn-sm btn-outline-secondary copy-billpay" type="button">Copy</button>
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted">Not generated</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-outline-primary generate-token-btn" type="button"><span class="btn-label">Generate Token</span><span class="spinner-border spinner-border-sm text-primary d-none" role="status"></span></button>
+                                                        <button class="btn btn-sm btn-outline-secondary ms-2 refresh-token-btn" type="button"><span class="btn-label">Refresh Token</span><span class="spinner-border spinner-border-sm text-primary d-none" role="status"></span></button>
+                                                        <button class="btn btn-sm btn-outline-success ms-2 pay-now-btn" type="button"><span class="btn-label">Push Pay</span><span class="spinner-border spinner-border-sm text-primary d-none" role="status"></span></button>
+                                                    </td>
+                                                    <td>
+                                                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'student_fee_receipt_pdf' payment.fee_id %}">
+                                                            Receipt
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-info">
+                                                <th>Total</th>
+                                                <th>{{ financial.online_payment_summary.total_required }} Tsh</th>
+                                                <th></th>
+                                                <th>{{ financial.online_payment_summary.total_paid }} Tsh</th>
+                                                <th>{{ financial.online_payment_summary.total_balance }} Tsh</th>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted mb-0">No online payment records available.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 mt-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Payment Segments</h5>
+                            <span class="text-muted small">Pay any remaining amount in your preferred segments.</span>
+                        </div>
+                        <div class="card-body">
+                            {% if online_payments %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Fee</th>
+                                                <th>Required (Tsh)</th>
+                                                <th>Total Segment Paid</th>
+                                                <th>Remaining</th>
+                                                <th>Status</th>
+                                                <th>Segment Amount</th>
+                                                <th>Last Bill Pay Number</th>
+                                                <th>Payment Times</th>
+                                                <th>Get Receipt</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for payment in online_payments %}
+                                                <tr data-segment-payment-id="{{ payment.id }}">
+                                                    <td>{{ payment.fee_name }}</td>
+                                                    <td>{{ payment.amount_required }}</td>
+                                                    <td>{{ payment.segment_total_paid }}</td>
+                                                    <td class="{% if payment.segment_remaining > 0 %}text-danger{% else %}text-success{% endif %}">{{ payment.segment_remaining }}</td>
+                                                    <td>
+                                                        <span class="badge bg-{% if payment.segment_status == 'complete' %}success{% else %}warning text-dark{% endif %}">
+                                                            {{ payment.segment_status }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" min="1" step="1" class="form-control form-control-sm segment-amount-input" placeholder="e.g. 5000" {% if payment.segment_status == 'complete' %}disabled{% endif %}>
+                                                    </td>
+                                                    <td>
+                                                        {% if payment.segment_billpay %}
+                                                            <span class="billpay-number">{{ payment.segment_billpay }}</span>
+                                                        {% else %}
+                                                            <span class="text-muted">Not generated</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if payment.segment_payment_times %}
+                                                            <ul class="mb-0 ps-3">
+                                                                {% for paid_time in payment.segment_payment_times %}
+                                                                    <li>{{ paid_time|date:"Y-m-d H:i" }}</li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        {% else %}
+                                                            <span class="text-muted">No payments yet</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <a class="btn btn-sm btn-outline-secondary" href="{{ payment.segment_receipt_url }}">Get Receipt</a>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex gap-2">
+                                                            <button class="btn btn-sm btn-outline-success segment-pay-now-btn" type="button" {% if payment.segment_status == 'complete' %}disabled{% endif %}>Pay Now</button>
+                                                            <button class="btn btn-sm btn-outline-primary segment-generate-btn" type="button" {% if payment.segment_status == 'complete' %}disabled{% endif %}>Generate Pay Number</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted mb-0">No segment payment records available.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Tab -->
+                <div class="tab-pane fade" id="attendance" role="tabpanel">
+                    {% for att_class in attendance.classes %}
+                        <div class="card mb-4 shadow-sm border-0">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">{{ att_class.class_name }} ({{ att_class.academic_year }}) - {{ att_class.month }} {{ att_class.year }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3"><strong>Present:</strong> {{ att_class.present_count }} | <strong>Absent:</strong> {{ att_class.absent_count }} | <strong>Total Days:</strong> {{ att_class.total_days }} | <strong>Rate:</strong> {{ att_class.attendance_rate }}%</p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                {% for day in att_class.attendance_data %}
+                                                    <th class="text-center">{{ day.date|date:"d" }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                {% for day in att_class.attendance_data %}
+                                                    <td class="text-center {% if day.status == 'P' %}bg-success text-white{% elif day.status == 'A' %}bg-danger text-white{% else %}bg-secondary text-white{% endif %}">{{ day.status }}</td>
+                                                {% endfor %}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-check text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">No attendance data available.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Handle chat button click with loader
+    document.getElementById('chat-btn').addEventListener('click', function(e) {
+        const btn = this;
+        const loader = document.getElementById('chat-loader');
+        const badge = document.getElementById('unread-badge');
+        
+        // Disable button and show loader
+        btn.disabled = true;
+        loader.classList.remove('d-none');
+        btn.innerHTML = btn.innerHTML.replace('Messages', 'Loading...');
+        
+        // Simulate loading delay (replace with actual async action if needed)
+        setTimeout(() => {
+            // Re-enable button and hide loader
+            btn.disabled = false;
+            loader.classList.add('d-none');
+            btn.innerHTML = btn.innerHTML.replace('Loading...', 'Messages');
+            
+            // Proceed with navigation (or other action)
+            window.location.href = btn.getAttribute('href');
+        }, 1500);  // 1.5 second delay for demo
+    });
+
+    // Notification WS for real-time unread badge updates
+    let notifSocket = null;
+    function connectNotifications() {
+        const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        notifSocket = new WebSocket(wsScheme + window.location.host + '/ws/notifications/');
+        notifSocket.onopen = () => console.log('Notif WS connected');
+        notifSocket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.type === 'new_message_notification') {
+                const notifData = data.message;
+                // Update unread badge
+                let badge = document.getElementById('unread-badge');
+                if (badge) {
+                    let count = parseInt(badge.textContent) || 0;
+                    count += 1;
+                    badge.textContent = count;
+                    badge.classList.remove('d-none');
+                }
+                // Optional: Play notification sound
+                const audio = new Audio('{% static "sounds/notification.mp3" %}');
+                audio.play().catch(() => {});
+            }
+        };
+        notifSocket.onclose = () => setTimeout(connectNotifications, 3000);
+        notifSocket.onerror = (err) => console.error('Notif WS error:', err);
+    }
+    connectNotifications();
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.querySelectorAll('.copy-billpay').forEach(button => {
+        button.addEventListener('click', async () => {
+            const paymentToken = button.closest('td').querySelector('.billpay-number')?.textContent;
+            if (paymentToken) {
+                await navigator.clipboard.writeText(paymentToken);
+                alert('Payment token copied.');
+            }
+        });
+    });
+
+    document.querySelectorAll('.pay-now-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('tr');
+            const paymentId = row.dataset.paymentId;
+            const spinner = button.querySelector('.spinner-border');
+            const label = button.querySelector('.btn-label');
+            spinner.classList.remove('d-none');
+            button.disabled = true;
+            if (label) {
+                label.classList.add('me-1');
+                label.classList.add('opacity-75');
+            }
+            try {
+                const response = await fetch('/finance/student-payments/push/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({ payment_id: paymentId }),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    alert(data.error || 'Payment request failed.');
+                } else {
+                    alert(data.message || 'Check your phone to approve payment.');
+                }
+            } catch (error) {
+                alert('Unable to start payment. Please try again.');
+            } finally {
+                spinner.classList.add('d-none');
+                button.disabled = false;
+                if (label) {
+                    label.classList.remove('me-1');
+                    label.classList.remove('opacity-75');
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('.generate-token-btn, .refresh-token-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('tr');
+            const paymentId = row.dataset.paymentId;
+            const spinner = button.querySelector('.spinner-border');
+            const label = button.querySelector('.btn-label');
+            spinner.classList.remove('d-none');
+            button.disabled = true;
+            if (label) {
+                label.classList.add('me-1');
+                label.classList.add('opacity-75');
+            }
+            try {
+                const response = await fetch('/finance/student-payments/token/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({ payment_id: paymentId }),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    alert(data.error || 'Unable to generate token.');
+                } else {
+                    alert(data.message || 'Payment token generated successfully.');
+                    window.location.reload();
+                }
+            } catch (error) {
+                alert('Unable to generate token. Please try again.');
+            } finally {
+                spinner.classList.add('d-none');
+                button.disabled = false;
+                if (label) {
+                    label.classList.remove('me-1');
+                    label.classList.remove('opacity-75');
+                }
+            }
+        });
+    });
+
+    async function submitSegmentAction(url, paymentId, segmentAmount) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ payment_id: paymentId, segment_amount: segmentAmount }),
+        });
+        return response.json();
+    }
+
+    document.querySelectorAll('.segment-pay-now-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('tr');
+            const paymentId = row.dataset.segmentPaymentId;
+            const amountInput = row.querySelector('.segment-amount-input');
+            const segmentAmount = amountInput ? amountInput.value : '';
+            if (!segmentAmount || Number(segmentAmount) <= 0) {
+                alert('Please enter a valid segment amount.');
+                return;
+            }
+            button.disabled = true;
+            try {
+                const data = await submitSegmentAction('/finance/student-payments/segments/push/', paymentId, segmentAmount);
+                if (!data.success) {
+                    alert(data.error || 'Unable to process segment payment.');
+                } else {
+                    alert(data.message || 'Check your phone to complete payment.');
+                    window.location.reload();
+                }
+            } catch (error) {
+                alert('Unable to process segment payment. Please try again.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('.segment-generate-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('tr');
+            const paymentId = row.dataset.segmentPaymentId;
+            const amountInput = row.querySelector('.segment-amount-input');
+            const segmentAmount = amountInput ? amountInput.value : '';
+            if (!segmentAmount || Number(segmentAmount) <= 0) {
+                alert('Please enter a valid segment amount.');
+                return;
+            }
+            button.disabled = true;
+            try {
+                const data = await submitSegmentAction('/finance/student-payments/segments/generate/', paymentId, segmentAmount);
+                if (!data.success) {
+                    alert(data.error || 'Unable to generate pay number.');
+                } else {
+                    alert(`Pay number generated: ${data.payment_token}`);
+                    window.location.reload();
+                }
+            } catch (error) {
+                alert('Unable to generate pay number. Please try again.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="main-panel applications-main">
+  <div class="content-wrapper">
+    <div class="applications-page">
+  {% if messages %}{% for message in messages %}<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+
+  <div class="card border mb-3">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div>
+        <h4 class="mb-1">Applications</h4>
+        <p class="text-muted mb-0">Admission enquiries before full student registration.</p>
+      </div>
+      <a class="btn btn-primary btn-sm px-3" href="{% url 'student_application_create' %}">Add Application</a>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-end" id="applicationFilterForm">
+        <div class="col-12 col-lg-3">
+          <label class="form-label small text-muted">Search</label>
+          <input class="form-control form-control-sm" type="search" name="q" id="applicationSearch" value="{{ q }}" placeholder="Search application, name, phone, class">
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label small text-muted">Status</label>
+          <select class="form-select form-select-sm" name="status">
+            <option value="">All</option>
+            {% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label small text-muted">Academic Year</label>
+          <select class="form-select form-select-sm" name="academic_year">
+            <option value="">All</option>
+            {% for year in academic_years %}<option value="{{ year.id }}" {% if selected_academic_year == year.id|stringformat:'s' %}selected{% endif %}>{{ year.academic_year_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label small text-muted">Academic Level</label>
+          <select class="form-select form-select-sm" name="academic_level">
+            <option value="">All</option>
+            {% for value,label in academic_level_choices %}<option value="{{ value }}" {% if selected_academic_level == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-1">
+          <label class="form-label small text-muted">Class</label>
+          <select class="form-select form-select-sm" name="class_name">
+            <option value="">All</option>
+            {% for value,label in class_choices %}<option value="{{ value }}" {% if selected_class_name == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-1">
+          <label class="form-label small text-muted">Type</label>
+          <select class="form-select form-select-sm" name="application_type">
+            <option value="">All</option>
+            {% for value,label in application_type_choices %}<option value="{{ value }}" {% if selected_application_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-lg-1">
+          <button class="btn btn-outline-secondary btn-sm w-100" type="submit">Filter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive applications-table-wrap">
+        <table class="table table-hover table-bordered table-sm align-middle mb-0 applications-table">
+          <thead class="table-light">
+            <tr>
+              <th>#</th><th>Application Number</th><th>Full Name</th><th>Phone</th><th>Academic Level</th><th>Academic Year</th><th>Class</th><th>Focus</th><th>Gender</th><th>Status</th><th>Application Type</th><th>Application Date</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in applications %}
+            <tr>
+              <td>{{ forloop.counter0|add:applications.start_index }}</td>
+              <td>{{ app.application_number|default:'-' }}</td>
+              <td>{{ app.full_name|default:'-' }}</td>
+              <td>{{ app.phone|default:'-' }}</td>
+              <td>{{ app.academic_level|default:'-' }}</td>
+              <td>{{ app.academic_year.academic_year_name|default:'-' }}</td>
+              <td>{{ app.class_name|default:'-' }}</td>
+              <td>{{ app.class_focus|default:'-' }}</td>
+              <td>{{ app.gender|default:'-' }}</td>
+              <td><span class="badge bg-{% if app.status == 'on_progress' %}info{% elif app.status == 'admitted' %}success{% else %}secondary{% endif %}">{{ app.get_status_display }}</span></td>
+              <td>{{ app.application_type|default:'-' }}</td>
+              <td>{{ app.application_date|date:'Y-m-d'|default:'-' }}</td>
+              <td>
+                <div class="d-flex flex-wrap gap-1">
+                  <a class="btn btn-outline-dark btn-sm" href="{% url 'student_application_detail' app.id %}">Preview</a>
+                  <a class="btn btn-outline-primary btn-sm" href="{% url 'student_application_edit' app.id %}">Edit</a>
+                  <a class="btn btn-outline-success btn-sm" href="{% url 'student_application_form_print' app.id %}">Form</a>
+                  <form method="post" action="{% url 'student_application_update_status' app.id %}" class="d-inline application-status-form" data-current-status="{{ app.status|default:'' }}" data-has-student="{% if app.student %}1{% else %}0{% endif %}">{% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <input type="hidden" name="remove_student_profile" value="0">
+                    <input type="hidden" name="add_more_info" value="0">
+                    <select class="form-select form-select-sm application-status-select" name="status">
+                      {% for value,label in status_choices %}<option value="{{ value }}" {% if app.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                  </form>
+                  <form method="post" action="{% url 'student_application_delete' app.id %}" class="d-inline" onsubmit="return confirm('Delete this application?');">{% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="13" class="text-center text-muted py-4">No applications found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if page_obj.paginator.num_pages > 1 %}
+      <nav class="mt-3">
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+          <li class="page-item active"><span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+          {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+  </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('applicationSearch');
+  const form = document.getElementById('applicationFilterForm');
+  let timer;
+  input?.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){ form.submit(); }, 450);
+  });
+  document.querySelectorAll('.application-status-select').forEach(function(select){
+    select.addEventListener('change', function(){
+      const statusForm = this.form;
+      const previousStatus = statusForm.dataset.currentStatus || '';
+      const hasStudent = statusForm.dataset.hasStudent === '1';
+      const removeInput = statusForm.querySelector('[name="remove_student_profile"]');
+      const addMoreInput = statusForm.querySelector('[name="add_more_info"]');
+      removeInput.value = '0';
+      addMoreInput.value = '0';
+      if (this.value === 'not_returned' && previousStatus === 'on_progress' && hasStudent) {
+        if (confirm('Changing status will delete/remove the student profile. Do you want to remove it?')) {
+          removeInput.value = '1';
+        }
+      }
+      if (this.value === 'on_progress' && previousStatus !== 'on_progress') {
+        if (confirm('Do you need to add additional information?')) {
+          addMoreInput.value = '1';
+        }
+      }
+      statusForm.submit();
+    });
+  });
+});
+</script>
+<style>
+.applications-main{min-width:0}
+.applications-page{min-width:0;max-width:100%}
+.applications-page .card{max-width:100%}
+.applications-table-wrap{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+.applications-table{min-width:1180px;width:100%}
+.applications-page .table th,.applications-page .table td{white-space:nowrap;font-size:.82rem}
+.application-status-select{min-width:130px}
+</style>
+{% endblock %}

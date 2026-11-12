@@ -1,0 +1,71 @@
+<!-- New template: templates/edit_stream.html -->
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-warning"><i class="fas fa-edit me-2"></i>Edit Stream</h2>
+        <a href="{% url 'create_teacher_class' %}" class="btn btn-secondary rounded-pill">
+            <i class="fas fa-arrow-left me-2"></i>Back to Manage Classes & Streams
+        </a>
+    </div>
+
+    <!-- Edit Stream Form -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form action="{% url 'update_stream' stream.id %}" method="POST" class="row g-3" id="editStreamForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="stream_name" class="form-label fw-semibold"><i class="fas fa-stream me-2"></i>Stream Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-tag"></i></span>
+                        <input type="text" name="stream_name" value="{{ stream.stream_name }}" class="form-control rounded-end" id="stream_name" placeholder="Enter stream name" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="teacher_classes" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-list"></i></span>
+                        <select name="teacher_classes" class="form-select rounded-end" id="teacher_classes" multiple>
+                            <option value="" disabled>Select classes (hold Ctrl/Cmd to select multiple)</option>
+                            {% for tc in teacher_classes %}
+                            <option value="{{ tc.id }}" {% if tc in stream.teacherclass.all %}selected{% endif %}>{{ tc }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-warning flex-fill rounded-pill" type="submit" id="updateButton">
+                        <i class="fas fa-save me-2"></i>Update Stream
+                    </button>
+                    <a href="{% url 'create_teacher_class' %}" class="btn btn-secondary rounded-pill">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.getElementById('editStreamForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('updateButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Updating...';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,414 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ID Card - {{ student.fullName }}</title>
+  <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    @page { size: A4; margin: 10mm; }
+    :root{
+      --id-theme: {{ id_settings.horizontal_front_primary_color|default:id_settings.theme_color }};
+      --hf-border: {{ id_settings.horizontal_front_border_color|default:id_settings.horizontal_front_primary_color }};
+      --hf-inner: {{ id_settings.horizontal_front_inner_border_color|default:id_settings.horizontal_front_primary_color }};
+      --hf-panel: {{ id_settings.horizontal_front_panel_color|default:id_settings.horizontal_front_primary_color }};
+      --hf-header: {{ id_settings.horizontal_front_header_color|default:'#ffffff' }};
+      --hf-accent: {{ id_settings.horizontal_front_accent_color|default:id_settings.horizontal_front_primary_color }};
+      --hf-text: #111111;
+      --id-photo-bg: {{ id_settings.photo_bg_color|default:'#000000' }};
+      --vf-top: {{ id_settings.vertical_front_top_color|default:'#111418' }};
+      --vf-top-end: {{ id_settings.vertical_front_top_end_color|default:id_settings.vertical_front_top_color }};
+      --vf-bottom: {{ id_settings.vertical_front_bottom_color|default:'#ffffff' }};
+      --vf-accent: {{ id_settings.vertical_front_accent_color|default:'#1469c8' }};
+      --vf-subtitle: #111111;
+      --vb-top: {{ id_settings.vertical_back_top_color|default:'#0a5c9f' }};
+      --vb-top-end: {{ id_settings.vertical_back_top_end_color|default:id_settings.vertical_back_top_color }};
+      --vb-bottom: {{ id_settings.vertical_back_bottom_color|default:'#ffffff' }};
+      --vb-accent: {{ id_settings.vertical_back_accent_color|default:id_settings.vertical_back_top_color }};
+      --vb-inner: {{ id_settings.vertical_back_inner_border_color|default:id_settings.vertical_back_top_color }};
+      --vb-text: #111111;
+      --hb-top: {{ id_settings.horizontal_back_top_color|default:'#0a5c9f' }};
+      --hb-top-end: {{ id_settings.horizontal_back_top_end_color|default:id_settings.horizontal_back_top_color }};
+      --hb-accent: {{ id_settings.horizontal_back_accent_color|default:'#113765' }};
+      --hb-bottom: {{ id_settings.horizontal_back_bottom_color|default:'#ffffff' }};
+      --hb-text: {{ id_settings.horizontal_back_text_color|default:'#111111' }};
+      --hb-inner: {{ id_settings.horizontal_back_inner_border_color|default:id_settings.horizontal_back_accent_color }};
+      --horizontal-header-scale: {{ id_settings.horizontal_header_size|default:1 }};
+      --vertical-header-scale: {{ id_settings.vertical_header_size|default:0.85 }};
+      --horizontal-title-scale: {{ id_settings.horizontal_title_size|default:1 }};
+      --vertical-title-scale: {{ id_settings.vertical_title_size|default:1.18 }};
+      --horizontal-subtitle-scale: {{ id_settings.horizontal_subtitle_size|default:1 }};
+      --vertical-subtitle-scale: {{ id_settings.vertical_subtitle_size|default:1.05 }};
+      --horizontal-title-x: {{ id_settings.horizontal_title_x_percent|default:50 }}%;
+      --horizontal-title-y: {{ id_settings.horizontal_title_y_percent|default:18 }}%;
+      --horizontal-subtitle-x: {{ id_settings.horizontal_subtitle_x_percent|default:50 }}%;
+      --horizontal-subtitle-y: {{ id_settings.horizontal_subtitle_y_percent|default:62 }}%;
+      --vertical-title-x: {{ id_settings.vertical_title_x_percent|default:50 }}%;
+      --vertical-title-y: {{ id_settings.vertical_title_y_percent|default:20 }}%;
+      --vertical-subtitle-x: {{ id_settings.vertical_subtitle_x_percent|default:50 }}%;
+      --vertical-subtitle-y: {{ id_settings.vertical_subtitle_y_percent|default:58 }}%;
+    }
+
+    body{font-family:Arial,sans-serif;background:#f4f6f9;color:#18202f;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .designer-shell{max-width:1500px;margin:0 auto;padding:18px}
+    .designer-toolbar{position:sticky;top:0;z-index:20;background:#fff;border:1px solid #dfe5ef;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(15,23,42,.06)}
+    .toolbar-title h1{font-size:18px;margin:0;font-weight:700}.toolbar-title p{font-size:12px;margin:2px 0 0;color:#657084}
+    .designer-grid{display:grid;grid-template-columns:minmax(320px,390px) minmax(0,1fr);gap:18px;margin-top:18px}
+    .designer-card{background:#fff;border:1px solid #dfe5ef;border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.06)}
+    .controls-panel{padding:14px;max-height:calc(100vh - 118px);overflow:auto}
+    .control-section{border:1px solid #e7ebf2;border-radius:10px;padding:12px;margin-bottom:12px;background:#fff}
+    .control-section h2{font-size:13px;font-weight:700;margin:0 0 10px;color:#18202f;display:flex;align-items:center;gap:7px}
+    .control-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.control-grid .wide{grid-column:1/-1}
+    .form-label{font-size:12px;font-weight:600;color:#505b70;margin-bottom:4px}
+    .form-range{min-height:20px}.form-control-color{width:100%;height:34px}.value-pill{font-size:11px;color:#5b6679;background:#f1f4f8;border:1px solid #dfe5ef;border-radius:999px;padding:1px 7px}
+    .preview-panel{min-height:640px;display:flex;flex-direction:column}
+    .preview-header{padding:14px 16px;border-bottom:1px solid #e7ebf2;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+    .preview-stage{flex:1;padding:22px;display:flex;align-items:flex-start;justify-content:center;background:linear-gradient(180deg,#f8fafc,#eef2f7);border-radius:0 0 12px 12px;overflow:auto}
+    .preview-tabs .btn{min-width:86px}.print-wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;justify-content:center;transform-origin:top center}
+    .print-wrap.layout-multiple{gap:34px}.print-wrap.preview-front .id-back,.print-wrap.preview-back .id-front{display:none}
+    .download-split{display:none}.layout-multiple-active .download-split{display:inline-flex}.layout-multiple-active #downloadIdPng{display:none}
+
+    .id-card{width:85.6mm;height:54mm;border-radius:4mm;overflow:hidden;position:relative;box-shadow:0 18px 38px rgba(15,23,42,.18);background:#fff;transform-origin:top center;page-break-inside:avoid}
+    .id-front.horizontal-front{display:flex;flex-direction:column}
+    .id-front.horizontal-front .id-header{display:flex;align-items:flex-start;gap:2.5mm;height:calc(15.9mm * var(--horizontal-header-scale));padding:2.6mm 3mm 1.8mm;background:var(--hf-header);position:relative;box-sizing:border-box}
+    .id-logo{width:11mm;height:11mm;object-fit:contain;transform:translate(var(--logo-x,0mm),var(--logo-y,0mm)) scale(var(--logo-scale,1));transform-origin:top left}
+    .id-title{font-weight:700;line-height:1.2;color:#111;text-align:center;position:absolute;inset:0;pointer-events:none}.id-title-main{font-size:calc(2.6mm * var(--horizontal-title-scale));position:absolute;left:var(--horizontal-title-x);top:var(--horizontal-title-y);transform:translate(-50%,-50%);width:52mm}.id-title small{font-size:calc(2mm * var(--horizontal-subtitle-scale));color:#111;position:absolute;left:var(--horizontal-subtitle-x);top:var(--horizontal-subtitle-y);transform:translate(-50%,-50%);width:52mm}
+    .horizontal-body{position:relative;flex:1;min-height:0;background:var(--id-theme)}
+    .front-wave .horizontal-body::after{content:"";position:absolute;left:-5mm;right:-5mm;bottom:0;height:23mm;background:#fff;clip-path:polygon(0 28%,6% 25%,12% 26%,18% 31%,24% 39%,30% 49%,36% 59%,42% 67%,50% 72%,58% 67%,64% 59%,70% 49%,76% 39%,82% 31%,88% 26%,94% 25%,100% 28%,100% 100%,0 100%);z-index:0}
+    .id-body{display:grid;grid-template-columns:22mm minmax(0,1fr) 18mm;gap:2mm;padding:3mm 3mm 0;align-items:start;position:relative;z-index:1}
+    .id-photo-wrap{width:22mm;height:30mm;border-radius:2mm;overflow:hidden;border:1px solid #d0d8e8;background:#fff}.id-photo-wrap.vertical-photo-bg{background:var(--id-photo-bg);border:none}
+    .id-photo{width:100%;height:100%;object-fit:cover;transform:translate(var(--photo-x,0mm),var(--photo-y,0mm)) scale(var(--photo-scale,1));transform-origin:center}
+    .id-info{color:#111;font-size:2mm;line-height:1.2;transform:translate(var(--content-x,0mm),var(--content-y,0mm));transform-origin:top left;min-width:0;overflow:hidden;padding:0 .5mm}
+    .id-info h6{font-size:3.3mm;margin:0 0 2mm;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .id-detail-stack{display:flex;flex-direction:column;gap:2mm}.id-detail-block{min-width:0;display:flex;flex-direction:column;gap:.2mm}
+    .id-detail-block span{font-size:1.55mm;font-weight:700;text-transform:uppercase;color:#111}.id-detail-block strong{font-size:1.8mm;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.16}
+    .id-qr-block{display:flex;flex-direction:column;align-items:center;gap:1.8mm;justify-self:end;transform:translate(var(--qr-x,0mm),var(--qr-y,0mm)) scale(var(--qr-scale,1));transform-origin:top right}
+    .id-qr{width:14mm;height:14mm;background:#fff;padding:.5mm;border-radius:1mm}.id-qr-meta{width:100%;display:flex;flex-direction:column;gap:1.3mm;text-align:center;color:#111}
+    .id-qr-meta div{display:flex;flex-direction:column;gap:.25mm;min-width:0}.id-qr-meta span{font-size:1.25mm;font-weight:700;text-transform:uppercase;color:#111}.id-qr-meta strong{font-size:1.45mm;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .id-card.id-front-vertical{width:54mm;height:85.6mm;border-radius:3.4mm}.id-front-vertical{background:#fff;display:flex;flex-direction:column}
+    .vertical-top{position:relative;height:calc(15.25mm * var(--vertical-header-scale));padding:1.5mm 4mm 1.1mm;background:linear-gradient(180deg,var(--vf-top) 0%,var(--vf-top-end) 100%);color:#111;text-align:center;overflow:hidden;box-sizing:border-box}
+    .vertical-logo{width:7.4mm;height:7.4mm;box-sizing:border-box;border-radius:50%;background:#fff;padding:.75mm;object-fit:contain;display:block;border:.45mm solid #d9ecff;position:absolute;left:2.6mm;top:1.5mm;z-index:2;transform:translate(var(--logo-x,0mm),var(--logo-y,0mm)) scale(var(--logo-scale,1));transform-origin:top left}
+    .vertical-heading{position:absolute;left:calc(50% + 1.3mm);top:0;z-index:2;width:29.2mm;max-width:29.2mm;height:100%;transform:translateX(-50%);text-align:center}
+    .vertical-top h5{font-size:calc(2.78mm * var(--vertical-title-scale));line-height:1.14;margin:0;font-weight:700;color:#111;position:absolute;left:var(--vertical-title-x);top:var(--vertical-title-y);transform:translate(-50%,-50%);width:29.2mm}
+    .vertical-top p{margin:0;font-size:calc(1.85mm * var(--vertical-subtitle-scale));line-height:1.18;color:#111;position:absolute;left:var(--vertical-subtitle-x);top:var(--vertical-subtitle-y);transform:translate(-50%,-50%);width:29.2mm}
+    .vertical-bottom{flex:1;background:var(--vf-bottom);padding:1.95mm 4.2mm 3.8mm;display:flex;flex-direction:column;justify-content:flex-start;gap:1.1mm;position:relative;overflow:hidden}
+    .vertical-details{display:flex;flex-direction:column;gap:1.4mm;transform:translate(var(--content-x,0mm),var(--content-y,0mm));position:relative;z-index:1}.front-wave .vertical-details{gap:.25mm;max-height:12.2mm;overflow:hidden}.front-wave .vertical-row{font-size:1.8mm;line-height:1.15}.front-wave .vertical-label{min-width:12.4mm}
+    .front-wave .vertical-bottom::after{content:"";position:absolute;left:-3mm;right:-3mm;bottom:0;height:22mm;background:#fff;clip-path:polygon(0 24%,6% 22%,12% 23%,18% 28%,24% 36%,30% 47%,36% 58%,42% 68%,50% 74%,58% 68%,64% 58%,70% 47%,76% 36%,82% 28%,88% 23%,94% 22%,100% 24%,100% 100%,0 100%);z-index:0}
+    .vertical-photo{margin:0 auto 1.1mm;width:28.75mm;height:30.9mm;box-sizing:border-box;border-radius:2mm;overflow:hidden;background:var(--id-photo-bg);position:relative;z-index:2;border:.65mm solid #fff}
+    .vertical-name{font-size:3.6mm;font-weight:700;color:#111;text-align:center;line-height:1.2;position:relative;z-index:2;margin-bottom:1.1mm}
+    .vertical-row{display:flex;align-items:flex-start;gap:1.4mm;font-size:2.45mm;line-height:1.35;color:#111}.vertical-label{min-width:15mm;font-weight:700;color:#111}.vertical-sep{font-weight:700;color:#111}.vertical-value{color:#111;flex:1;min-width:0;word-break:break-word}
+
+    .id-back-top{color:#fff;height:28mm;padding:4mm;text-align:center}.id-back-top h5{margin:0 0 1.3mm;font-size:3.4mm}.id-back-top p{margin:0;font-size:2.15mm;line-height:1.45}
+    .id-back-bottom{height:26mm;padding:2.5mm 4mm 2.8mm;text-align:center;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:1mm;overflow:visible}
+    .id-back-note{font-size:2.2mm;line-height:1.35}.id-signature-wrap{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:.6mm;min-height:10mm;overflow:visible}.id-signature-label{font-size:2.1mm;font-weight:600}.id-signature-image{max-height:7.2mm;max-width:28mm;min-height:4mm;width:auto;height:auto;object-fit:contain;display:block;filter:contrast(1.08);background:rgba(255,255,255,.92);padding:.2mm .5mm;border-radius:.5mm}.id-signature-fallback{font-size:2.2mm}
+    .id-back-horizontal .id-back-top{background:linear-gradient(120deg,var(--hb-top),var(--hb-top-end))}.id-back-horizontal .id-back-bottom{color:var(--hb-text);background:var(--hb-bottom)}
+    .id-level-badge{position:absolute;right:3mm;top:3.2mm;background:var(--hf-accent);color:#fff;border-radius:1.2mm;padding:.6mm 1.8mm;font-size:1.8mm;font-weight:700;line-height:1.2}.id-level-badge-vertical{position:absolute;right:3mm;bottom:2.4mm;background:var(--vf-accent);color:#111;border-radius:1.2mm;padding:.6mm 1.8mm;font-size:1.8mm;font-weight:700;z-index:3}
+    .id-back-vertical{width:54mm;height:85.6mm;border-radius:3.4mm}.id-back-vertical .vback-top{background:linear-gradient(145deg,var(--vb-top),var(--vb-top-end));color:#111;min-height:32mm;padding:5mm 4.2mm 3.8mm;text-align:center;position:relative;overflow:hidden}.id-back-vertical .vback-top h5{margin:0 0 1.6mm;font-size:3.3mm}.id-back-vertical .vback-top p{margin:0;font-size:2.2mm;line-height:1.4}.id-back-vertical .vback-contact{margin-top:2.2mm;opacity:.95}.id-back-vertical .vback-bottom{background:var(--vb-bottom);height:53.6mm;padding:4.2mm;color:var(--vb-text);display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:2.2mm}.vback-qr-zone{display:flex;align-items:center;justify-content:center;width:100%;min-height:25mm}.id-qr-vertical{width:19.5mm;height:19.5mm;background:#fff;padding:1.4mm;border:.25mm solid var(--vb-inner);border-radius:2mm;object-fit:contain;transform:translate(var(--qr-x,0mm),var(--qr-y,0mm)) scale(var(--qr-scale,1));transform-origin:center}
+
+    @media (max-width: 1080px){.designer-grid{grid-template-columns:1fr}.controls-panel{max-height:none}.preview-panel{min-height:520px}.designer-toolbar{position:static}}
+    @media (max-width: 640px){.designer-shell{padding:10px}.control-grid{grid-template-columns:1fr}.preview-stage{padding:14px}.id-card{transform-origin:top center}}
+    @media print{body{background:#fff;margin:0}.no-print{display:none!important}.designer-shell{padding:0;max-width:none}.preview-stage{display:block;background:#fff;padding:0}.designer-card{border:0;box-shadow:none}.print-wrap{display:flex;gap:8mm;transform:none!important}.print-wrap.preview-front .id-back,.print-wrap.preview-back .id-front{display:block}.id-card{box-shadow:none}.print-wrap.layout-multiple{display:block}.print-wrap.layout-multiple .id-front{page-break-after:always}.print-wrap.layout-multiple .id-back{page-break-before:always}}
+  </style>
+</head>
+<body class="{% if id_settings.print_layout == 'multiple' %}layout-multiple-active{% endif %}">
+<div class="designer-shell">
+  <div class="designer-toolbar no-print d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ student_list_url|default:'javascript:history.back()' }}"><i class="bi bi-arrow-left me-1"></i>Back to Students</a>
+      <div class="toolbar-title">
+        <h1>Student ID Designer</h1>
+        <p>{{ student.fullName|default:'Unnamed Student' }} &bull; {{ student.indexNumber|default:'-' }} &bull; {{ registration_number }}</p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'student_information_page' student.id %}" class="btn btn-outline-success btn-sm"><i class="bi bi-plus-circle me-1"></i>Add More</a>
+      <a href="{% url 'student_id_settings' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-sliders me-1"></i>ID Settings</a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+      <a href="#" class="btn btn-outline-dark btn-sm download-split" id="downloadFrontPng"><i class="bi bi-download me-1"></i>Front PNG</a>
+      <a href="#" class="btn btn-outline-dark btn-sm download-split" id="downloadBackPng"><i class="bi bi-download me-1"></i>Back PNG</a>
+      <a href="#" class="btn btn-dark btn-sm" id="downloadIdPng"><i class="bi bi-download me-1"></i>Download ID PNG</a>
+    </div>
+  </div>
+
+  <div class="designer-grid">
+    <aside class="designer-card controls-panel no-print">
+      <div class="control-section">
+        <h2><i class="bi bi-layout-sidebar-inset"></i>Layout</h2>
+        <div class="control-grid">
+          <div>
+            <label class="form-label" for="idCardDesign">Card design</label>
+            <select class="form-select form-select-sm" id="idCardDesign">
+              <option value="horizontal" {% if id_settings.card_design != 'vertical' %}selected{% endif %}>Horizontal</option>
+              <option value="vertical" {% if id_settings.card_design == 'vertical' %}selected{% endif %}>Vertical</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="idPrintLayout">Print/download setup</label>
+            <select class="form-select form-select-sm" id="idPrintLayout">
+              <option value="single" {% if id_settings.print_layout != 'multiple' %}selected{% endif %}>Single Page</option>
+              <option value="multiple" {% if id_settings.print_layout == 'multiple' %}selected{% endif %}>Multiple Page</option>
+            </select>
+          </div>
+          <div class="wide">
+            <label class="form-label d-flex justify-content-between" for="idCardScale">Preview zoom <span class="value-pill" data-value-for="idCardScale"></span></label>
+            <input type="range" class="form-range" id="idCardScale" min="0.85" max="1.2" step="0.05">
+          </div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h2><i class="bi bi-image"></i>Branding</h2>
+        <label class="form-label" for="idCardLogoUpload">School icon/logo</label>
+        <input type="file" class="form-control form-control-sm mb-2" id="idCardLogoUpload" accept="image/*">
+        <div class="control-grid">
+          <div><label class="form-label d-flex justify-content-between" for="idLogoX">Logo X <span class="value-pill" data-value-for="idLogoX"></span></label><input type="range" class="form-range" id="idLogoX" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idLogoY">Logo Y <span class="value-pill" data-value-for="idLogoY"></span></label><input type="range" class="form-range" id="idLogoY" min="-20" max="20" step="1"></div>
+          <div class="wide"><label class="form-label d-flex justify-content-between" for="idLogoScale">Logo scale <span class="value-pill" data-value-for="idLogoScale"></span></label><input type="range" class="form-range" id="idLogoScale" min="0.2" max="4" step="0.05"></div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h2><i class="bi bi-person-square"></i>Photo</h2>
+        <div class="control-grid">
+          <div><label class="form-label d-flex justify-content-between" for="idPhotoX">Photo X <span class="value-pill" data-value-for="idPhotoX"></span></label><input type="range" class="form-range" id="idPhotoX" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idPhotoY">Photo Y <span class="value-pill" data-value-for="idPhotoY"></span></label><input type="range" class="form-range" id="idPhotoY" min="-20" max="20" step="1"></div>
+          <div class="wide"><label class="form-label d-flex justify-content-between" for="idPhotoScale">Photo scale <span class="value-pill" data-value-for="idPhotoScale"></span></label><input type="range" class="form-range" id="idPhotoScale" min="0.8" max="1.4" step="0.05"></div>
+          <div class="wide" id="verticalPhotoBgWrap"><label class="form-label" for="idPhotoBgColor">Vertical photo background</label><input type="color" class="form-control form-control-color" id="idPhotoBgColor"></div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h2><i class="bi bi-arrows-move"></i>Positioning</h2>
+        <div class="control-grid">
+          <div><label class="form-label d-flex justify-content-between" for="idContentX">Details X <span class="value-pill" data-value-for="idContentX"></span></label><input type="range" class="form-range" id="idContentX" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idContentY">Details Y <span class="value-pill" data-value-for="idContentY"></span></label><input type="range" class="form-range" id="idContentY" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idQrX">QR X <span class="value-pill" data-value-for="idQrX"></span></label><input type="range" class="form-range" id="idQrX" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idQrY">QR Y <span class="value-pill" data-value-for="idQrY"></span></label><input type="range" class="form-range" id="idQrY" min="-20" max="20" step="1"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idQrScale">QR scale <span class="value-pill" data-value-for="idQrScale"></span></label><input type="range" class="form-range" id="idQrScale" min="0.8" max="2.4" step="0.05"></div>
+          <div><label class="form-label d-flex justify-content-between" for="idNameSize">Name size <span class="value-pill" data-value-for="idNameSize"></span></label><input type="range" class="form-range" id="idNameSize" min="12" max="18" step="1"></div>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <h2><i class="bi bi-palette"></i>Colors</h2>
+        <div class="control-grid">
+          <div><label class="form-label" for="idHorizontalFrontPrimaryColor">Horizontal front</label><input type="color" class="form-control form-control-color" id="idHorizontalFrontPrimaryColor"></div>
+          <div><label class="form-label" for="idHorizontalFrontHeaderColor">Header</label><input type="color" class="form-control form-control-color" id="idHorizontalFrontHeaderColor"></div>
+          <div><label class="form-label" for="idHorizontalFrontAccentColor">Front accent</label><input type="color" class="form-control form-control-color" id="idHorizontalFrontAccentColor"></div>
+          <div><label class="form-label" for="idHorizontalBackTopColor">Back top</label><input type="color" class="form-control form-control-color" id="idHorizontalBackTopColor"></div>
+          <div><label class="form-label" for="idHorizontalBackBottomColor">Back bottom</label><input type="color" class="form-control form-control-color" id="idHorizontalBackBottomColor"></div>
+          <div><label class="form-label" for="idHorizontalBackTextColor">Back text</label><input type="color" class="form-control form-control-color" id="idHorizontalBackTextColor"></div>
+          <div><label class="form-label" for="idVerticalFrontTopColor">Vertical top</label><input type="color" class="form-control form-control-color" id="idVerticalFrontTopColor"></div>
+          <div><label class="form-label" for="idVerticalFrontBottomColor">Vertical bottom</label><input type="color" class="form-control form-control-color" id="idVerticalFrontBottomColor"></div>
+          <div><label class="form-label" for="idVerticalFrontAccentColor">Vertical accent</label><input type="color" class="form-control form-control-color" id="idVerticalFrontAccentColor"></div>
+          <div><label class="form-label" for="idVerticalBackTopColor">V back top</label><input type="color" class="form-control form-control-color" id="idVerticalBackTopColor"></div>
+          <div><label class="form-label" for="idVerticalBackBottomColor">V back bottom</label><input type="color" class="form-control form-control-color" id="idVerticalBackBottomColor"></div>
+          <div><label class="form-label" for="idHorizontalBackAccentColor">Back accent</label><input type="color" class="form-control form-control-color" id="idHorizontalBackAccentColor"></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="designer-card preview-panel">
+      <div class="preview-header no-print">
+        <div>
+          <strong>Live Preview</strong>
+          <div class="small text-muted" id="layoutSummary"></div>
+        </div>
+        <div class="btn-group btn-group-sm preview-tabs" role="group">
+          <button type="button" class="btn btn-dark" data-preview-side="front">Front</button>
+          <button type="button" class="btn btn-outline-dark" data-preview-side="back">Back</button>
+          <button type="button" class="btn btn-outline-dark" data-preview-side="both">Both</button>
+        </div>
+      </div>
+      <div class="preview-stage">
+        <div class="print-wrap {% if id_settings.print_layout == 'multiple' %}layout-multiple{% endif %} preview-front" id="printWrap">
+          {% if id_settings.card_design == 'vertical' %}
+          <div class="id-card id-front id-front-vertical {% if id_settings.academic_level == 'CSEE' or id_settings.academic_level == 'English course' or id_settings.academic_level == 'Computer course' %}front-wave{% endif %}" id="frontCard" style="--logo-x:{{ id_settings.logo_x_mm }}mm;--logo-y:{{ id_settings.logo_y_mm }}mm;--logo-scale:{{ id_settings.logo_scale }};--photo-x:{{ id_settings.photo_x_mm }}mm;--photo-y:{{ id_settings.photo_y_mm }}mm;--photo-scale:{{ id_settings.photo_scale }};--content-x:{{ id_settings.content_x_mm }}mm;--content-y:{{ id_settings.content_y_mm }}mm;--qr-x:{{ id_settings.qr_x_mm }}mm;--qr-y:{{ id_settings.qr_y_mm }}mm;--qr-scale:{{ id_settings.qr_scale }};">
+            <div class="vertical-top"><img src="{{ student_id_logo_src|default:'' }}" class="vertical-logo school-logo" alt="School logo"><div class="vertical-heading"><h5>THE BRITISH SCHOOL</h5><p>STUDENT IDENTIFICATION CARD</p></div>{% if id_settings.use_badge and id_settings.badge_text %}<div class="id-level-badge-vertical">{{ id_settings.badge_text }}</div>{% endif %}</div>
+            <div class="vertical-bottom"><div class="vertical-photo id-photo-wrap vertical-photo-bg"><img src="{% if student.photo %}{{ student.photo.url }}{% else %}{% static 'assets/img/logo.png' %}{% endif %}" class="id-photo" alt="Student photo"></div><div class="vertical-name student-name" style="font-size:{{ id_settings.name_size_px }}px">{{ student.fullName|default:'Unnamed Student' }}</div><div class="vertical-details"><div class="vertical-row"><span class="vertical-label">ID</span><span class="vertical-sep">:</span><span class="vertical-value">{{ student.indexNumber|default:'-' }}</span></div><div class="vertical-row"><span class="vertical-label">Class</span><span class="vertical-sep">:</span><span class="vertical-value">{{ student.teacherclass.ClassName.class_name|default:'-' }}</span></div><div class="vertical-row"><span class="vertical-label">Reg No</span><span class="vertical-sep">:</span><span class="vertical-value">{{ registration_number }}</span></div><div class="vertical-row"><span class="vertical-label blue">Issued</span><span class="vertical-sep">:</span><span class="vertical-value">{{ issued_date_text }}</span></div><div class="vertical-row"><span class="vertical-label blue">Expire</span><span class="vertical-sep">:</span><span class="vertical-value">{{ expiry_text }}</span></div></div></div>
+          </div>
+          <div class="id-card id-back id-back-vertical" id="backCard"><div class="vback-top"><h5>THE BRITISH SCHOOL</h5><p>Student Affairs & Administration</p><p class="vback-contact">P.O.Box 32536 &bull; Dar es salaam, Tanzania<br>0655400420 | 0755400420</p></div><div class="vback-bottom"><div class="id-back-note">This card remains the property of The British School. If found, kindly return it to the school administration office.</div><div class="vback-qr-zone"><img class="id-qr-vertical" src="{{ qr_image_data_uri|default:'' }}" alt="QR code"></div><div class="id-signature-wrap"><div class="id-signature-label">Principal Signature</div>{% if principal_signature_src %}<img src="{{ principal_signature_src }}" alt="Principal signature" class="id-signature-image">{% else %}<div class="id-signature-fallback">p-signature</div>{% endif %}</div></div></div>
+          {% else %}
+          <div class="id-card id-front horizontal-front {% if id_settings.academic_level == 'CSEE' or id_settings.academic_level == 'English course' or id_settings.academic_level == 'Computer course' %}front-wave{% endif %}" id="frontCard" style="--logo-x:{{ id_settings.logo_x_mm }}mm;--logo-y:{{ id_settings.logo_y_mm }}mm;--logo-scale:{{ id_settings.logo_scale }};--photo-x:{{ id_settings.photo_x_mm }}mm;--photo-y:{{ id_settings.photo_y_mm }}mm;--photo-scale:{{ id_settings.photo_scale }};--content-x:{{ id_settings.content_x_mm }}mm;--content-y:{{ id_settings.content_y_mm }}mm;--qr-x:{{ id_settings.qr_x_mm }}mm;--qr-y:{{ id_settings.qr_y_mm }}mm;--qr-scale:{{ id_settings.qr_scale }};">
+            <div class="id-header"><img src="{{ student_id_logo_src|default:'' }}" class="id-logo school-logo" alt="School logo"><div class="id-title"><span class="id-title-main">THE BRITISH SECONDARY SCHOOL</span><small class="id-subtitle">STUDENT IDENTIFICATION CARD</small></div>{% if id_settings.use_badge and id_settings.badge_text %}<div class="id-level-badge">{{ id_settings.badge_text }}</div>{% endif %}</div>
+            <div class="horizontal-body"><div class="id-body"><div class="id-photo-wrap"><img src="{% if student.photo %}{{ student.photo.url }}{% else %}{% static 'assets/img/logo.png' %}{% endif %}" class="id-photo" alt="Student photo"></div><div class="id-info"><h6 class="student-name" style="font-size:{{ id_settings.name_size_px }}px">{{ student.fullName|default:'Unnamed Student' }}</h6><div class="id-detail-stack"><div class="id-detail-block"><span>ID</span><strong>{{ student.indexNumber|default:'-' }}</strong></div><div class="id-detail-block"><span>Class</span><strong>{{ student.teacherclass.ClassName.class_name|default:'-' }}</strong></div><div class="id-detail-block"><span>Reg No</span><strong>{{ registration_number }}</strong></div></div></div><div class="id-qr-block"><img class="id-qr" src="{{ qr_image_data_uri|default:'' }}" alt="QR code"><div class="id-qr-meta"><div><span>Issued</span><strong>{{ issued_date_text }}</strong></div><div><span>Expire</span><strong>{{ expiry_text }}</strong></div></div></div></div></div>
+          </div>
+          <div class="id-card id-back id-back-horizontal" id="backCard"><div class="id-back-top"><h5>THE BRITISH SECONDARY SCHOOL</h5><p>P.O.Box 32536<br>Mwenge ITV, Dar es salaam, Tanzania<br>0655400420 | 0755400420<br>info@britishschool.ac.tz</p></div><div class="id-back-bottom"><div class="id-back-note">This card is the property of The British School. If found lost, please return to the address above.</div><div class="id-signature-wrap"><div class="id-signature-label">Principal Signature:</div>{% if principal_signature_src %}<img src="{{ principal_signature_src }}" alt="Principal signature" class="id-signature-image">{% else %}<div class="id-signature-fallback">p-signature</div>{% endif %}</div></div></div>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  const mmFactor = 0.264583;
+  const initialSettings = {
+    scale: {{ id_settings.scale|default:1 }},
+    cardDesign: "{{ id_settings.card_design|default:'horizontal' }}",
+    printLayout: "{{ id_settings.print_layout|default:'single' }}",
+    photoX: {{ id_settings.photo_x_mm|default:0 }} / mmFactor,
+    photoY: {{ id_settings.photo_y_mm|default:0 }} / mmFactor,
+    photoScale: {{ id_settings.photo_scale|default:1 }},
+    logoX: {{ id_settings.logo_x_mm|default:0 }} / mmFactor,
+    logoY: {{ id_settings.logo_y_mm|default:0 }} / mmFactor,
+    logoScale: {{ id_settings.logo_scale|default:1 }},
+    contentX: {{ id_settings.content_x_mm|default:0 }} / mmFactor,
+    contentY: {{ id_settings.content_y_mm|default:0 }} / mmFactor,
+    qrX: {{ id_settings.qr_x_mm|default:0 }} / mmFactor,
+    qrY: {{ id_settings.qr_y_mm|default:0 }} / mmFactor,
+    qrScale: {{ id_settings.qr_scale|default:1 }},
+    nameSize: {{ id_settings.name_size_px|default:14 }},
+    photoBgColor: "{{ id_settings.photo_bg_color|default:'#000000' }}",
+    verticalFrontTopColor: "{{ id_settings.vertical_front_top_color|default:'#111418' }}",
+    verticalFrontBottomColor: "{{ id_settings.vertical_front_bottom_color|default:'#ffffff' }}",
+    verticalFrontAccentColor: "{{ id_settings.vertical_front_accent_color|default:'#1469c8' }}",
+    verticalBackTopColor: "{{ id_settings.vertical_back_top_color|default:'#0a5c9f' }}",
+    verticalBackBottomColor: "{{ id_settings.vertical_back_bottom_color|default:'#ffffff' }}",
+    horizontalFrontPrimaryColor: "{{ id_settings.horizontal_front_primary_color|default:'#0b86d8' }}",
+    horizontalFrontHeaderColor: "{{ id_settings.horizontal_front_header_color|default:'#ffffff' }}",
+    horizontalFrontAccentColor: "{{ id_settings.horizontal_front_accent_color|default:'#0a5c9f' }}",
+    horizontalBackTopColor: "{{ id_settings.horizontal_back_top_color|default:'#0a5c9f' }}",
+    horizontalBackAccentColor: "{{ id_settings.horizontal_back_accent_color|default:'#113765' }}",
+    horizontalBackBottomColor: "{{ id_settings.horizontal_back_bottom_color|default:'#ffffff' }}",
+    horizontalBackTextColor: "{{ id_settings.horizontal_back_text_color|default:'#111111' }}",
+    useBadge: "{{ id_settings.use_badge|yesno:'1,0' }}",
+    badgeText: "{{ id_settings.badge_text|default:''|escapejs }}",
+    horizontalHeaderSize: {{ id_settings.horizontal_header_size|default:1 }},
+    verticalHeaderSize: {{ id_settings.vertical_header_size|default:0.85 }},
+    horizontalTitleSize: {{ id_settings.horizontal_title_size|default:1 }},
+    verticalTitleSize: {{ id_settings.vertical_title_size|default:1.18 }},
+    horizontalSubtitleSize: {{ id_settings.horizontal_subtitle_size|default:1 }},
+    verticalSubtitleSize: {{ id_settings.vertical_subtitle_size|default:1.05 }},
+    horizontalTitleXPercent: {{ id_settings.horizontal_title_x_percent|default:50 }},
+    horizontalTitleYPercent: {{ id_settings.horizontal_title_y_percent|default:18 }},
+    verticalTitleXPercent: {{ id_settings.vertical_title_x_percent|default:50 }},
+    verticalTitleYPercent: {{ id_settings.vertical_title_y_percent|default:20 }},
+    horizontalSubtitleXPercent: {{ id_settings.horizontal_subtitle_x_percent|default:50 }},
+    horizontalSubtitleYPercent: {{ id_settings.horizontal_subtitle_y_percent|default:62 }},
+    verticalSubtitleXPercent: {{ id_settings.vertical_subtitle_x_percent|default:50 }},
+    verticalSubtitleYPercent: {{ id_settings.vertical_subtitle_y_percent|default:58 }}
+  };
+  let customLogoData = '';
+  const ids = ['idCardScale','idPhotoX','idPhotoY','idPhotoScale','idLogoX','idLogoY','idLogoScale','idContentX','idContentY','idQrX','idQrY','idQrScale','idNameSize','idPhotoBgColor','idVerticalFrontTopColor','idVerticalFrontBottomColor','idVerticalFrontAccentColor','idVerticalBackTopColor','idVerticalBackBottomColor','idHorizontalFrontPrimaryColor','idHorizontalFrontHeaderColor','idHorizontalFrontAccentColor','idHorizontalBackTopColor','idHorizontalBackAccentColor','idHorizontalBackBottomColor','idHorizontalBackTextColor'];
+  const el = id => document.getElementById(id);
+  const hexToRgb = hex => { const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || ''); return m ? [parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)] : [0,0,0]; };
+  const rgbToHex = rgb => `#${rgb.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('')}`;
+  const mixColor = (color, target, amount) => { const a = hexToRgb(color), b = hexToRgb(target); return rgbToHex(a.map((v,i) => v + ((b[i] - v) * amount))); };
+  const lighten = (color, amount) => mixColor(color, '#ffffff', amount);
+  const darken = (color, amount) => mixColor(color, '#000000', amount);
+  const readableText = color => { const [r,g,b] = hexToRgb(color); return (((r*299)+(g*587)+(b*114))/1000) >= 150 ? '#111111' : '#ffffff'; };
+  const isDarkColor = color => readableText(color) === '#ffffff';
+  const solidPanelColor = (color, textColor) => {
+    const textIsDark = isDarkColor(textColor);
+    if ((readableText(color) === '#111111') === textIsDark) {
+      const [r,g,b] = hexToRgb(color);
+      if (textIsDark) return Math.min(r,g,b) > 238 ? darken(color,.06) : lighten(color,.34);
+      return darken(color,.18);
+    }
+    return textIsDark ? lighten(color,.64) : darken(color,.24);
+  };
+  const setValue = (id, value) => { if (el(id)) el(id).value = Number.isFinite(value) ? Number(value.toFixed ? value.toFixed(3) : value) : value; };
+  setValue('idCardScale', initialSettings.scale);
+  setValue('idPhotoX', initialSettings.photoX); setValue('idPhotoY', initialSettings.photoY); setValue('idPhotoScale', initialSettings.photoScale);
+  setValue('idLogoX', initialSettings.logoX); setValue('idLogoY', initialSettings.logoY); setValue('idLogoScale', initialSettings.logoScale);
+  setValue('idContentX', initialSettings.contentX); setValue('idContentY', initialSettings.contentY); setValue('idQrX', initialSettings.qrX); setValue('idQrY', initialSettings.qrY); setValue('idQrScale', initialSettings.qrScale); setValue('idNameSize', initialSettings.nameSize);
+  ['photoBgColor','verticalFrontTopColor','verticalFrontBottomColor','verticalFrontAccentColor','verticalBackTopColor','verticalBackBottomColor','horizontalFrontPrimaryColor','horizontalFrontHeaderColor','horizontalFrontAccentColor','horizontalBackTopColor','horizontalBackAccentColor','horizontalBackBottomColor','horizontalBackTextColor'].forEach(key => setValue(`id${key.charAt(0).toUpperCase()}${key.slice(1)}`, initialSettings[key]));
+
+  const setCardVars = () => {
+    document.querySelectorAll('.id-card').forEach(card => {
+      card.style.setProperty('--logo-x', `${el('idLogoX').value * mmFactor}mm`);
+      card.style.setProperty('--logo-y', `${el('idLogoY').value * mmFactor}mm`);
+      card.style.setProperty('--logo-scale', el('idLogoScale').value);
+      card.style.setProperty('--photo-x', `${el('idPhotoX').value * mmFactor}mm`);
+      card.style.setProperty('--photo-y', `${el('idPhotoY').value * mmFactor}mm`);
+      card.style.setProperty('--photo-scale', el('idPhotoScale').value);
+      card.style.setProperty('--content-x', `${el('idContentX').value * mmFactor}mm`);
+      card.style.setProperty('--content-y', `${el('idContentY').value * mmFactor}mm`);
+      card.style.setProperty('--qr-x', `${el('idQrX').value * mmFactor}mm`);
+      card.style.setProperty('--qr-y', `${el('idQrY').value * mmFactor}mm`);
+      card.style.setProperty('--qr-scale', el('idQrScale').value);
+    });
+    document.documentElement.style.setProperty('--id-theme', el('idHorizontalFrontPrimaryColor').value);
+    document.documentElement.style.setProperty('--hf-header', el('idHorizontalFrontHeaderColor').value);
+    document.documentElement.style.setProperty('--hf-accent', el('idHorizontalFrontAccentColor').value);
+    document.documentElement.style.setProperty('--hf-panel', solidPanelColor(el('idHorizontalFrontPrimaryColor').value, '#111111'));
+    document.documentElement.style.setProperty('--id-photo-bg', el('idPhotoBgColor').value);
+    document.documentElement.style.setProperty('--vf-top', el('idVerticalFrontTopColor').value);
+    document.documentElement.style.setProperty('--vf-top-end', darken(el('idVerticalFrontTopColor').value, .08));
+    document.documentElement.style.setProperty('--vf-bottom', el('idVerticalFrontBottomColor').value);
+    document.documentElement.style.setProperty('--vf-accent', el('idVerticalFrontAccentColor').value);
+    document.documentElement.style.setProperty('--vb-top', el('idVerticalBackTopColor').value);
+    document.documentElement.style.setProperty('--vb-top-end', lighten(el('idVerticalBackTopColor').value, .14));
+    document.documentElement.style.setProperty('--vb-bottom', el('idVerticalBackBottomColor').value);
+    document.documentElement.style.setProperty('--vb-inner', lighten(el('idVerticalBackTopColor').value, .55));
+    document.documentElement.style.setProperty('--hb-top', el('idHorizontalBackTopColor').value);
+    document.documentElement.style.setProperty('--hb-top-end', lighten(el('idHorizontalBackTopColor').value, .14));
+    document.documentElement.style.setProperty('--hb-accent', el('idHorizontalBackAccentColor').value);
+    document.documentElement.style.setProperty('--hb-bottom', el('idHorizontalBackBottomColor').value);
+    document.documentElement.style.setProperty('--hb-text', el('idHorizontalBackTextColor').value);
+    document.querySelectorAll('.student-name').forEach(node => node.style.fontSize = `${el('idNameSize').value}px`);
+    document.getElementById('printWrap').style.transform = `scale(${el('idCardScale').value})`;
+    document.querySelectorAll('[data-value-for]').forEach(node => { const input = el(node.dataset.valueFor); if (input) node.textContent = input.value; });
+    el('verticalPhotoBgWrap')?.classList.toggle('d-none', el('idCardDesign').value !== 'vertical');
+  };
+
+  const settingsQuery = (side) => {
+    const q = new URLSearchParams();
+    q.set('scale', el('idCardScale').value); q.set('photoX', el('idPhotoX').value); q.set('photoY', el('idPhotoY').value); q.set('photoScale', el('idPhotoScale').value);
+    q.set('logoX', el('idLogoX').value); q.set('logoY', el('idLogoY').value); q.set('logoScale', el('idLogoScale').value);
+    q.set('contentX', el('idContentX').value); q.set('contentY', el('idContentY').value); q.set('qrX', el('idQrX').value); q.set('qrY', el('idQrY').value); q.set('qrScale', el('idQrScale').value); q.set('nameSize', el('idNameSize').value);
+    q.set('photoBgColor', el('idPhotoBgColor').value); q.set('verticalFrontTopColor', el('idVerticalFrontTopColor').value); q.set('verticalFrontBottomColor', el('idVerticalFrontBottomColor').value); q.set('verticalFrontAccentColor', el('idVerticalFrontAccentColor').value); q.set('verticalBackTopColor', el('idVerticalBackTopColor').value); q.set('verticalBackBottomColor', el('idVerticalBackBottomColor').value);
+    q.set('horizontalFrontPrimaryColor', el('idHorizontalFrontPrimaryColor').value); q.set('horizontalFrontHeaderColor', el('idHorizontalFrontHeaderColor').value); q.set('horizontalFrontAccentColor', el('idHorizontalFrontAccentColor').value); q.set('horizontalFrontTextColor', '#111111'); q.set('horizontalBackTopColor', el('idHorizontalBackTopColor').value); q.set('horizontalBackAccentColor', el('idHorizontalBackAccentColor').value); q.set('horizontalBackBottomColor', el('idHorizontalBackBottomColor').value); q.set('horizontalBackTextColor', el('idHorizontalBackTextColor').value);
+    q.set('themeColor', el('idHorizontalFrontPrimaryColor').value); q.set('useBadge', initialSettings.useBadge); q.set('badgeText', initialSettings.badgeText); q.set('cardDesign', el('idCardDesign').value); q.set('printLayout', el('idPrintLayout').value);
+    ['horizontalHeaderSize','verticalHeaderSize','horizontalTitleSize','verticalTitleSize','horizontalSubtitleSize','verticalSubtitleSize','horizontalTitleXPercent','horizontalTitleYPercent','verticalTitleXPercent','verticalTitleYPercent','horizontalSubtitleXPercent','horizontalSubtitleYPercent','verticalSubtitleXPercent','verticalSubtitleYPercent'].forEach(key => q.set(key, initialSettings[key]));
+    if (customLogoData) q.set('logoData', customLogoData);
+    if (side) q.set('side', side);
+    return q;
+  };
+  const updateDownloadLinks = () => {
+    const base = "{% url 'student_id_card_png_view' student.id %}";
+    el('downloadIdPng').href = `${base}?${settingsQuery().toString()}`;
+    el('downloadFrontPng').href = `${base}?${settingsQuery('front').toString()}`;
+    el('downloadBackPng').href = `${base}?${settingsQuery('back').toString()}`;
+    const layout = el('idPrintLayout').value;
+    document.body.classList.toggle('layout-multiple-active', layout === 'multiple');
+    el('printWrap').classList.toggle('layout-multiple', layout === 'multiple');
+    el('layoutSummary').textContent = `${el('idCardDesign').value === 'vertical' ? 'Vertical' : 'Horizontal'} card, ${layout === 'multiple' ? 'front and back as separate PNG files' : 'front and back on one PNG'}`;
+  };
+  const apply = () => { setCardVars(); updateDownloadLinks(); };
+  ids.forEach(id => el(id)?.addEventListener('input', apply));
+  el('idPrintLayout')?.addEventListener('change', apply);
+  el('idCardDesign')?.addEventListener('change', () => {
+    const target = new URL(window.location.href);
+    const q = settingsQuery();
+    q.forEach((value, key) => target.searchParams.set(key, value));
+    window.location.href = target.toString();
+  });
+  document.querySelectorAll('[data-preview-side]').forEach(button => {
+    button.addEventListener('click', () => {
+      const side = button.dataset.previewSide;
+      document.querySelectorAll('[data-preview-side]').forEach(btn => { btn.classList.toggle('btn-dark', btn === button); btn.classList.toggle('btn-outline-dark', btn !== button); });
+      el('printWrap').classList.toggle('preview-front', side === 'front');
+      el('printWrap').classList.toggle('preview-back', side === 'back');
+      el('printWrap').classList.toggle('preview-both', side === 'both');
+    });
+  });
+  el('idCardLogoUpload')?.addEventListener('change', function(){
+    const [file] = this.files || [];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      customLogoData = event.target.result;
+      document.querySelectorAll('.school-logo').forEach(img => img.src = customLogoData);
+      updateDownloadLinks();
+    };
+    reader.readAsDataURL(file);
+  });
+  apply();
+</script>
+</body>
+</html>

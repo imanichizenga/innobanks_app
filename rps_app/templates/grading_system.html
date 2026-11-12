@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Messages Section -->
+    {% if messages %}
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Form Card -->
+    <div class="card shadow-sm mb-5 animate__animated animate__fadeInUp">
+        <div class="card-body">
+            <h3 class="text-center fw-bold text-primary mb-4"><i class="fas fa-mortarboard me-2"></i>Select Classes & Grading</h3>
+            <form method="POST" action="{% url 'all_student_marks' %}" id="resultForm" class="row g-3" novalidate>
+                {% csrf_token %}
+                <div class="col-12 col-md-6">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Classes</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select class="form-select rounded-end" id="class_id" name="class_id" multiple size="6" required>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}" {% if selected_class_ids and class.id|stringformat:"s" in selected_class_ids|join:"," %}selected{% endif %}>
+                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select one or more classes.</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="grade_id" class="form-label fw-semibold"><i class="fas fa-graduation-cap me-2"></i>Grading System</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-book"></i></span>
+                        <select class="form-select rounded-end" id="grade_id" name="grade_id" required>
+                            <option value="" disabled {% if not grading_required %}selected{% endif %}>Select a Grading System</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}" {% if grading_required and grade.id == grading_required.id %}selected{% endif %}>
+                                {% if grade.is_primary %}Primary{% elif grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select a grading system.</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-file-alt me-2"></i>Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-clipboard-list"></i></span>
+                        <select class="form-select rounded-end" id="examination_id" name="examination_id" required>
+                            <option value="" disabled {% if not selected_examination %}selected{% endif %}>Select an Examination</option>
+                            {% for exam in examination_names %}
+                            <option value="{{ exam.id }}" {% if selected_examination and exam.id == selected_examination.id %}selected{% endif %}>{{ exam.exam_name|default:"Unnamed Examination" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select an examination.</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label for="report_id" class="form-label fw-semibold"><i class="fas fa-display me-2"></i>Report Display (Optional)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-image"></i></span>
+                        <select class="form-select rounded-end" id="report_id" name="report_id">
+                            <option value="" {% if not report_display %}selected{% endif %}>No Report Display</option>
+                            {% for d in display %}
+                            <option value="{{ d.id }}" {% if report_display and d.id == report_display.id %}selected{% endif %}>{{ d.header }} (ID: {{ d.id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-eye me-2"></i>
+                        <span class="button-text">View Results</span>
+                        <span class="spinner-border spinner-border-sm d-none me-2" id="loadingSpinner" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Primary Grading Systems -->
+    <div class="card shadow-sm mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>Primary Grading Systems</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#primaryTable" aria-expanded="true" aria-controls="primaryTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="primaryTable">
+            <div class="card-body p-0">
+                {% if primary_grades %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">ID</th>
+                                <th scope="col" style="width: 15%;">A</th>
+                                <th scope="col" style="width: 15%;">B</th>
+                                <th scope="col" style="width: 15%;">C</th>
+                                <th scope="col" style="width: 15%;">D</th>
+                                <th scope="col" style="width: 15%;">F</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grade in primary_grades %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ grade.id }}</td>
+                                <td>{{ grade.grade_a }}</td>
+                                <td>{{ grade.grade_b }}</td>
+                                <td>{{ grade.grade_c }}</td>
+                                <td>{{ grade.grade_d }}</td>
+                                <td>{{ grade.grade_f }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info m-3 rounded-pill animate__animated animate__fadeIn">
+                    <i class="fas fa-exclamation-circle me-2"></i>No Primary grading systems available.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- O-Level Grading Systems -->
+    <div class="card shadow-sm mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>O-Level Grading Systems</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#oLevelTable" aria-expanded="true" aria-controls="oLevelTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="oLevelTable">
+            <div class="card-body p-0">
+                {% if o_level_grades %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">ID</th>
+                                <th scope="col" style="width: 10%;">A</th>
+                                <th scope="col" style="width: 10%;">B</th>
+                                <th scope="col" style="width: 10%;">C</th>
+                                <th scope="col" style="width: 10%;">D</th>
+                                <th scope="col" style="width: 10%;">F</th>
+                                <th scope="col" style="width: 10%;">Div I</th>
+                                <th scope="col" style="width: 10%;">Div II</th>
+                                <th scope="col" style="width: 10%;">Div III</th>
+                                <th scope="col" style="width: 10%;">Div IV</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grade in o_level_grades %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ grade.id }}</td>
+                                <td>{{ grade.grade_a }}</td>
+                                <td>{{ grade.grade_b }}</td>
+                                <td>{{ grade.grade_c }}</td>
+                                <td>{{ grade.grade_d }}</td>
+                                <td>{{ grade.grade_f }}</td>
+                                <td>{{ grade.division_1 }}</td>
+                                <td>{{ grade.division_2 }}</td>
+                                <td>{{ grade.division_3 }}</td>
+                                <td>{{ grade.division_4 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info m-3 rounded-pill animate__animated animate__fadeIn">
+                    <i class="fas fa-exclamation-circle me-2"></i>No O-Level grading systems available.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- A-Level Grading Systems -->
+    <div class="card shadow-sm mb-5 animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>A-Level Grading Systems</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#aLevelTable" aria-expanded="true" aria-controls="aLevelTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="aLevelTable">
+            <div class="card-body p-0">
+                {% if a_level_grades %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 8%;">ID</th>
+                                <th scope="col" style="width: 8%;">A</th>
+                                <th scope="col" style="width: 8%;">B</th>
+                                <th scope="col" style="width: 8%;">C</th>
+                                <th scope="col" style="width: 8%;">D</th>
+                                <th scope="col" style="width: 8%;">E</th>
+                                <th scope="col" style="width: 8%;">S</th>
+                                <th scope="col" style="width: 8%;">F</th>
+                                <th scope="col" style="width: 8%;">Div I</th>
+                                <th scope="col" style="width: 8%;">Div II</th>
+                                <th scope="col" style="width: 8%;">Div III</th>
+                                <th scope="col" style="width: 8%;">Div IV</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grade in a_level_grades %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ grade.id }}</td>
+                                <td>{{ grade.grade_a }}</td>
+                                <td>{{ grade.grade_b }}</td>
+                                <td>{{ grade.grade_c }}</td>
+                                <td>{{ grade.grade_d }}</td>
+                                <td>{{ grade.grade_e|default:'-' }}</td>
+                                <td>{{ grade.grade_s|default:'-' }}</td>
+                                <td>{{ grade.grade_f }}</td>
+                                <td>{{ grade.division_1 }}</td>
+                                <td>{{ grade.division_2 }}</td>
+                                <td>{{ grade.division_3 }}</td>
+                                <td>{{ grade.division_4 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info m-3 rounded-pill animate__animated animate__fadeIn">
+                    <i class="fas fa-exclamation-circle me-2"></i>No A-Level grading systems available.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Displays -->
+    <div class="card shadow-sm animate__animated animate__fadeInUp" style="animation-delay: 0.6s;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-display me-2"></i>Report Displays</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#displayTable" aria-expanded="true" aria-controls="displayTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="displayTable">
+            <div class="card-body p-0">
+                {% if display %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">ID</th>
+                                <th scope="col" style="width: 30%;">Header</th>
+                                <th scope="col" style="width: 30%;">Body</th>
+                                <th scope="col" style="width: 30%;">Image</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in display %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ d.id }}</td>
+                                <td>{{ d.header }}</td>
+                                <td>{{ d.body }}</td>
+                                <td>
+                                    {% if d.image %}
+                                    <img src="{{ d.image.url }}" alt="{{ d.header }}" class="img-fluid" style="max-width: 100px; max-height: 100px;">
+                                    {% else %}
+                                    <span class="text-muted">No image</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info m-3 rounded-pill animate__animated animate__fadeIn">
+                    <i class="fas fa-exclamation-circle me-2"></i>No displays available.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const resultForm = document.getElementById('resultForm');
+    const submitButton = document.getElementById('submitButton');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const classSelect = document.getElementById('class_id');
+
+    // Custom validation for multiple select
+    classSelect.addEventListener('change', function() {
+        if (this.selectedOptions.length === 0) {
+            this.setCustomValidity('Please select one or more classes.');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    // Form submission handling
+    resultForm.addEventListener('submit', function(event) {
+        if (!resultForm.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        } else {
+            submitButton.disabled = true;
+            loadingSpinner.classList.remove('d-none');
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        }
+        resultForm.classList.add('was-validated');
+    });
+
+    // Add hover effect for table rows
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+
+    // Add hover effects for select elements and buttons
+    document.querySelectorAll('.form-select, .btn').forEach(element => {
+        element.addEventListener('mouseenter', () => {
+            element.classList.add('shadow-sm');
+        });
+        element.addEventListener('mouseleave', () => {
+            element.classList.remove('shadow-sm');
+        });
+    });
+});
+</script>
+{% endblock %}

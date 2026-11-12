@@ -1,0 +1,414 @@
+{% load static %}
+{% load pwa %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% progressive_web_app_meta %}
+  <title>{{ host_name }}</title>
+  <meta charset="utf-8">
+  {% progressive_web_app_meta %}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    /* Default Light Mode */
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --nav-bg: #212529;
+      --nav-text: #ffffff;
+      --link-hover: #00ffcc;
+    }
+
+    /* Dark Mode */
+    body.dark-mode {
+      --bg-color: #312c2c;
+      --text-color: #ffffff;
+      --nav-bg: #0d1117;
+      --nav-text: #ffffff;
+      --link-hover: #00ffcc;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: all 0.3s ease;
+    }
+
+    .navbar {
+      background-color: var(--nav-bg) !important;
+    }
+
+    .navbar-nav .nav-link {
+      color: var(--nav-text);
+    }
+
+    .navbar-nav .nav-link:hover {
+      color: var(--link-hover);
+    }
+
+    /* Animation for the logo */
+    @keyframes pulseRotate {
+      0% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.1) rotate(180deg); }
+      100% { transform: scale(1) rotate(360deg); }
+    }
+
+    .animated-logo {
+      animation: pulseRotate 3s infinite ease-in-out;
+    }
+
+    /* Custom collapse button styles */
+    .custom-toggler {
+      border: none;
+      padding: 8px 15px;
+      background: linear-gradient(45deg, #007bff, #00ffcc);
+      border-radius: 25px;
+      transition: all 0.3s ease;
+    }
+
+    .custom-toggler:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+    }
+
+    .custom-toggler-icon {
+      width: 25px;
+      height: 3px;
+      background-color: white;
+      position: relative;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .custom-toggler-icon::before,
+    .custom-toggler-icon::after {
+      content: '';
+      position: absolute;
+      width: 25px;
+      height: 3px;
+      background-color: white;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .custom-toggler-icon::before { top: -8px; }
+    .custom-toggler-icon::after { bottom: -8px; }
+
+    .navbar.collapsed .custom-toggler-icon {
+      background: transparent;
+    }
+
+    .navbar.collapsed .custom-toggler-icon::before {
+      transform: rotate(45deg);
+      top: 0;
+    }
+
+    .navbar.collapsed .custom-toggler-icon::after {
+      transform: rotate(-45deg);
+      bottom: 0;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle {
+      border: none;
+      background: none;
+      padding: 8px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.2);
+    }
+
+    .theme-toggle .sun-icon,
+    .theme-toggle .moon-icon {
+      width: 24px;
+      height: 24px;
+      fill: var(--nav-text);
+    }
+
+    .dark-mode .theme-toggle .sun-icon {
+      display: inline;
+    }
+
+    .dark-mode .theme-toggle .moon-icon {
+      display: none;
+    }
+
+    .theme-toggle .sun-icon {
+      display: none;
+    }
+
+    .theme-toggle .moon-icon {
+      display: inline;
+    }
+
+    /* Username and Tick */
+    .username-tick {
+      color: var(--nav-text);
+      font-weight: 500;
+      margin-right: 10px;
+    }
+
+    .tick-icon {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-left: 5px;
+    }
+
+    .tick-blue {
+      fill: #1DA1F2;
+    }
+
+    .tick-green {
+      fill: #28a745;
+    }
+
+    .dark-mode .tick-green {
+      fill: #28a745;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-sm navbar-dark fixed-top mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="https://wa.me/{{ top.contact }}" target="_blank">
+    {% if global_top_icon %}
+        <img src="{{ global_top_icon }}" alt="The British Icon"
+             style="width: 40px; height: 40px; border-radius: 40%; margin-right: 10px;">
+    {% else %}
+        <span style="color: #999; margin-right: 10px;">No icon</span>
+    {% endif %}
+    British School
+</a>
+
+
+      <button class="custom-toggler d-block d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+        <span class="custom-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="collapsibleNavbar">
+        <ul class="navbar-nav me-auto">
+          {% if user.is_authenticated %}
+            {% if user.is_student and user|has_verified_email %}
+              <!-- Student Links -->
+               
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'change_password' %}">Change Password</a>
+              </li>
+              
+              <li class="nav-item">
+                <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+              </li>
+            {% elif user.is_teacher and user.is_superuser %}
+              <!-- Teacher or Superuser Links -->
+              {% if request.user|has_verified_email %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'search_result' %}">Search</a>
+              </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'teacher_dashboard' %}">Marks</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'change_password' %}">Change Password</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'result_evaluation' %}">Retrieve</a>
+                </li>
+                
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'send_single_student_sms' %}">SMS</a>
+                </li>
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Register</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'examination_create' %}">Examination name</a></li>
+                    <li><a class="dropdown-item" href="{% url 'create_subject' %}">Add-Subject</a></li>
+                    <li><a class="dropdown-item" href="{% url 'create_teacher' %}">Add-Teacher</a></li>
+                    <li><a class="dropdown-item" href="{% url 'create_teacher_class' %}">Add-Class</a></li>
+                    <li><a class="dropdown-item" href="{% url 'create_student' %}">Add-Student</a></li>
+                    <li><a class="dropdown-item" href="{% url 'exclude_subject' %}">Exclude-Subject</a></li>
+                    <li><a class="dropdown-item" href="{% url 'required_subjects' %}">Filter Subjects</a></li>
+                  </ul>
+                </li>
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Access/Permission</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'grading_form' %}">Grading-System</a></li>
+                    <li><a class="dropdown-item" href="{% url 'display' %}">Display</a></li>
+                    <li><a class="dropdown-item" href="{% url 'assign_teachers' %}">Teacher-Subjects</a></li>
+                    <li><a class="dropdown-item" href="{% url 'select_class' %}">Student-Subject</a></li>
+                    <li><a class="dropdown-item" href="{% url 'teacher_subject_list' %}">Plan</a></li>
+                  </ul>
+                </li>
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">View</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'top_bottom_students' %}">Top-Ten</a></li>
+                    <li><a class="dropdown-item" href="{% url 'all_student_marks' %}">All Result & SMS</a></li>
+                    <li><a class="dropdown-item" href="{% url 'top_ten_subjects' %}">GPA</a></li>
+                    <li><a class="dropdown-item" href="{% url 'subject_grade_distribution' %}">Grades</a></li>
+                    <li><a class="dropdown-item" href="{% url 'upload_term_marks' %}">Annual-Results</a></li>
+                    <li><a class="dropdown-item" href="{% url 'select_pdf_options' %}">Results Pdf</a></li>
+                  </ul>
+                </li>
+                {% if user.is_content_creator %}
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Media</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'site:upload_video' %}">Upload Video</a></li>
+                    
+                  </ul>
+                </li>
+                {% endif %}
+                
+                <li class="nav-item">
+                  <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+                </li>
+              {% else %}
+                <li class="nav-item">
+                  <a class="nav-link text-primary" href="{% url 'request_otp' 'verification' %}">VERIFY EMAIL</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+                </li>
+              {% endif %}
+            {% elif user.is_staff and not user.is_superuser %}
+              <!-- Accountant Links (is_staff=True, not superuser) -->
+              {% if request.user|has_verified_email %}
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Accountant</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'finance:register_academic_year' %}">Academic-Year</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:register_installment' %}">Installments</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:fee_create' %}">Create-Fee</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:fee_list' %}">Fee-Plan</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:student_fee_list' %}">Student-Fee</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:fee_account_number_list' %}">Fee-Accounts</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:fee_management' %}">Fee Management</a></li>
+                    <li><a class="dropdown-item" href="{% url 'finance:upload_payments' %}">Upload Payments</a></li>
+                  </ul>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="{% url 'change_password' %}">Change Password</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+                </li>
+              {% else %}
+                <li class="nav-item">
+                  <a class="nav-link text-primary" href="{% url 'request_otp' 'verification' %}">VERIFY EMAIL</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+                </li>
+              {% endif %}
+            {% else %}
+              <!-- Authenticated users with no specific role -->
+               {% if not user|has_verified_email%}
+              <li class="nav-item">
+                <a class="nav-link text-primary" href="{% url 'request_otp' 'verification' %}">VERIFY EMAIL</a>
+              </li>
+              {% else %}
+              {% if user.is_teacher or user.is_active and user|has_verified_email %}
+              {% if user.is_active %}
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Media</a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'site:upload_video' %}">Upload Video</a></li>
+                    <li><a class="dropdown-item" href="{% url 'site:about' %}">Edit Pages</a></li>
+                  </ul>
+                </li>
+                {% endif %}
+                
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'teacher_dashboard' %}">Marks</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'change_password' %}">Change Password</a>
+              </li>
+              {% endif %}
+              {% endif %}
+
+              <li class="nav-item">
+                <a class="nav-link text-danger" href="{% url 'user_logout' %}">LOG-OUT</a>
+              </li>
+              
+            {% endif %}
+          {% else %}
+            <!-- Unauthenticated Users -->
+            <li class="nav-item">
+              <a class="nav-link text-primary" href="{% url 'login_view' %}">LOGIN</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-primary" href="{% url 'request_otp' 'reset' %}">RESET PASSWORD</a>
+            </li>
+          {% endif %}
+        </ul>
+
+        <!-- Username and Tick for Authenticated Users -->
+        {% if user.is_authenticated %}
+          <span class="username-tick">
+            @{{ user.username }}
+            {% if user.is_superuser %}
+              <svg class="tick-icon tick-blue" viewBox="0 0 24 24">
+                <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 10-10-1.4-1.4L9 16.2z"/>
+              </svg>
+            {% else %}
+              <svg class="tick-icon tick-green" viewBox="0 0 24 24">
+                <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 10-10-1.4-1.4L9 16.2z"/>
+              </svg>
+            {% endif %}
+          </span>
+        {% endif %}
+
+        <!-- Theme Toggle Button -->
+        <button class="theme-toggle ms-2">
+          <svg class="sun-icon" viewBox="0 0 24 24">
+            <path d="M12 2v2m0 16v2m-8-10H2m20 0h-2m-2.828-6.828l-1.414 1.414M18.828 18.828l-1.414-1.414M5.172 5.172L6.586 6.586M5.172 18.828l1.414-1.414M12 6a6 6 0 100 12 6 6 0 000-12z"/>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content area -->
+  <div class="container mt-5 pt-5">
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    // Theme toggle functionality
+    const themeToggle = document.querySelector('.theme-toggle');
+    const body = document.body;
+
+    // Check for saved theme preference
+    if (localStorage.getItem('theme') === 'dark') {
+      body.classList.add('dark-mode');
+    }
+
+    themeToggle.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      // Save preference to localStorage
+      if (body.classList.contains('dark-mode')) {
+        localStorage.setItem('theme', 'dark');
+      } else {
+        localStorage.setItem('theme', 'light');
+      }
+    });
+
+    // Navbar collapse toggle
+    document.querySelector('.custom-toggler').addEventListener('click', function() {
+      document.querySelector('.navbar').classList.toggle('collapsed');
+    });
+  </script>
+</body>
+</html>

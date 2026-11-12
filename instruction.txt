@@ -1,0 +1,50 @@
+#HOW TO CHECK IF PHONE NUMBER IS IN WHATSAPP
+
+url = "https://www.wasenderapi.com/api/on-whatsapp/{phone_number}"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY"
+}
+response = requests.get(url, headers=headers)
+print(response.json())
+
+
+
+#HOW TO SEND MESSAGE
+
+url = "https://www.wasenderapi.com/api/send-message"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+data = {
+    "to": "255770036452",
+    "text": "Hello, here is your requested update."
+}
+
+response = requests.post(url, json=data, headers=headers)
+print(response.json())
+
+
+#HOW TO DELETE MESSAGE
+import requests
+
+url = "https://www.wasenderapi.com/api/messages/{msgId}"
+headers = {
+    "Authorization": "Bearer 183fbc9afb7eb4a8277776b174a84ca9977fd6a67e284bf06b15916516ea62a5"
+}
+response = requests.delete(url, headers=headers)
+print(response.json())
+
+
+#HOW TO UPDATE MESSAGE
+import requests
+
+url = "https://www.wasenderapi.com/api/messages/{msgId}"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {"text": "This is the new message content",}
+response = requests.put(url, json=data, headers=headers)
+print(response.json())

@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<div class="container-fluid py-4">
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Attendance for {{ teacherclass.ClassName }}</h5>
+        </div>
+        <div class="card-body">
+            {% csrf_token %} <!-- Include CSRF token for HTMX POST requests -->
+            <div class="d-flex justify-content-between mb-3">
+                <h6>Students: {{ students.count }}</h6>
+                <button class="btn btn-primary" id="scanFingerprintBtn" 
+                        hx-post="{% url 'attendance:webauthn_authenticate_begin' %}" 
+                        hx-target="#response-message" 
+                        hx-swap="innerHTML" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#webauthnModal">
+                    <i class="bi bi-fingerprint me-2"></i>Scan Fingerprint
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover" id="attendanceTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Student Name</th>
+                            <th>Action</th>
+                            {% for date in attendance_dates %}
+                            <th>{{ date.date }} ({{ date.day }})</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ student.fullName }}</td>
+                            <td>
+                                {% if not student.webauthn_credentials %}
+                                <button class="btn btn-sm btn-outline-primary register-fingerprint"
+                                        data-student-id="{{ student.id }}"
+                                        hx-post="{% url 'attendance:webauthn_register_begin' student.id %}"
+                                        hx-target="#response-message"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#webauthnModal">
+                                    <i class="bi bi-fingerprint me-2"></i>Register Fingerprint
+                                </button>
+                                {% else %}
+                                <span class="badge bg-success">Fingerprint Registered</span>
+                                {% endif %}
+                            </td>
+                            {% for date in attendance_dates %}
+                            <td hx-get="{% url 'attendance:get_attendance_status' student.id date.date %}"
+                                hx-trigger="load"
+                                hx-target="this"
+                                hx-swap="innerHTML">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="response-message"></div>
+        </div>
+    </div>
+</div>
+
+<!-- WebAuthn Modal -->
+<div class="modal fade" id="webauthnModal" tabindex="-1" aria-labelledby="webauthnModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="webauthnModalLabel">Fingerprint Process</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="webauthn-message" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                    <p>Processing fingerprint, please wait...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+<script>
+// Store CSRF token from Django template
+const csrfToken = '{{ csrf_token }}';
+
+// Configure HTMX to include CSRF token in all POST requests
+document.body.addEventListener('htmx:configRequest', (event) => {
+    event.detail.headers['X-CSRFToken'] = csrfToken;
+    console.log('HTMX configRequest: Sending CSRF token:', csrfToken);
+});
+
+// Utility function to convert Base64 string to ArrayBuffer
+function base64ToArrayBuffer(base64) {
+    try {
+        // Normalize Base64: replace URL-safe chars (-, _) with standard (+, /) and ensure padding
+        let normalizedBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+        // Add padding if needed
+        while (normalizedBase64.length % 4 !== 0) {
+            normalizedBase64 += '=';
+        }
+        console.log('Normalized Base64:', normalizedBase64);
+        const binaryString = atob(normalizedBase64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    } catch (e) {
+        console.error('Base64 decode error:', e, 'Input:', base64);
+        throw new Error(`Base64 decode failed: ${e.message}`);
+    }
+}
+
+document.addEventListener('htmx:beforeRequest', function(event) {
+    if (event.detail.elt.classList.contains('register-fingerprint') || event.detail.elt.id === 'scanFingerprintBtn') {
+        const modal = new bootstrap.Modal(document.getElementById('webauthnModal'));
+        document.getElementById('webauthn-message').innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Processing...</span>
+            </div>
+            <p>Processing fingerprint, please wait...</p>`;
+        modal.show();
+    }
+
+    if (event.detail.elt.classList.contains('register-fingerprint')) {
+        event.detail.xhr.onload = function() {
+            try {
+                if (this.status === 200) {
+                    let options = JSON.parse(this.responseText);
+                    console.log('Registration options:', options);
+                    options.publicKey.challenge = base64ToArrayBuffer(options.publicKey.challenge);
+                    options.publicKey.user.id = base64ToArrayBuffer(options.publicKey.user.id);
+                    navigator.credentials.create(options).then(credential => {
+                        console.log('Registration credential:', credential);
+                        console.log('Client data JSON:', atob(credential.response.clientDataJSON));
+                        return htmx.ajax('POST', '{% url "attendance:webauthn_register_complete" %}', {
+                            values: {
+                                id: credential.id,
+                                rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+                                response: {
+                                    attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
+                                    clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON)))
+                                },
+                                type: credential.type
+                            },
+                            target: '#response-message',
+                            swap: 'innerHTML',
+                            headers: {'X-CSRFToken': csrfToken}
+                        });
+                    }).catch(err => {
+                        console.error('WebAuthn registration error:', err, 'Origin:', window.location.origin);
+                        let errorMessage = err.name === 'SecurityError' ? 
+                            `Fingerprint registration failed: Invalid domain or secure context. Ensure you're using ${window.location.origin} and a compatible browser (e.g., Chrome).` : 
+                            `Fingerprint registration failed: ${err.message || 'Unknown error'}`;
+                        document.getElementById('webauthn-message').innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                ${errorMessage}
+                            </div>`;
+                    });
+                } else {
+                    let errorMessage = `Error initiating fingerprint registration: ${this.statusText || 'HTTP ' + this.status + ' error'}`;
+                    document.getElementById('webauthn-message').innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            ${errorMessage}
+                        </div>`;
+                }
+            } catch (e) {
+                console.error('Registration setup error:', e);
+                document.getElementById('webauthn-message').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        Error setting up registration: ${e.message || 'Unknown error'}
+                    </div>`;
+            }
+        };
+    } else if (event.detail.elt.id === 'scanFingerprintBtn') {
+        event.detail.xhr.onload = function() {
+            try {
+                if (this.status === 200) {
+                    let options = JSON.parse(this.responseText);
+                    console.log('Authentication options:', options);
+                    options.publicKey.challenge = base64ToArrayBuffer(options.publicKey.challenge);
+                    options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(cred => ({
+                        ...cred,
+                        id: base64ToArrayBuffer(cred.id)
+                    }));
+                    navigator.credentials.get(options).then(credential => {
+                        console.log('Authentication credential:', credential);
+                        console.log('Client data JSON:', atob(credential.response.clientDataJSON));
+                        return htmx.ajax('POST', '{% url "attendance:webauthn_authenticate_complete" %}', {
+                            values: {
+                                id: credential.id,
+                                rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+                                response: {
+                                    authenticatorData: btoa(String.fromCharCode(...new Uint8Array(credential.response.authenticatorData))),
+                                    clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+                                    signature: btoa(String.fromCharCode(...new Uint8Array(credential.response.signature))),
+                                    userHandle: credential.response.userHandle ? 
+                                        btoa(String.fromCharCode(...new Uint8Array(credential.response.userHandle))) : null
+                                },
+                                type: credential.type
+                            },
+                            target: '#response-message',
+                            swap: 'innerHTML',
+                            headers: {'X-CSRFToken': csrfToken}
+                        });
+                    }).catch(err => {
+                        console.error('WebAuthn authentication error:', err, 'Origin:', window.location.origin);
+                        let errorMessage = err.name === 'SecurityError' ? 
+                            `Fingerprint authentication failed: Invalid domain or secure context. Ensure you're using ${window.location.origin} and a compatible browser (e.g., Chrome).` : 
+                            `Fingerprint authentication failed: ${err.message || 'Unknown error'}`;
+                        document.getElementById('webauthn-message').innerHTML = `
+                            <div class="alert alert-danger" role="alert">
+                                ${errorMessage}
+                            </div>`;
+                    });
+                } else {
+                    let errorMessage = `Error initiating fingerprint authentication: ${this.statusText || 'HTTP ' + this.status + ' error'}`;
+                    document.getElementById('webauthn-message').innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            ${errorMessage}
+                        </div>`;
+                    }
+                } catch (e) {
+                    console.error('Authentication setup error:', e);
+                    document.getElementById('webauthn-message').innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            Error setting up authentication: ${e.message || 'Unknown error'}
+                        </div>`;
+                }
+            };
+        }
+    });
+
+document.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.xhr.status === 200 && event.detail.requestConfig.verb === 'post') {
+        let response = JSON.parse(event.detail.xhr.responseText);
+        console.log('HTMX response:', response);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('webauthnModal'));
+        if (response.status === 'success') {
+            let message = response.student_name ? 
+                `Attendance marked for ${response.student_name} at ${response.check_in_time}` :
+                `Fingerprint registered successfully for student ID ${event.detail.elt.dataset.studentId || ''}.`;
+            document.getElementById('webauthn-message').innerHTML = `
+                <div class="alert alert-success" role="alert">
+                    ${message}
+                </div>`;
+            htmx.ajax('GET', window.location.href, {target: '#attendanceTable', swap: 'innerHTML'});
+        } else {
+            document.getElementById('webauthn-message').innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    ${response.error || 'An error occurred.'}
+                </div>`;
+        }
+        setTimeout(() => { modal.hide(); }, 2000);
+    } else if (event.detail.xhr.status === 403) {
+        console.error('HTMX error: CSRF token mismatch or unauthorized');
+        document.getElementById('webauthn-message').innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                CSRF token error: Please refresh the page and try again.
+            </div>`;
+    }
+});
+</script>
+<style>
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    .register-fingerprint {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

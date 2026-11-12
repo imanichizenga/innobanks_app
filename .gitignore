@@ -1,0 +1,27 @@
+*.pyc
+__pycache__/
+*.sqlite3
+media/
+*.log
+*.potmedia/
+innobanks_venv/
+!migrations/__init__.py
+migrations/
+inno/
+innobanks_venv/
+finance/migrations/
+!finance/migrations/__init__.py
+rps_project/settings.py
+.devcontainer/
+staticfiles/
+.venv/
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+website/next-app/node_modules
+
+# Secrets / local data
+.env
+dump.rdb

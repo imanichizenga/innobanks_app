@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Report - {{ selected_class.ClassName }} - {{ month_name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; color: #0d6efd; }
+        h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f8f9fa; }
+        .text-success { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Attendance Report</h1>
+    <h2>{{ selected_class.ClassName }} - {{ month_name }}</h2>
+    <p>Generated on: {{ current_date|date:"Y-m-d" }}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Student Name</th>
+                <th>Index Number</th>
+                {% for header in date_headers %}
+                <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ s.fullName }}</td>
+                <td>{{ s.indexNumber }}</td>
+                {% for header in date_headers %}
+                {% with attendance_status=attendance_data|lookup_dict:s.id|lookup_dict:forloop.counter %}
+                <td class="{% if attendance_status == 'P' %}text-success{% endif %}">
+                    {% if attendance_status %}
+                        {{ attendance_status }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endwith %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+{% endblock %}

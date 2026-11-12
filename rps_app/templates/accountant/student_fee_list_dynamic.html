@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Dynamic Student Fee List
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-wallet me-2"></i>Dynamic Student Fee List</h2>
+    </div>
+
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Select Class</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label for="class_select" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Class</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select id="class_select" class="form-select rounded-end">
+                            <option value="" selected>-- Select a Class --</option>
+                            {% for tc in teacher_classes %}
+                                <option value="{{ tc.id }}">{{ tc.ClassName|default:"Unnamed Class" }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Please select a class to view fees.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="no-data-warning" class="alert alert-warning alert-dismissible fade show d-none" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>Please select a class to view fee data.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="mb-4 d-none" id="search-container">
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+            <input type="text" id="studentSearch" class="form-control rounded-end" placeholder="Search Student...">
+            <button class="btn btn-outline-secondary rounded-end" type="button" onclick="document.getElementById('studentSearch').value=''; filterTable('');">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Student Fees</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#feeTable" aria-expanded="true" aria-controls="feeTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="feeTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered" id="studentTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%; cursor: pointer;" onclick="sortTable(0, 'number')">#</th>
+                                <th scope="col" style="width: 25%; cursor: pointer;" onclick="sortTable(1, 'text')">Student Name</th>
+                                <th scope="col" style="width: 20%; cursor: pointer;" onclick="sortTable(2, 'text')">Class</th>
+                                <th scope="col" style="width: 30%;">Fees</th>
+                                <th scope="col" class="text-center" style="width: 15%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody">
+                            <!-- Populated dynamically via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel"><i class="fas fa-trash-alt me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Are you sure you want to delete <span id="deleteFeeName"></span>?</p>
+                    <form method="post" id="deleteForm" action="">
+                        {% csrf_token %}
+                        <input type="hidden" name="student_id" id="deleteStudentId">
+                        <input type="hidden" name="fee_id" id="deleteFeeId">
+                        <input type="hidden" name="delete_all" id="deleteAll">
+                        <div class="d-flex gap-3">
+                            <button type="submit" name="delete" class="btn btn-danger flex-1 rounded-pill">
+                                <i class="fas fa-trash-alt me-2"></i>Delete
+                            </button>
+                            <button type="button" class="btn btn-secondary flex-1 rounded-pill" data-bs-dismiss="modal">
+                                <i class="fas fa-times-circle me-2"></i>Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    .btn-outline-primary:hover {
+        background-color: #007bff;
+        color: #fff;
+    }
+    .table-dark {
+        background-color: #343a40;
+    }
+    .d-none {
+        display: none;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const classSelect = document.getElementById('class_select');
+    const studentTableBody = document.getElementById('studentTableBody');
+    const searchInput = document.getElementById('studentSearch');
+    const searchContainer = document.getElementById('search-container');
+    const noDataWarning = document.getElementById('no-data-warning');
+    let assignButton = null;
+
+    function updateStudentFeeTable(classId) {
+        if (!classId) {
+            studentTableBody.innerHTML = '';
+            searchContainer.classList.add('d-none');
+            noDataWarning.classList.remove('d-none');
+            if (assignButton) assignButton.remove();
+            return;
+        }
+
+        fetch(`{% url 'finance:get_student_fees_for_class' class_id=0 %}`.replace('/0/', `/${classId}/`), {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            studentTableBody.innerHTML = '';
+            if (data.success && data.student_fee_data.length > 0) {
+                data.student_fee_data.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-student-id', item.student_id);
+                    row.classList.add('animate__animated', 'animate__fadeIn');
+
+                    const feesHtml = item.fees.length > 0
+                        ? item.fees.map(fee => `
+                            <span class="fee-item" data-fee-id="${fee.id}">
+                                <a href="#" class="text-danger text-decoration-none hover:underline" onclick="openDeleteModal('${item.student_id}', '${fee.id}', '${fee.fee_name} (${fee.amount_required})')">
+                                    ${fee.fee_name} (${fee.amount_required})
+                                </a>
+                            </span>
+                        `).join(', ')
+                        : '<span class="text-muted">No fees assigned</span>';
+
+                    row.innerHTML = `
+                        <td class="text-center">${index + 1}</td>
+                        <td>${item.student_name}</td>
+                        <td>${item.class_name}</td>
+                        <td>${feesHtml}</td>
+                        <td class="text-center">
+                            <a href="{% url 'finance:update_student_fee' student_id=0 %}".replace('/0/', '/${item.student_id}/') class="btn btn-sm btn-outline-primary rounded-pill">
+                                <i class="fas fa-edit me-1"></i>
+                            </a>
+                            ${item.fees.length > 0 ? `
+                                <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="openDeleteModal('${item.student_id}', '', 'all fees for ${item.student_name}')">
+                                    <i class="fas fa-trash-alt me-1"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    `;
+                    studentTableBody.appendChild(row);
+                });
+
+                // Add or update Assign Fees button
+                if (!assignButton) {
+                    assignButton = document.createElement('a');
+                    assignButton.className = 'btn btn-primary rounded-pill mb-4';
+                    assignButton.id = 'assignFeesButton';
+                    assignButton.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Assign Fees to Students';
+                    document.querySelector('.card.shadow-sm.mb-5').after(assignButton);
+                }
+                assignButton.href = "{% url 'finance:assign_fees_to_students' class_id=0 %}".replace('/0/', `/${classId}/`);
+
+                searchContainer.classList.remove('d-none');
+                noDataWarning.classList.add('d-none');
+            } else {
+                studentTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No student fee data available for this class.</td></tr>';
+                searchContainer.classList.add('d-none');
+                noDataWarning.classList.remove('d-none');
+                if (assignButton) assignButton.remove();
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            studentTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Error loading data. Please try again.</td></tr>';
+            searchContainer.classList.add('d-none');
+            noDataWarning.classList.remove('d-none');
+        });
+    }
+
+    function sortTable(columnIndex, type) {
+        const table = document.getElementById('studentTable');
+        const tbody = document.getElementById('studentTableBody');
+        const rows = Array.from(tbody.getElementsByTagName('tr'));
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+
+        rows.sort((a, b) => {
+            let aValue = a.cells[columnIndex].textContent.trim();
+            let bValue = b.cells[columnIndex].textContent.trim();
+            if (type === 'number') {
+                aValue = parseInt(aValue) || 0;
+                bValue = parseInt(bValue) || 0;
+            } else {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+            return isAscending ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+        });
+
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    function filterTable(searchTerm) {
+        const tableBody = document.getElementById('studentTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+        for (let row of rows) {
+            const studentName = row.cells[1].textContent.toLowerCase();
+            row.style.display = studentName.includes(searchTerm.toLowerCase()) ? '' : 'none';
+        }
+    }
+
+    if (classSelect) {
+        classSelect.addEventListener('change', function() {
+            updateStudentFeeTable(this.value);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            filterTable(this.value);
+        });
+    }
+
+    function openDeleteModal(studentId, feeId, feeName) {
+        document.getElementById('deleteStudentId').value = studentId;
+        document.getElementById('deleteFeeId').value = feeId;
+        document.getElementById('deleteAll').value = feeId ? '' : 'true';
+        document.getElementById('deleteFeeName').textContent = feeName;
+        const baseUrl = "{% url 'finance:delete_student_fee' student_id=0 fee_id=0 %}".replace(/0\/0\/$/, '');
+        document.getElementById('deleteForm').action = `${baseUrl}${studentId}/${feeId || 0}/`;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+
+    if (document.getElementById('assignFeesButton')) {
+        document.getElementById('assignFeesButton').addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Enrollment</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-container { max-width: 500px; margin: auto; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Biometric Enrollment for {{ student.fullName }}</h2>
+        {% if messages %}
+            {% for message in messages %}
+                <p class="{% if message.tags == 'error' %}error{% else %}success{% endif %}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+        <form method="post" id="enroll-form">
+            {% csrf_token %}
+            <label for="biometric_type">Biometric Type:</label>
+            <select name="biometric_type" id="biometric_type" onchange="toggleCaptureButton()">
+                <option value="FINGERPRINT">Fingerprint</option>
+                <option value="FACIAL">Facial Recognition</option>
+                <option value="WEBAUTHN">WebAuthn (Browser Biometric)</option>
+            </select>
+            <br><br>
+            <input type="hidden" name="biometric_template" id="biometric_template">
+            <button type="button" id="capture-button" onclick="captureBiometric()">Capture Biometric</button>
+            <button type="submit" id="submit-button">Enroll</button>
+        </form>
+        <p><a href="{% url 'home' %}">Back to Home</a></p>
+    </div>
+    <script>
+        function toggleCaptureButton() {
+            const biometricType = document.getElementById('biometric_type').value;
+            document.getElementById('capture-button').style.display = biometricType === 'WEBAUTHN' ? 'inline' : 'none';
+            document.getElementById('submit-button').style.display = biometricType === 'WEBAUTHN' ? 'none' : 'inline';
+        }
+
+        async function captureBiometric() {
+            const biometricType = document.getElementById('biometric_type').value;
+            if (biometricType !== 'WEBAUTHN') {
+                alert('Physical biometric capture requires hardware integration.');
+                return;
+            }
+
+            try {
+                const response = await fetch('{% url "rps_app:biometric_enroll" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ biometric_type: 'WEBAUTHN' })
+                });
+                const data = await response.json();
+                const publicKey = data.registration_data;
+
+                // Convert base64 strings to ArrayBuffer for WebAuthn
+                publicKey.challenge = Uint8Array.from(atob(publicKey.challenge), c => c.charCodeAt(0));
+                publicKey.user.id = Uint8Array.from(atob(publicKey.user.id), c => c.charCodeAt(0));
+
+                const credential = await navigator.credentials.create({ publicKey });
+                const responseData = {
+                    id: credential.id,
+                    rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+                        attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject)))
+                    }
+                };
+
+                // Send credential to server for verification (handled by django-mfa2)
+                const verifyResponse = await fetch('{% url "rps_app:biometric_capture_api" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        template: responseData,
+                        student_id: {{ student.id }},
+                        biometric_type: 'WEBAUTHN'
+                    })
+                });
+                const verifyData = await verifyResponse.json();
+                if (verifyData.status === 'success') {
+                    alert('Biometric enrolled successfully.');
+                    window.location.href = '{% url "home" %}';
+                } else {
+                    alert('Enrollment failed: ' + verifyData.message);
+                }
+            } catch (e) {
+                alert('Biometric capture failed: ' + e.message);
+            }
+        }
+
+        // Initialize button visibility
+        toggleCaptureButton();
+    </script>
+</body>
+</html>

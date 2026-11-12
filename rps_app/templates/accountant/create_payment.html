@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Payments{% endblock %}
+
+{% block content %}
+<style>
+  .modern-card { border: 0; border-radius: 1rem; overflow: hidden; }
+  .modern-card .card-header { background: linear-gradient(135deg, #f8fbff, #eef6ff); border-bottom: 1px solid #e9f0fa; }
+  .summary-card { border: 0; border-radius: 1rem; }
+  .table th, .table td { vertical-align: middle; }
+</style>
+
+<div class="container my-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary mb-0">Create Payments</h2>
+    <a href="{% url 'finance:communication_logs' %}" class="btn btn-outline-primary">
+      <i class="fas fa-envelope-open-text me-2"></i>Communication Logs
+    </a>
+  </div>
+
+  {% if messages %}
+    <div class="mb-4">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} d-flex align-items-center" role="alert">
+          <i class="fas fa-info-circle me-2"></i>
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="card shadow-sm modern-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Create Payment</h5>
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3" id="createPaymentForm">
+        {% csrf_token %}
+        <div class="col-md-6">
+          <label class="form-label">Payment Name</label>
+          <input type="text" class="form-control" name="payment_name" placeholder="e.g., Tuition Payment">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Payer Full Name</label>
+          <input type="text" class="form-control" name="full_name" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone Number</label>
+          <input type="text" class="form-control" name="phone_number" placeholder="255XXXXXXXXX">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" name="email" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Amount (TZS)</label>
+          <input type="number" class="form-control" name="amount" step="0.01" min="1" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Payment Option</label>
+          <select class="form-select" name="payment_option" required>
+            <option value="payment_token">Payment Token</option>
+            <option value="mobile_payment">Mobile Payment</option>
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-control" name="description" placeholder="Payment description">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Webhook URL (HTTPS)</label>
+          <input type="url" class="form-control" name="webhook_url" placeholder="https://example.ngrok.app/finance/webhooks/snippe/">
+          <div class="form-text">Optional. If provided, Snippe will call this URL after payment updates.</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Success Message Design</label>
+          <textarea class="form-control" name="success_message" rows="3" placeholder="Optional message shown after successful payment. This will be sent via SMS and Email."></textarea>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary" id="createPaymentButton">
+            <i class="fas fa-paper-plane me-2"></i>Create Payment
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card shadow-sm summary-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Total Completed Payments</p>
+          <h4 class="mb-0">{{ totals.all|floatformat:2 }} TZS</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm summary-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Completed via Payment Token</p>
+          <h4 class="mb-0">{{ totals.payment_token|floatformat:2 }} TZS</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm summary-card">
+        <div class="card-body">
+          <p class="text-muted mb-1">Completed via Mobile Payment</p>
+          <h4 class="mb-0">{{ totals.mobile_payment|floatformat:2 }} TZS</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm modern-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Payments</h5>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Payment Option</label>
+          <select class="form-select" name="payment_option">
+            <option value="">All</option>
+            <option value="payment_token" {% if filters.payment_option == "payment_token" %}selected{% endif %}>Payment Token</option>
+            <option value="mobile_payment" {% if filters.payment_option == "mobile_payment" %}selected{% endif %}>Mobile Payment</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">From</label>
+          <input type="date" class="form-control" name="from" value="{{ filters.from }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">To</label>
+          <input type="date" class="form-control" name="to" value="{{ filters.to }}">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-search me-2"></i>Filter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm modern-card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-list me-2"></i>Payment Records</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-center" style="width:60px;">#</th>
+              <th>Payment Name</th>
+              <th>Payer</th>
+              <th>Phone</th>
+              <th>Option</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Payment Token</th>
+              <th>Order ID</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if not payments %}
+              <tr>
+                <td colspan="11" class="text-center text-muted py-4">No payment records found.</td>
+              </tr>
+            {% else %}
+              {% for row in payments %}
+                <tr data-order-id="{{ row.payment.order_id }}">
+                  <td class="text-center fw-semibold">{{ forloop.counter }}</td>
+                  <td>{{ row.payment.payment_name|default:"-" }}</td>
+                  <td>{{ row.payment.full_name|default:"-" }}</td>
+                  <td>{{ row.payment.phone_number|default:"-" }}</td>
+                  <td>
+                    <span class="badge bg-{% if row.payment.payment_option == "mobile_payment" %}info{% else %}secondary{% endif %}">
+                      {{ row.payment.get_payment_option_display }}
+                    </span>
+                  </td>
+                  <td>{{ row.payment.amount|floatformat:2 }} {{ row.payment.currency }}</td>
+                  <td>
+                    <span class="badge status-badge bg-{% if row.status == "completed" %}success{% elif row.status == "failed" %}danger{% else %}warning text-dark{% endif %}" data-status="{{ row.status }}">
+                      {{ row.status|title }}
+                    </span>
+                  </td>
+                  <td class="payment-token">{{ row.payment_token }}</td>
+                  <td>{{ row.payment.order_id|default:"-" }}</td>
+                  <td>{{ row.payment.created_at|date:"Y-m-d H:i" }}</td>
+                  <td>
+                    {% if row.payment.payment_option == "payment_token" %}
+                      <form method="post" action="{% url 'finance:refresh_create_payment_token' row.payment.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-sync-alt me-1"></i>Refresh Token
+                        </button>
+                      </form>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const createPaymentForm = document.getElementById('createPaymentForm');
+  const createPaymentButton = document.getElementById('createPaymentButton');
+  const statusEndpoint = "{% url 'finance:create_payment_statuses' %}";
+  const paymentRows = Array.from(document.querySelectorAll('tr[data-order-id]'));
+  const statusClassMap = {
+    completed: 'success',
+    failed: 'danger',
+    pending: 'warning text-dark',
+  };
+
+  if (createPaymentForm && createPaymentButton) {
+    createPaymentForm.addEventListener('submit', () => {
+      createPaymentButton.disabled = true;
+      createPaymentButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Creating...';
+    });
+  }
+
+  const updatePaymentRow = (row, status, paymentToken) => {
+    const statusBadge = row.querySelector('.status-badge');
+    const tokenCell = row.querySelector('.payment-token');
+    const normalizedStatus = (status || 'pending').toLowerCase();
+    const badgeClass = statusClassMap[normalizedStatus] || statusClassMap.pending;
+
+    if (statusBadge) {
+      statusBadge.className = `badge status-badge bg-${badgeClass}`;
+      statusBadge.dataset.status = normalizedStatus;
+      statusBadge.textContent = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1);
+    }
+    if (tokenCell && paymentToken) {
+      tokenCell.textContent = paymentToken;
+    }
+  };
+
+  const pollPaymentStatuses = async () => {
+    if (!paymentRows.length) {
+      return;
+    }
+    const orderIds = paymentRows.map(row => row.dataset.orderId).filter(Boolean);
+    if (!orderIds.length) {
+      return;
+    }
+    try {
+      const response = await fetch(`${statusEndpoint}?order_ids=${orderIds.join(',')}`, { credentials: 'same-origin' });
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      const payments = data.payments || {};
+      paymentRows.forEach(row => {
+        const orderId = row.dataset.orderId;
+        if (orderId && payments[orderId]) {
+          updatePaymentRow(row, payments[orderId].status, payments[orderId].payment_token);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to refresh payment statuses', error);
+    }
+  };
+
+  setInterval(pollPaymentStatuses, 10000);
+</script>
+{% endblock %}

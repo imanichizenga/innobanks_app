@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="main-panel applications-main">
+  <div class="content-wrapper">
+    <div class="application-form-page">
+  {% if messages %}{% for message in messages %}<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+  <div class="card border mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-1">{{ title }}</h4>
+        <p class="text-muted mb-0">Complete the admission enquiry details.</p>
+      </div>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'student_applications' %}">Back</a>
+    </div>
+  </div>
+
+  <form method="post" id="applicationForm" data-current-status="{% if application %}{{ application.status|default:'' }}{% endif %}" data-has-student="{% if application and application.student %}1{% else %}0{% endif %}" novalidate>{% csrf_token %}
+    <input type="hidden" name="remove_student_profile" value="0">
+    <input type="hidden" name="add_more_info" value="0">
+    <div class="row g-3">
+      <div class="col-lg-3">
+        <div class="card border-0 shadow-sm application-stepper">
+          <div class="card-body">
+            <button type="button" class="step-link active" data-step-target="1"><span>1</span>Academic Information</button>
+            <button type="button" class="step-link" data-step-target="2"><span>2</span>Student Information</button>
+            <button type="button" class="step-link" data-step-target="3"><span>3</span>Guardian Information</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-9">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            <section class="application-step" data-step="1">
+              <h5 class="mb-3">Academic Information</h5>
+              <div class="row g-3">
+                <div class="col-md-6 field-wrap"><label class="form-label">Application Number</label>{{ form.application_number }}<small class="text-muted">Generated on save.</small></div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Academic Level</label>{{ form.academic_level }}{{ form.academic_level.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Academic Year</label>{{ form.academic_year }}{{ form.academic_year.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Class</label>{{ form.class_name }}{{ form.class_name.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">Class Focus</label><select name="{{ form.class_focus.name }}" id="{{ form.class_focus.id_for_label }}" class="form-select">
+  <option value="">Select class focus</option>
+  <option value="science" {% if form.class_focus.value == "science" %}selected{% endif %}>Science</option>
+  <option value="arts" {% if form.class_focus.value == "arts" %}selected{% endif %}>Arts</option>
+  <option value="business" {% if form.class_focus.value == "business" %}selected{% endif %}>Business</option>
+  <option value="technical" {% if form.class_focus.value == "technical" %}selected{% endif %}>Technical</option>
+  <option value="language" {% if form.class_focus.value == "language" %}selected{% endif %}>Language</option>
+  <option value="sports" {% if form.class_focus.value == "sports" %}selected{% endif %}>Sports</option>
+  <option value="other" {% if form.class_focus.value == "other" %}selected{% endif %}>Other</option>
+</select></div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Application Type</label>{{ form.application_type }}{{ form.application_type.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Entry Mode</label>{{ form.entry_mode }}{{ form.entry_mode.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Application Date</label>{{ form.application_date }}{{ form.application_date.errors }}</div>
+                <div class="col-12 field-wrap"><label class="form-label">Remarks</label>{{ form.remarks }}{{ form.remarks.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">Status</label>{{ form.status }}{{ form.status.errors }}</div>
+              </div>
+            </section>
+
+            <section class="application-step d-none" data-step="2">
+              <h5 class="mb-3">Student Information</h5>
+              <div class="row g-3">
+                <div class="col-md-4 field-wrap required"><label class="form-label">First Name</label>{{ form.first_name }}{{ form.first_name.errors }}</div>
+                <div class="col-md-4 field-wrap"><label class="form-label">Middle Name</label>{{ form.middle_name }}{{ form.middle_name.errors }}</div>
+                <div class="col-md-4 field-wrap required"><label class="form-label">Last Name</label>{{ form.last_name }}{{ form.last_name.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">Email Address</label>{{ form.email }}{{ form.email.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Phone Number</label>{{ form.phone }}{{ form.phone.errors }}</div>
+                <div class="col-md-8 field-wrap required"><label class="form-label">Address</label>{{ form.address }}{{ form.address.errors }}</div>
+                <div class="col-md-4 field-wrap required"><label class="form-label">Gender</label>{{ form.gender }}{{ form.gender.errors }}</div>
+                <div class="col-md-6 field-wrap required"><label class="form-label">Date of Birth</label>{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">National ID Number</label>{{ form.national_id_number }}{{ form.national_id_number.errors }}</div>
+              </div>
+            </section>
+
+            <section class="application-step d-none" data-step="3">
+              <h5 class="mb-3">Guardian Information</h5>
+              <div class="row g-3">
+                <div class="col-md-4 field-wrap"><label class="form-label">First Name</label>{{ form.guardian_first_name }}{{ form.guardian_first_name.errors }}</div>
+                <div class="col-md-4 field-wrap"><label class="form-label">Middle Name</label>{{ form.guardian_middle_name }}{{ form.guardian_middle_name.errors }}</div>
+                <div class="col-md-4 field-wrap"><label class="form-label">Last Name</label>{{ form.guardian_last_name }}{{ form.guardian_last_name.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">Email Address</label>{{ form.guardian_email }}{{ form.guardian_email.errors }}</div>
+                <div class="col-md-6 field-wrap"><label class="form-label">Phone Number</label>{{ form.guardian_phone }}{{ form.guardian_phone.errors }}</div>
+                <div class="col-md-8 field-wrap"><label class="form-label">Address</label>{{ form.guardian_address }}{{ form.guardian_address.errors }}</div>
+              </div>
+            </section>
+          </div>
+          <div class="card-footer bg-white d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="previousStep">Previous</button>
+            <button type="button" class="btn btn-primary" id="nextStep">Next</button>
+            <button type="submit" class="btn btn-primary d-none" id="submitApplication">Submit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  let currentStep = 1;
+  const totalSteps = 3;
+  const recommended = {
+    'Secondary (O-Level)': ['FTNA', 'CSEE', 'Pre Form One'],
+    'Short Course': ['English Course', 'Computer Course'],
+    'Secondary (A-Level)': ['ACSEE', 'Pre Form Five'],
+    'Vocational': ['FTNA', 'CSEE', 'ACSEE', 'ECDE', 'English Course', 'Computer Course', 'Pre Form Five', 'Pre Form One'],
+    'Technical': ['FTNA', 'CSEE', 'ACSEE', 'ECDE', 'English Course', 'Computer Course', 'Pre Form Five', 'Pre Form One']
+  };
+  const classSelect = document.getElementById('id_class_name');
+  const originalClassOptions = classSelect ? Array.from(classSelect.options).map(option => ({value: option.value, text: option.text})) : [];
+
+  function showStep(step){
+    currentStep = step;
+    document.querySelectorAll('.application-step').forEach(el => el.classList.toggle('d-none', el.dataset.step !== String(step)));
+    document.querySelectorAll('.step-link').forEach(el => el.classList.toggle('active', el.dataset.stepTarget === String(step)));
+    document.getElementById('previousStep').disabled = step === 1;
+    document.getElementById('nextStep').classList.toggle('d-none', step === totalSteps);
+    document.getElementById('submitApplication').classList.toggle('d-none', step !== totalSteps);
+  }
+  function reorderClasses(){
+    if (!classSelect) return;
+    const selected = classSelect.value;
+    const level = document.getElementById('id_academic_level')?.value;
+    const picks = recommended[level] || [];
+    const blank = originalClassOptions.filter(option => !option.value);
+    const recommendedOptions = originalClassOptions.filter(option => picks.includes(option.value));
+    const otherOptions = originalClassOptions.filter(option => option.value && !picks.includes(option.value));
+    classSelect.innerHTML = '';
+    [...blank, ...recommendedOptions, ...otherOptions].forEach(option => {
+      const el = new Option(option.text, option.value);
+      if (picks.includes(option.value)) el.text = `${option.text} (Recommended)`;
+      classSelect.add(el);
+    });
+    classSelect.value = selected || '';
+  }
+  document.querySelectorAll('.step-link').forEach(btn => btn.addEventListener('click', () => showStep(Number(btn.dataset.stepTarget))));
+  document.getElementById('previousStep').addEventListener('click', () => showStep(Math.max(1, currentStep - 1)));
+  document.getElementById('nextStep').addEventListener('click', () => showStep(Math.min(totalSteps, currentStep + 1)));
+  document.getElementById('id_academic_level')?.addEventListener('change', reorderClasses);
+  document.getElementById('applicationForm')?.addEventListener('submit', function(){
+    const statusSelect = document.getElementById('id_status');
+    if (!statusSelect) return;
+    const previousStatus = this.dataset.currentStatus || '';
+    const hasStudent = this.dataset.hasStudent === '1';
+    const removeInput = this.querySelector('[name="remove_student_profile"]');
+    const addMoreInput = this.querySelector('[name="add_more_info"]');
+    removeInput.value = '0';
+    addMoreInput.value = '0';
+    if (statusSelect.value === 'not_returned' && previousStatus === 'on_progress' && hasStudent) {
+      if (confirm('Changing status will delete/remove the student profile. Do you want to remove it?')) {
+        removeInput.value = '1';
+      }
+    }
+    if (statusSelect.value === 'on_progress' && previousStatus !== 'on_progress') {
+      if (confirm('Do you need to add additional information?')) {
+        addMoreInput.value = '1';
+      }
+    }
+  });
+  reorderClasses();
+  showStep(1);
+});
+</script>
+<style>
+.applications-main{min-width:0}
+.application-form-page{min-width:0;max-width:100%}
+.application-form-page .card{max-width:100%}
+.application-stepper .step-link{border:0;background:transparent;display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;padding:.75rem;border-radius:6px;color:#6c757d}
+.application-stepper .step-link span{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#e9ecef;color:#6c757d;font-weight:700}
+.application-stepper .step-link.active{color:#0d6efd;background:#f1f7ff}
+.application-stepper .step-link.active span{background:#0d6efd;color:#fff}
+.field-wrap.required .form-label:after{content:" *";color:#dc3545}
+.field-wrap .errorlist{margin:.25rem 0 0;padding-left:1rem;color:#dc3545;font-size:.78rem}
+.application-form-page input,.application-form-page select,.application-form-page textarea{border-radius:6px}
+</style>
+{% endblock %}

@@ -1,0 +1,373 @@
+<!-- payroll/templates/payroll/payment_conditions.html -->
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-money-check-alt me-2"></i>Manage Payment Conditions</h2>
+    </div>
+
+    <!-- Employee Selection Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'payroll:select_employee' %}" method="POST" class="row g-3" id="employeeSelectForm" onsubmit="updatePaymentTable()">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-6">
+                    <label for="employee" class="form-label fw-semibold"><i class="fas fa-user-tie me-2"></i>Select Employee</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
+                        <select name="employee_id" class="form-select rounded-end" id="employee" required>
+                            <option value="" disabled {% if not selected_employee %}selected{% endif %}>Select an employee</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee.id }}" {% if selected_employee.id == employee.id %}selected{% endif %}>{{ employee.first_name }} {{ employee.last_name }} - {{ employee.employee_id|default:employee.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="selectEmployeeButton">
+                        <i class="fas fa-check-circle me-2"></i>Select Employee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Details Sections -->
+    {% if selected_employee %}
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Payment Conditions for {{ selected_employee.first_name }} {{ selected_employee.last_name }} <small class="text-muted ms-3">(Fixed Amount: {{ selected_employee.fixed_amount }})</small></h5>
+        </div>
+        <div class="card-body">
+            <!-- Add New Payment Button -->
+            <div class="d-flex justify-content-end mb-4">
+                <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#createPaymentModal">
+                    <i class="fas fa-plus-circle me-2"></i>Add New Payment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="card shadow-sm" id="paymentTableSection">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Existing Payments</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#paymentsTable" aria-expanded="false" aria-controls="paymentsTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="paymentsTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 20%;">Payment Date</th>
+                                <th scope="col" style="width: 20%;">Discipline</th>
+                                <th scope="col" style="width: 20%;">Promotion</th>
+                                <th scope="col" class="text-center" style="width: 30%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ payment.payment_date|date:'Y-m-d' }}</td>
+                                <td>{{ payment.discipline|default:"Not Set" }}</td>
+                                <td>{{ payment.promotion|default:"Not Set" }}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-warning btn-sm rounded-pill me-1" data-bs-toggle="modal" data-bs-target="#updatePaymentModal{{ payment.id }}">
+                                        <i class="fas fa-edit me-1"></i>View/Update
+                                    </button>
+                                    <a href="{% url 'payroll:delete_payment' payment.id %}" class="btn btn-danger btn-sm rounded-pill" onclick="return confirm('Are you sure you want to delete this payment?');">
+                                        <i class="fas fa-trash-alt me-1"></i>Delete
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No payments registered for this employee.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Create Payment Modal -->
+    {% if selected_employee %}
+    <div class="modal fade" id="createPaymentModal" tabindex="-1" aria-labelledby="createPaymentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="createPaymentModalLabel"><i class="fas fa-plus-circle me-2"></i>Create New Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{% url 'payroll:create_payment' %}" method="POST" class="row g-3" id="createPaymentForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="employee_id" value="{{ selected_employee.id }}">
+                        <div class="col-12">
+                            <label for="payment_date" class="form-label fw-semibold">Payment Date</label>
+                            <input type="date" name="payment_date" class="form-control" id="payment_date" required>
+                        </div>
+                        <div class="col-12">
+                            <p class="text-muted">Fixed Amount (from Employee): {{ selected_employee.fixed_amount }}</p>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-success w-100 rounded-pill" type="submit" id="saveCreatePaymentButton">
+                                <i class="fas fa-save me-2"></i>Create Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Update Modals for Each Payment -->
+    {% for payment in payments %}
+    <div class="modal fade" id="updatePaymentModal{{ payment.id }}" tabindex="-1" aria-labelledby="updatePaymentModalLabel{{ payment.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="updatePaymentModalLabel{{ payment.id }}"><i class="fas fa-edit me-2"></i>Update Payment: {{ payment.payment_date|date:'Y-m-d' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Academic Conditions -->
+                    <h6 class="fw-semibold"><i class="fas fa-book me-2"></i>Academic Conditions</h6>
+                    <form action="{% url 'payroll:update_academic_conditions' payment.id %}" method="POST" class="row g-3 mb-4">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-6">
+                            <label for="academic_excellent_{{ payment.id }}" class="form-label">Excellent GPA Limit</label>
+                            <input type="number" step="0.01" name="academic_excellent" class="form-control" id="academic_excellent_{{ payment.id }}" value="{{ payment.academic_excellent|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="academic_excellent_amount_{{ payment.id }}" class="form-label">Excellent Amount</label>
+                            <input type="number" step="0.01" name="academic_excellent_amount" class="form-control" id="academic_excellent_amount_{{ payment.id }}" value="{{ payment.academic_excellent_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="academic_good_{{ payment.id }}" class="form-label">Good GPA Limit</label>
+                            <input type="number" step="0.01" name="academic_good" class="form-control" id="academic_good_{{ payment.id }}" value="{{ payment.academic_good|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="academic_good_amount_{{ payment.id }}" class="form-label">Good Amount</label>
+                            <input type="number" step="0.01" name="academic_good_amount" class="form-control" id="academic_good_amount_{{ payment.id }}" value="{{ payment.academic_good_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="academic_seen_{{ payment.id }}" class="form-label">Seen GPA Limit</label>
+                            <input type="number" step="0.01" name="academic_seen" class="form-control" id="academic_seen_{{ payment.id }}" value="{{ payment.academic_seen|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="academic_seen_amount_{{ payment.id }}" class="form-label">Seen Amount</label>
+                            <input type="number" step="0.01" name="academic_seen_amount" class="form-control" id="academic_seen_amount_{{ payment.id }}" value="{{ payment.academic_seen_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-warning w-100 rounded-pill" type="submit">
+                                <i class="fas fa-save me-2"></i>Update Academic Conditions
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Attendance Conditions -->
+                    <h6 class="fw-semibold mt-4"><i class="fas fa-calendar-check me-2"></i>Attendance Conditions</h6>
+                    <form action="{% url 'payroll:update_attendance_conditions' payment.id %}" method="POST" class="row g-3 mb-4">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_excellent_{{ payment.id }}" class="form-label">Excellent Attendance Limit</label>
+                            <input type="number" step="0.01" name="attendance_excellent" class="form-control" id="attendance_excellent_{{ payment.id }}" value="{{ payment.attendance_excellent|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_excellent_amount_{{ payment.id }}" class="form-label">Excellent Amount</label>
+                            <input type="number" step="0.01" name="attendance_excellent_amount" class="form-control" id="attendance_excellent_amount_{{ payment.id }}" value="{{ payment.attendance_excellent_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_good_{{ payment.id }}" class="form-label">Good Attendance Limit</label>
+                            <input type="number" step="0.01" name="attendance_good" class="form-control" id="attendance_good_{{ payment.id }}" value="{{ payment.attendance_good|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_good_amount_{{ payment.id }}" class="form-label">Good Amount</label>
+                            <input type="number" step="0.01" name="attendance_good_amount" class="form-control" id="attendance_good_amount_{{ payment.id }}" value="{{ payment.attendance_good_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_seen_{{ payment.id }}" class="form-label">Seen Attendance Limit</label>
+                            <input type="number" step="0.01" name="attendance_seen" class="form-control" id="attendance_seen_{{ payment.id }}" value="{{ payment.attendance_seen|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="attendance_seen_amount_{{ payment.id }}" class="form-label">Seen Amount</label>
+                            <input type="number" step="0.01" name="attendance_seen_amount" class="form-control" id="attendance_seen_amount_{{ payment.id }}" value="{{ payment.attendance_seen_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="time_in_required_{{ payment.id }}" class="form-label">Required Time In</label>
+                            <input type="time" name="time_in_required" class="form-control" id="time_in_required_{{ payment.id }}" value="{{ payment.time_in_required|default:'' }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="time_out_required_{{ payment.id }}" class="form-label">Required Time Out</label>
+                            <input type="time" name="time_out_required" class="form-control" id="time_out_required_{{ payment.id }}" value="{{ payment.time_out_required|default:'' }}">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-warning w-100 rounded-pill" type="submit">
+                                <i class="fas fa-save me-2"></i>Update Attendance Conditions
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Discipline Conditions -->
+                    <h6 class="fw-semibold mt-4"><i class="fas fa-gavel me-2"></i>Discipline Conditions</h6>
+                    <form action="{% url 'payroll:update_discipline_conditions' payment.id %}" method="POST" class="row g-3 mb-4">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-6">
+                            <label for="discipline_{{ payment.id }}" class="form-label">Discipline Status</label>
+                            <select name="discipline" class="form-select" id="discipline_{{ payment.id }}">
+                                {% for value, label in payment.discipline_status %}
+                                <option value="{{ value }}" {% if payment.discipline == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="discipline_amount_{{ payment.id }}" class="form-label">Discipline Amount</label>
+                            <input type="number" step="0.01" name="discipline_amount" class="form-control" id="discipline_amount_{{ payment.id }}" value="{{ payment.discipline_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-warning w-100 rounded-pill" type="submit">
+                                <i class="fas fa-save me-2"></i>Update Discipline Conditions
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Promotion Conditions -->
+                    <h6 class="fw-semibold mt-4"><i class="fas fa-arrow-up me-2"></i>Promotion Conditions</h6>
+                    <form action="{% url 'payroll:update_promotion_conditions' payment.id %}" method="POST" class="row g-3 mb-4">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-6">
+                            <label for="promotion_{{ payment.id }}" class="form-label">Promotion Status</label>
+                            <select name="promotion" class="form-select" id="promotion_{{ payment.id }}">
+                                {% for value, label in payment.promotion_status %}
+                                <option value="{{ value }}" {% if payment.promotion == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="promotion_amount_{{ payment.id }}" class="form-label">Promotion Amount</label>
+                            <input type="number" step="0.01" name="promotion_amount" class="form-control" id="promotion_amount_{{ payment.id }}" value="{{ payment.promotion_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-warning w-100 rounded-pill" type="submit">
+                                <i class="fas fa-save me-2"></i>Update Promotion Conditions
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Deductions -->
+                    <h6 class="fw-semibold mt-4"><i class="fas fa-minus-circle me-2"></i>Deductions</h6>
+                    <form action="{% url 'payroll:update_deductions' payment.id %}" method="POST" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-6">
+                            <label for="deduction_amount_for_attendance_{{ payment.id }}" class="form-label">Deduction for Attendance</label>
+                            <input type="number" step="0.01" name="deduction_amount_for_attendance" class="form-control" id="deduction_amount_for_attendance_{{ payment.id }}" value="{{ payment.deduction_amount_for_attendance|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="deduction_amount_for_academic_{{ payment.id }}" class="form-label">Deduction for Academic</label>
+                            <input type="number" step="0.01" name="deduction_amount_for_academic" class="form-control" id="deduction_amount_for_academic_{{ payment.id }}" value="{{ payment.deduction_amount_for_academic|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="deduction_amount_for_time_in_{{ payment.id }}" class="form-label">Deduction for Time In</label>
+                            <input type="number" step="0.01" name="deduction_amount_for_time_in" class="form-control" id="deduction_amount_for_time_in_{{ payment.id }}" value="{{ payment.deduction_amount_for_time_in|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="deduction_amount_for_time_out_{{ payment.id }}" class="form-label">Deduction for Time Out</label>
+                            <input type="number" step="0.01" name="deduction_amount_for_time_out" class="form-control" id="deduction_amount_for_time_out_{{ payment.id }}" value="{{ payment.deduction_amount_for_time_out|default:0.00 }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="other_deduction_name_{{ payment.id }}" class="form-label">Other Deduction Name</label>
+                            <input type="text" name="other_deduction_name" class="form-control" id="other_deduction_name_{{ payment.id }}" value="{{ payment.other_deduction_name|default:'' }}">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="other_deduction_amount_{{ payment.id }}" class="form-label">Other Deduction Amount</label>
+                            <input type="number" step="0.01" name="other_deduction_amount" class="form-control" id="other_deduction_amount_{{ payment.id }}" value="{{ payment.other_deduction_amount|default:0.00 }}">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-warning w-100 rounded-pill" type="submit">
+                                <i class="fas fa-save me-2"></i>Update Deductions
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Include Font Awesome and Animate.css for icons and animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    // Persist employee selection across page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        const employeeSelect = document.getElementById('employee');
+        const storedEmployeeId = sessionStorage.getItem('selectedEmployeeId');
+        if (storedEmployeeId) {
+            employeeSelect.value = storedEmployeeId;
+            updatePaymentTable(); // Trigger table update on page load if employee is selected
+        }
+
+        employeeSelect.addEventListener('change', function() {
+            sessionStorage.setItem('selectedEmployeeId', this.value);
+        });
+
+        // Disable submit buttons during form submission
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(event) {
+                const button = this.querySelector('button[type="submit"]');
+                if (button) {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+                }
+            });
+        });
+
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+
+    // Function to update payment table based on selected employee
+    function updatePaymentTable() {
+        const employeeId = document.getElementById('employee').value;
+        const paymentTableSection = document.getElementById('paymentTableSection');
+        if (employeeId) {
+            paymentTableSection.style.display = 'block';
+        } else {
+            paymentTableSection.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

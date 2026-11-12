@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load custom_filters %}
+<style>
+    /* Scoped styles for remark ranges template */
+    .remark-ranges-container .fw-bold {
+        font-weight: 700;
+    }
+    .remark-ranges-container .text-primary {
+        color: #0d6efd !important;
+    }
+    .remark-ranges-container .card {
+        border: 1px solid rgba(0,0,0,.125);
+        border-radius: 0.25rem;
+    }
+    .remark-ranges-container .card.shadow-sm {
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .remark-ranges-container .card-header.bg-primary {
+        background-color: #0d6efd;
+        color: #fff;
+    }
+    .remark-ranges-container .card-header.bg-danger {
+        background-color: #dc3545;
+        color: #fff;
+    }
+    .remark-ranges-container .table-dark {
+        background-color: #212529;
+        color: #fff;
+    }
+    .remark-ranges-container .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .remark-ranges-container .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0,0,0,.05);
+    }
+    .remark-ranges-container .table-bordered {
+        border: 1px solid #dee2e6;
+    }
+    .remark-ranges-container .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .remark-ranges-container .btn-warning {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #000;
+    }
+    .remark-ranges-container .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    .remark-ranges-container .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    .remark-ranges-container .btn.rounded-pill {
+        border-radius: 50rem;
+    }
+    .remark-ranges-container .input-group-text.bg-light {
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+    }
+    .remark-ranges-container .form-control.rounded-end {
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
+    }
+    .remark-ranges-container .alert-dismissible .btn-close {
+        padding: 0.75rem 1.25rem;
+    }
+    .remark-ranges-container .modal-content {
+        border-radius: 0.3rem;
+    }
+    .remark-ranges-container .btn-close-white {
+        filter: invert(1);
+    }
+    .remark-ranges-container .bg-light.shadow-sm {
+        background-color: #f8f9fa !important;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075) !important;
+    }
+    .remark-ranges-container .animate__animated.animate__fadeIn {
+        animation: fadeIn 0.5s;
+    }
+</style>
+
+<div class="remark-ranges-container container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-comment-dots me-2"></i>Manage Remark Ranges</h2>
+    </div>
+
+    <!-- Create Remark Range Form -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form action="{% url 'manage_remark_ranges' %}" method="POST" class="row g-3" id="remarkForm">
+                {% csrf_token %}
+                {% if messages %}
+                <div class="col-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="col-12 col-md-3">
+                    <label for="min_value" class="form-label fw-semibold"><i class="fas fa-arrow-down me-2"></i>Min Value</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-sort-numeric-down"></i></span>
+                        <input type="number" name="min_value" class="form-control rounded-end" id="min_value" placeholder="e.g., 0" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="max_value" class="form-label fw-semibold"><i class="fas fa-arrow-up me-2"></i>Max Value</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-sort-numeric-up"></i></span>
+                        <input type="number" name="max_value" class="form-control rounded-end" id="max_value" placeholder="e.g., 100" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="remark" class="form-label fw-semibold"><i class="fas fa-comment me-2"></i>Remark</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-comments"></i></span>
+                        <input type="text" name="remark" class="form-control rounded-end" id="remark" placeholder="e.g., Excellent" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100 rounded-pill" type="submit" id="submitButton">
+                        <i class="fas fa-plus-circle me-2"></i>Add Range
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Remark Ranges Table Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Remark Ranges</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#rangesTable" aria-expanded="false" aria-controls="rangesTable">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse show" id="rangesTable">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle m-0 table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 10%;">#</th>
+                                <th scope="col" style="width: 20%;">Min Value</th>
+                                <th scope="col" style="width: 20%;">Max Value</th>
+                                <th scope="col" style="width: 30%;">Remark</th>
+                                <th scope="col" class="text-center" style="width: 20%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for range in remark_ranges %}
+                            <tr class="animate__animated animate__fadeIn">
+                                <td class="text-center">{{ forloop.counter }}</td>
+                                <td>{{ range.min_value }}</td>
+                                <td>{{ range.max_value }}</td>
+                                <td>{{ range.remark }}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-warning btn-sm rounded-pill me-2" data-bs-toggle="modal" data-bs-target="#updateModal{{ range.id }}"
+                                        data-id="{{ range.id }}" data-min="{{ range.min_value }}" data-max="{{ range.max_value }}" data-remark="{{ range.remark }}">
+                                        <i class="fas fa-edit me-1"></i>Update
+                                    </button>
+                                    <button class="btn btn-danger btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#deleteModal{{ range.id }}"
+                                        data-id="{{ range.id }}">
+                                        <i class="fas fa-trash-alt me-1"></i>Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-exclamation-circle me-2"></i>No remark ranges added yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Modals -->
+    {% for range in remark_ranges %}
+    <div class="modal fade" id="updateModal{{ range.id }}" tabindex="-1" aria-labelledby="updateModalLabel{{ range.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="updateModalLabel{{ range.id }}"><i class="fas fa-edit me-2"></i>Update Remark Range</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{% url 'update_remark_range' range.id %}" method="POST" class="row g-3" id="updateForm{{ range.id }}">
+                        {% csrf_token %}
+                        <div class="col-12">
+                            <label for="min_value_{{ range.id }}" class="form-label fw-semibold"><i class="fas fa-arrow-down me-2"></i>Min Value</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-sort-numeric-down"></i></span>
+                                <input type="number" name="min_value" class="form-control rounded-end" id="min_value_{{ range.id }}" value="{{ range.min_value }}" required>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="max_value_{{ range.id }}" class="form-label fw-semibold"><i class="fas fa-arrow-up me-2"></i>Max Value</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-sort-numeric-up"></i></span>
+                                <input type="number" name="max_value" class="form-control rounded-end" id="max_value_{{ range.id }}" value="{{ range.max_value }}" required>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="remark_{{ range.id }}" class="form-label fw-semibold"><i class="fas fa-comment me-2"></i>Remark</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-comments"></i></span>
+                                <input type="text" name="remark" class="form-control rounded-end" id="remark_{{ range.id }}" value="{{ range.remark }}" required>
+                            </div>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary rounded-pill" id="updateButton{{ range.id }}">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Delete Modals -->
+    {% for range in remark_ranges %}
+    <div class="modal fade" id="deleteModal{{ range.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ range.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel{{ range.id }}"><i class="fas fa-trash-alt me-2"></i>Delete Remark Range</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the remark range <strong>{{ range.min_value }} - {{ range.max_value }}: {{ range.remark }}</strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
+                    <a href="{% url 'delete_remark_range' range.id %}" class="btn btn-danger rounded-pill"><i class="fas fa-trash-alt me-2"></i>Delete</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    // Scoped JavaScript for remark ranges template
+    document.getElementById('remarkForm').addEventListener('submit', function(event) {
+        const button = document.getElementById('submitButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+    });
+
+    // Handle update form submission
+    document.querySelectorAll('.remark-ranges-container [id^=updateForm]').forEach(form => {
+        form.addEventListener('submit', function(event) {
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Updating...';
+        });
+    });
+
+    // Add hover effect for table rows
+    document.querySelectorAll('.remark-ranges-container .table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+            row.classList.add('bg-light', 'shadow-sm');
+        });
+        row.addEventListener('mouseleave', () => {
+            row.classList.remove('bg-light', 'shadow-sm');
+        });
+    });
+</script>
+{% endblock %}

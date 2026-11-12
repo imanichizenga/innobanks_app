@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<style>
+    .attendance-card {
+        border-radius: 15px;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+    .table-responsive {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .status-present {
+        background-color: #1cc88a;
+        color: white;
+        border-radius: 5px;
+        padding: 2px 8px;
+    }
+    .status-absent {
+        background-color: #e74a3b;
+        color: white;
+        border-radius: 5px;
+        padding: 2px 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Messages -->
+    {% if messages %}
+    <div class="row">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Attendance Header -->
+    <div class="card attendance-card mb-4">
+        <div class="card-body">
+            <h2 class="fw-bold mb-3">{{ student.fullName }} - Attendance Records</h2>
+            <p class="text-muted">Index: {{ student.indexNumber }} | Class: {{ student.class_name }}</p>
+        </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="card attendance-card">
+        <div class="card-body">
+            <h5 class="fw-bold">Attendance History</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                            <th>Device ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td>{{ record.date_time|date:"Y-m-d H:i:s" }}</td>
+                            <td>
+                                <span class="status-{{ record.status|lower }}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td>{{ record.device_id|default:'-' }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No attendance records found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

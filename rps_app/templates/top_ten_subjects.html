@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Top Ten Subjects - {{ performance_label }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-trophy me-2"></i>Top Ten Subjects by {{ performance_label }}</h2>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <i class="fas fa-info-circle me-2"></i>{{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Selected Classes Display -->
+    {% if class_subjects_data %}
+    {% for data in class_subjects_data %}
+    {% if data.classes %}
+    <div class="alert alert-info rounded-3 mb-4">
+        <h6 class="alert-heading"><i class="fas fa-chalkboard me-2"></i>Selected Classes ({{ level }} - {{ examination.exam_name }}):</h6>
+        <ul class="mb-0">
+            {% for cls in data.classes %}
+            <li>{{ cls.ClassName.class_name|default:"Unnamed Class" }}{% if cls.academicclassyear %} ({{ cls.academicclassyear.academic_year_name }}){% endif %}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Top Subjects Table -->
+    {% if data.subjects %}
+    <div class="card shadow-sm border-0 rounded-4 mb-5">
+        <div class="card-header bg-success text-white fw-medium rounded-top-4">
+            <i class="fas fa-list-ol me-2"></i>Top 10 Subjects by {{ performance_label }}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Rank</th>
+                            <th>Subject</th>
+                            <th>{{ performance_label }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub_data in data.subjects %}
+                        <tr class="animate__animated animate__fadeIn">
+                            <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                            <td>{{ sub_data.subject_name }}</td>
+                            <td class="text-center fw-bold text-success">{{ sub_data.performance_score }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>No subjects found with performance data.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Back Button -->
+    <div class="text-center mb-4">
+        <a href="{% url 'top_ten_subjects' %}" class="btn btn-secondary rounded-pill fw-medium px-4">
+            <i class="fas fa-arrow-left me-2"></i>Back to Selection
+        </a>
+    </div>
+</div>
+
+<!-- Include Font Awesome and Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Add hover effect for table rows
+        document.querySelectorAll('.table-hover tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.classList.add('bg-light', 'shadow-sm');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.classList.remove('bg-light', 'shadow-sm');
+            });
+        });
+    });
+</script>
+
+<style>
+    body {
+        background: #f4f7fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .btn {
+        transition: all 0.3s;
+    }
+    .btn:hover {
+        transform: scale(1.05);
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}

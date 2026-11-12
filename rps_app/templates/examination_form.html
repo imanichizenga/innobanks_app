@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+            <!-- Main Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+
+                    <!-- Header with Icon -->
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                             style="width: 70px; height: 70px; background: linear-gradient(135deg, #3a7bd5, #00d2ff); box-shadow: 0 0.3rem 0.6rem rgba(58, 123, 213, 0.25);">
+                            <i class="bi bi-journal-text" style="font-size: 1.8rem; color: white;"></i>
+                        </div>
+                        <h4 class="fw-bold text-primary mb-2">{{ title }}</h4>
+                        <p class="text-muted small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Enter a descriptive name for your examination
+                        </p>
+                    </div>
+
+                    <!-- Messages -->
+                    {% if messages %}
+                        <div class="mb-4">
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}success{% endif %} alert-dismissible fade show d-flex align-items-center small py-2" role="alert">
+                                    <i class="bi {% if message.tags == 'error' %}bi-x-circle-fill{% else %}bi-check-circle-fill{% endif %} me-2"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close btn-close-sm ms-auto" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Form Errors -->
+                    {% if form.errors %}
+                        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center small py-2 mb-4" role="alert">
+                            <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                            <div>
+                                <strong>Please fix the following:</strong>
+                                <ul class="mb-0 mt-1 ps-3">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ field.label }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <button type="button" class="btn-close btn-close-sm ms-auto" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+
+                    <!-- Form -->
+                    <form method="POST" id="examForm" class="needs-validation" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.exam_name.id_for_label }}" class="form-label fw-semibold text-dark">
+                                <i class="bi bi-card-heading me-1"></i> Examination Name
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="bi bi-pencil-square"></i>
+                                </span>
+                                <input type="text"
+                                       name="exam_name"
+                                       id="{{ form.exam_name.id_for_label }}"
+                                       class="form-control rounded-end border-start-0"
+                                       placeholder="e.g., Final Exams 2023"
+                                       value="{{ form.exam_name.value|default_if_none:'' }}"
+                                       required>
+                            </div>
+                            <div class="invalid-feedback mt-1">
+                                <i class="bi bi-exclamation-circle me-1"></i> Please enter a valid examination name.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between gap-2 mt-4">
+                            <a href="{% url 'examination_list' %}" class="btn btn-outline-secondary w-100 rounded-pill d-flex align-items-center justify-content-center py-2">
+                                <i class="bi bi-x-circle me-2"></i> Cancel
+                            </a>
+                            <button type="submit"
+                                    id="submitBtn"
+                                    class="btn btn-primary w-100 rounded-pill fw-semibold d-flex align-items-center justify-content-center py-2 shadow-sm"
+                                    style="height: 42px; font-size: 0.95rem;">
+                                <span id="btnText">
+                                    {% if title|lower|slice:":6" == "create" %}
+                                        <i class="bi bi-plus-circle me-2"></i> Create
+                                    {% else %}
+                                        <i class="bi bi-save me-2"></i> Update
+                                    {% endif %}
+                                </span>
+                                <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2" role="status" style="display: none;"></span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Back Link -->
+                    <div class="text-center mt-3">
+                        <a href="{% url 'examination_list' %}" class="text-primary text-decoration-none small">
+                            <i class="bi bi-arrow-left me-1"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Styles (scoped) -->
+<style>
+    .card { border-radius: 16px; overflow: hidden; }
+    .form-control:focus { border-color: #3a7bd5; box-shadow: 0 0 0 0.2rem rgba(58, 123, 213, 0.15); }
+    .input-group .form-control { font-size: 0.95rem; }
+    .btn-primary {
+        background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+        border: none; transition: all 0.2s ease;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0.3rem 0.6rem rgba(58, 123, 213, 0.3); }
+    .btn-primary:disabled { opacity: 0.7; transform: none; cursor: not-allowed; }
+    @media (max-width: 576px) {
+        .card-body { padding: 1.5rem; }
+        h4 { font-size: 1.2rem; }
+    }
+</style>
+
+<!-- JavaScript -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById('examForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const input = document.querySelector('#examForm input[name="exam_name"]');
+
+        window.addEventListener('pageshow', () => {
+            submitBtn.disabled = false;
+            btnText.innerHTML = btnText.innerHTML;
+            btnSpinner.style.display = 'none';
+            submitBtn.classList.remove('opacity-75');
+        });
+
+        form.addEventListener('submit', function (e) {
+            if (!input.value.trim()) {
+                e.preventDefault();
+                input.classList.add('is-invalid');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            btnText.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Saving...';
+            btnSpinner.style.display = 'inline-block';
+            submitBtn.classList.add('opacity-75');
+        });
+
+        input.addEventListener('input', function () {
+            if (this.value.trim()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+            }
+        });
+
+        input.addEventListener('focus', function () {
+            this.parentElement.querySelector('.input-group-text').style.borderColor = '#3a7bd5';
+        });
+        input.addEventListener('blur', function () {
+            this.parentElement.querySelector('.input-group-text').style.borderColor = '#dee2e6';
+        });
+    });
+</script>
+{% endblock %}

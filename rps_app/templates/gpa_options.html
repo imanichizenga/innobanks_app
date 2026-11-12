@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Subject Performance Analysis{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>Subject Performance Analysis</h2>
+    </div>
+
+    <!-- Error Message -->
+    {% if error_message %}
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>{{ error_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- Warning if missing required data -->
+    {% if not grades or not examinations or not classes %}
+    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-info-circle me-2"></i>Please ensure you have created at least one grading system, one examination, and one class to proceed.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- Analysis Form Card -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-body">
+            <form method="POST" action="{% url 'top_ten_subjects' %}" class="row g-3 needs-validation" id="gradingForm" novalidate>
+                {% csrf_token %}
+
+                <!-- Grading System -->
+                <div class="col-12 col-md-4">
+                    <label for="grade_id" class="form-label fw-semibold"><i class="fas fa-book me-2"></i>Grading System</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-graduation-cap"></i></span>
+                        <select name="grade_id" id="grade_id" class="form-select rounded-end" required>
+                            <option value="" disabled selected>Select grading system</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}">
+                                {% if grade.is_primary %}Primary{% elif grade.is_advance %}A-Level{% else %}O-Level{% endif %} (ID: {{ grade.id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select a grading system.</div>
+                </div>
+
+                <!-- Examination -->
+                <div class="col-12 col-md-4">
+                    <label for="examination_id" class="form-label fw-semibold"><i class="fas fa-clipboard-check me-2"></i>Examination</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-file-alt"></i></span>
+                        <select name="examination_id" id="examination_id" class="form-select rounded-end" required>
+                            <option value="" disabled selected>Select examination</option>
+                            {% for exam in examinations %}
+                            <option value="{{ exam.id }}">{{ exam.exam_name|default:"Unnamed Exam" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select an examination.</div>
+                </div>
+
+                <!-- Classes (Multiple Select) -->
+                <div class="col-12 col-md-4">
+                    <label for="class_id" class="form-label fw-semibold"><i class="fas fa-chalkboard me-2"></i>Select Classes (Hold Ctrl/Cmd)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-chalkboard-teacher"></i></span>
+                        <select name="class_id" id="class_id" class="form-select rounded-end" multiple required size="6">
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">
+                                {{ class.ClassName.class_name|default:"Unnamed Class" }}{% if class.academicclassyear %} ({{ class.academicclassyear.academic_year_name }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">Please select at least one class.</div>
+                    <small class="form-text text-muted">Hold Ctrl (or Cmd on Mac) to select multiple.</small>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="col-12 d-flex justify-content-center mt-4">
+                    <button type="submit" class="btn btn-primary rounded-pill px-5" id="submitBtn">
+                        <span class="btn-text"><i class="fas fa-eye me-2"></i>View Top Subjects</span>
+                        <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" id="spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Font Awesome & Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+      integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw=="
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('gradingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        const btnText = submitBtn.querySelector('.btn-text');
+
+        // Bootstrap 5 form validation + spinner
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            } else {
+                submitBtn.disabled = true;
+                spinner.classList.remove('d-none');
+                btnText.classList.add('d-none');
+            }
+            form.classList.add('was-validated');
+        });
+
+        // Optional: Re-enable button on page load (in case of back button)
+        window.addEventListener('pageshow', function () {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+            if (btnText) btnText.classList.remove('d-none');
+        });
+    });
+</script>
+{% endblock %}

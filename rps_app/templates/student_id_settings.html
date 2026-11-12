@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-3">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+      <div>
+        <h4 class="mb-1">Student ID Settings</h4>
+        <p class="text-muted mb-0">Configure default ID appearance by academic level.</p>
+      </div>
+      <form method="post" onsubmit="return confirm('Reset ID appearance defaults for all academic levels?');">
+        {% csrf_token %}
+        <button class="btn btn-outline-danger btn-sm" type="submit" name="action" value="reset_appearance">Reset appearance defaults</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="student-id-settings-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_settings">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+          <div>
+            <h5 class="mb-1">Global ID Branding</h5>
+            <p class="text-muted small mb-0">Logo and text sizing used by every student ID unless a preview upload overrides it temporarily.</p>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm align-self-start" type="submit" name="action" value="reset_branding" onclick="return confirm('Reset uploaded logo and branding sizes?');">Reset branding defaults</button>
+        </div>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small">School logo</label>
+            <input type="file" class="form-control form-control-sm" name="logo" accept="image/*">
+            {% if global_settings.logo_src %}
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <img src="{{ global_settings.logo_src }}" alt="Current logo" class="branding-logo-preview">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="clear_logo" id="clearLogo">
+                  <label class="form-check-label small" for="clearLogo">Remove logo</label>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-md-8">
+            <div class="row g-2">
+              <div class="col-sm-4"><label class="form-label small">Default logo size</label><input class="form-control form-control-sm branding-size-input" type="number" name="logo_size" min="0.2" max="4" step="0.01" value="{{ global_settings.logo_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Horizontal logo size</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_logo_size" min="0.2" max="4" step="0.01" value="{{ global_settings.horizontal_logo_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Vertical logo size</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_logo_size" min="0.2" max="4" step="0.01" value="{{ global_settings.vertical_logo_size }}"></div>
+              <div class="col-12">
+                <hr class="my-1">
+                <div class="small fw-semibold">Layout adjustment scope</div>
+                <div class="d-flex flex-wrap gap-3 mt-2">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="apply_layout_adjustments_vertical" id="applyLayoutAdjustmentsVertical" {% if global_settings.apply_layout_adjustments_vertical %}checked{% endif %}>
+                    <label class="form-check-label small" for="applyLayoutAdjustmentsVertical">Apply header, title, and subtitle adjustments to vertical layout</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="apply_layout_adjustments_horizontal" id="applyLayoutAdjustmentsHorizontal" {% if global_settings.apply_layout_adjustments_horizontal %}checked{% endif %}>
+                    <label class="form-check-label small" for="applyLayoutAdjustmentsHorizontal">Apply header, title, and subtitle adjustments to horizontal layout</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12"><hr class="my-1"><div class="small fw-semibold">Header sizing</div></div>
+              <div class="col-sm-4"><label class="form-label small">Default header size</label><input class="form-control form-control-sm branding-size-input" type="number" name="header_size" min="0.2" max="4" step="0.01" value="{{ global_settings.header_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Horizontal header size</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_header_size" min="0.2" max="4" step="0.01" value="{{ global_settings.horizontal_header_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Vertical header size</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_header_size" min="0.2" max="4" step="0.01" value="{{ global_settings.vertical_header_size }}"></div>
+              <div class="col-12"><hr class="my-1"><div class="small fw-semibold">Text sizing</div></div>
+              <div class="col-sm-4"><label class="form-label small">Default title size</label><input class="form-control form-control-sm branding-size-input" type="number" name="title_size" min="0.2" max="4" step="0.01" value="{{ global_settings.title_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Horizontal title size</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_title_size" min="0.2" max="4" step="0.01" value="{{ global_settings.horizontal_title_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Vertical title size</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_title_size" min="0.2" max="4" step="0.01" value="{{ global_settings.vertical_title_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Default subtitle size</label><input class="form-control form-control-sm branding-size-input" type="number" name="subtitle_size" min="0.2" max="4" step="0.01" value="{{ global_settings.subtitle_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Horizontal subtitle size</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_subtitle_size" min="0.2" max="4" step="0.01" value="{{ global_settings.horizontal_subtitle_size }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Vertical subtitle size</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_subtitle_size" min="0.2" max="4" step="0.01" value="{{ global_settings.vertical_subtitle_size }}"></div>
+              <div class="col-12"><hr class="my-1"><div class="small fw-semibold">Title position (%)</div><div class="text-muted small">Percent values are relative to the header area. 50 means centered horizontally.</div></div>
+              <div class="col-sm-4"><label class="form-label small">Default title X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="title_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.title_x_percent }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Default title Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="title_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.title_y_percent }}"></div>
+              <div class="col-sm-4"></div>
+              <div class="col-sm-3"><label class="form-label small">Horizontal title X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_title_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.horizontal_title_x_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Horizontal title Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_title_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.horizontal_title_y_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Vertical title X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_title_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.vertical_title_x_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Vertical title Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_title_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.vertical_title_y_percent }}"></div>
+              <div class="col-12"><hr class="my-1"><div class="small fw-semibold">Subtitle position (%)</div><div class="text-muted small">Percent values are relative to the header area. 50 means centered horizontally.</div></div>
+              <div class="col-sm-4"><label class="form-label small">Default subtitle X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="subtitle_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.subtitle_x_percent }}"></div>
+              <div class="col-sm-4"><label class="form-label small">Default subtitle Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="subtitle_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.subtitle_y_percent }}"></div>
+              <div class="col-sm-4"></div>
+              <div class="col-sm-3"><label class="form-label small">Horizontal subtitle X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_subtitle_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.horizontal_subtitle_x_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Horizontal subtitle Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="horizontal_subtitle_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.horizontal_subtitle_y_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Vertical subtitle X %</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_subtitle_x_percent" min="0" max="100" step="0.01" value="{{ global_settings.vertical_subtitle_x_percent }}"></div>
+              <div class="col-sm-3"><label class="form-label small">Vertical subtitle Y %</label><input class="form-control form-control-sm branding-size-input" type="number" name="vertical_subtitle_y_percent" min="0" max="100" step="0.01" value="{{ global_settings.vertical_subtitle_y_percent }}"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle id-settings-table">
+            <thead class="table-light">
+              <tr>
+                <th>Academic Level</th>
+                <th>Group</th>
+                <th>Badge</th>
+                <th>Front</th>
+                <th>Back</th>
+                <th>Preview</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in settings_rows %}
+              <tr>
+                <td class="fw-semibold">{{ row.academic_level }}</td>
+                <td>
+                  <select class="form-select form-select-sm" name="group_{{ row.field_key }}">
+                    {% for value, label in group_choices %}
+                      <option value="{{ value }}" {% if row.group == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" name="use_badge_{{ row.field_key }}" id="badge_{{ forloop.counter }}" {% if row.use_badge %}checked{% endif %}>
+                    <label class="form-check-label small" for="badge_{{ forloop.counter }}">Use badge</label>
+                  </div>
+                  <input class="form-control form-control-sm" name="badge_text_{{ row.field_key }}" value="{{ row.badge_text|default:'' }}" maxlength="50">
+                </td>
+                <td>
+                  <div class="color-grid">
+                    <label>Header <input type="color" name="front_header_color_{{ row.field_key }}" value="{{ row.front_header_color|default:'#ffffff' }}"></label>
+                    <label>Body <input type="color" name="front_body_color_{{ row.field_key }}" value="{{ row.front_body_color|default:'#0b86d8' }}"></label>
+                    <label>Accent <input type="color" name="front_accent_color_{{ row.field_key }}" value="{{ row.front_accent_color|default:'#0a5c9f' }}"></label>
+                    <label>Text <input type="color" name="front_text_color_{{ row.field_key }}" value="{{ row.front_text_color|default:'#111111' }}"></label>
+                  </div>
+                </td>
+                <td>
+                  <div class="color-grid">
+                    <label>Header <input type="color" name="back_header_color_{{ row.field_key }}" value="{{ row.back_header_color|default:'#0a5c9f' }}"></label>
+                    <label>Body <input type="color" name="back_body_color_{{ row.field_key }}" value="{{ row.back_body_color|default:'#ffffff' }}"></label>
+                    <label>Accent <input type="color" name="back_accent_color_{{ row.field_key }}" value="{{ row.back_accent_color|default:'#113765' }}"></label>
+                    <label>Text <input type="color" name="back_text_color_{{ row.field_key }}" value="{{ row.back_text_color|default:'#111111' }}"></label>
+                  </div>
+                </td>
+                <td>
+                  <div class="mini-id" style="--fh:{{ row.front_header_color }};--fb:{{ row.front_body_color }};--fa:{{ row.front_accent_color }};--ft:{{ row.front_text_color }};">
+                    <div class="mini-id-head">
+                      <span></span>
+                      {% if row.use_badge %}<em>{{ row.badge_text }}</em>{% endif %}
+                    </div>
+                    <div class="mini-id-body">
+                      <div class="mini-photo"></div>
+                      <div class="mini-lines"><i></i><i></i><i></i></div>
+                      <div class="mini-qr"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-end">
+          <button class="btn btn-primary" type="submit" name="action" value="save_settings">Save settings</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('student-id-settings-form');
+  if (!form) return;
+  const input = (name) => form.querySelector(`[name="${name}"]`);
+  const groups = [
+    { base: 'logo_size', fields: ['horizontal_logo_size', 'vertical_logo_size'] },
+    { base: 'header_size', fields: ['horizontal_header_size', 'vertical_header_size'] },
+    { base: 'title_size', fields: ['horizontal_title_size', 'vertical_title_size'] },
+    { base: 'subtitle_size', fields: ['horizontal_subtitle_size', 'vertical_subtitle_size'] },
+    { base: 'title_x_percent', fields: ['horizontal_title_x_percent', 'vertical_title_x_percent'] },
+    { base: 'title_y_percent', fields: ['horizontal_title_y_percent', 'vertical_title_y_percent'] },
+    { base: 'subtitle_x_percent', fields: ['horizontal_subtitle_x_percent', 'vertical_subtitle_x_percent'] },
+    { base: 'subtitle_y_percent', fields: ['horizontal_subtitle_y_percent', 'vertical_subtitle_y_percent'] },
+  ];
+  const originalValues = {};
+  form.querySelectorAll('.branding-size-input').forEach((el) => {
+    originalValues[el.name] = el.value;
+    el.addEventListener('input', () => {
+      el.dataset.touched = '1';
+    });
+  });
+  groups.forEach((group) => {
+    const baseInput = input(group.base);
+    if (!baseInput) return;
+    baseInput.addEventListener('input', () => {
+      group.fields.forEach((field) => {
+        const fieldInput = input(field);
+        if (!fieldInput) return;
+        const followsDefault = !fieldInput.dataset.touched || fieldInput.value === originalValues[field] || fieldInput.value === originalValues[group.base];
+        if (followsDefault) {
+          fieldInput.value = baseInput.value;
+          fieldInput.dataset.touched = '';
+        }
+      });
+    });
+  });
+});
+</script>
+
+<style>
+.id-settings-table{min-width:1050px}
+.color-grid{display:grid;grid-template-columns:repeat(2,minmax(92px,1fr));gap:.45rem .65rem}
+.color-grid label{font-size:.75rem;color:#5d6572;margin:0}
+.color-grid input{display:block;width:100%;height:30px;border:1px solid #d9dee7;border-radius:4px;padding:2px;background:#fff}
+.branding-logo-preview{width:52px;height:52px;object-fit:contain;border:1px solid #d9dee7;border-radius:6px;background:#fff;padding:4px}
+.mini-id{width:156px;height:98px;border:1px solid #d9dee7;border-radius:6px;overflow:hidden;background:#fff}
+.mini-id-head{height:27px;background:var(--fh);display:flex;align-items:center;justify-content:space-between;padding:5px 7px}
+.mini-id-head span{width:54px;height:8px;background:#111;border-radius:2px;opacity:.85}
+.mini-id-head em{font-style:normal;background:var(--fa);color:#fff;border-radius:4px;font-size:.55rem;font-weight:700;padding:2px 5px;max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-id-body{height:71px;background:linear-gradient(135deg,var(--fb),color-mix(in srgb,var(--fb) 82%,#000));display:grid;grid-template-columns:38px 1fr 31px;gap:7px;padding:8px;color:var(--ft)}
+.mini-photo,.mini-qr{background:#fff;border-radius:4px}
+.mini-lines{display:flex;flex-direction:column;gap:6px;padding-top:4px}
+.mini-lines i{height:5px;background:currentColor;border-radius:2px;opacity:.9}
+</style>
+{% endblock %}

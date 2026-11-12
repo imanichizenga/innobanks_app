@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Fee List
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" integrity="sha512-c42qTSw/wPZ3/5LBzD+Bw5f7bSF2oxou6wEb+I/lqeaKV5FDIfMvvRp772y4jcJLKuGUOpbJMdg/BTl50fJYAw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<div class="container my-5">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-wallet me-2"></i>Fee List</h2>
+        <a href="{% url 'finance:fee_create' %}" class="btn btn-primary rounded-pill">
+            <i class="fas fa-plus-circle me-2"></i>Add New Fee
+        </a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>{{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Search Bar -->
+    <div class="mb-4">
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+            <input type="text" id="feeSearch" class="form-control rounded-end" placeholder="Search Fees...">
+            <button class="btn btn-outline-secondary rounded-end" type="button"
+                    onclick="document.getElementById('feeSearch').value=''; filterTable('');">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Fees Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>Fees</h5>
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#feeTableCollapse" aria-expanded="true" aria-controls="feeTableCollapse">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+
+        <!-- ✅ IMPORTANT: avoid duplicate id="feeTable" (you had it twice) -->
+        <div class="collapse show" id="feeTableCollapse">
+            <div class="card-body p-0">
+                {% if fees %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle m-0 table-bordered" id="feeTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center" style="width: 10%; cursor: pointer;" onclick="sortTable(0, 'number')">#</th>
+                                    <th scope="col" style="width: 30%; cursor: pointer;" onclick="sortTable(1, 'text')">Fee Name</th>
+                                    <th scope="col" style="width: 30%; cursor: pointer;" onclick="sortTable(2, 'text')">Class</th>
+                                    <th scope="col" class="text-center" style="width: 30%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="feeTableBody">
+                                {% for fee in fees %}
+                                    <tr data-fee-id="{{ fee.id }}" class="animate__animated animate__fadeIn">
+                                        <td class="text-center">{{ forloop.counter }}</td>
+                                        <td>{{ fee.fee_name|default:"Unnamed Fee" }}</td>
+                                        <td>
+                                            {{ fee.teacherclass|default:"Unnamed Class" }}
+                                            {% if fee.teacherclass.academicclassyear and not fee.teacherclass.academicclassyear.active_year %}
+                                                (Inactive)
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if fee.teacherclass.academicclassyear and fee.teacherclass.academicclassyear.active_year %}
+                                                <!-- ✅ UPDATED: pass fee_id so Assign page preselects it -->
+                                                <a href="{% url 'finance:assign_fees_to_students' class_id=fee.teacherclass.id %}?fee_id={{ fee.id }}"
+                                                   class="btn btn-sm btn-outline-primary rounded-pill me-1">
+                                                    <i class="fas fa-plus-circle me-1"></i>Assign
+                                                </a>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-secondary rounded-pill me-1" disabled>
+                                                    <i class="fas fa-plus-circle me-1"></i>Assign (Inactive)
+                                                </button>
+                                            {% endif %}
+
+                                            <a href="{% url 'finance:fee_update' fee_id=fee.id %}" class="btn btn-sm btn-outline-warning rounded-pill me-1">
+                                                <i class="fas fa-edit me-1"></i>Update
+                                            </a>
+
+                                            <a href="{% url 'finance:fee_delete' fee_id=fee.id %}" class="btn btn-sm btn-outline-danger rounded-pill"
+                                               onclick="return confirm('Are you sure you want to delete this fee?');">
+                                                <i class="fas fa-trash-alt me-1"></i>Delete
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-exclamation-circle me-2"></i>No fees available.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body { background-color: #f8f9fa; }
+    .container { max-width: 900px; }
+
+    .btn-primary, .btn-outline-primary, .btn-outline-danger, .btn-outline-secondary, .btn-outline-warning {
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover, .btn-outline-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+        color: #fff;
+    }
+    .btn-outline-danger:hover { background-color: #dc3545; color: #fff; }
+    .btn-outline-warning:hover { background-color: #ffc107; color: #fff; }
+
+    .table { background-color: #fff; border-radius: 8px; overflow: hidden; }
+    .table th, .table td { vertical-align: middle; }
+    .table-dark { background-color: #343a40; }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .card-header { border-radius: 12px 12px 0 0; }
+
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+    .input-group-text { border-radius: 0.5rem 0 0 0.5rem; }
+    .rounded-end { border-radius: 0 0.5rem 0.5rem 0; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('feeSearch');
+    const tableBody = document.getElementById('feeTableBody');
+    const rows = tableBody ? tableBody.getElementsByTagName('tr') : [];
+
+    // ✅ Make filterTable accessible to onclick button
+    window.filterTable = function(searchTerm) {
+        for (let row of rows) {
+            const feeName = row.cells[1].textContent.toLowerCase();
+            const className = row.cells[2].textContent.toLowerCase();
+            row.style.display = (feeName.includes(searchTerm.toLowerCase()) || className.includes(searchTerm.toLowerCase()))
+                ? '' : 'none';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            window.filterTable(this.value);
+        });
+    }
+
+    function sortTable(columnIndex, type) {
+        const table = document.getElementById('feeTable');
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+
+        const sortedRows = Array.from(rows).sort((a, b) => {
+            let aValue = a.cells[columnIndex].textContent.trim();
+            let bValue = b.cells[columnIndex].textContent.trim();
+
+            if (type === 'number') {
+                aValue = parseInt(aValue) || 0;
+                bValue = parseInt(bValue) || 0;
+            } else {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            return isAscending ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+        });
+
+        tableBody.innerHTML = '';
+        sortedRows.forEach(row => tableBody.appendChild(row));
+    }
+
+    document.querySelectorAll('.table-hover tr').forEach(row => {
+        row.addEventListener('mouseenter', () => row.classList.add('bg-light', 'shadow-sm'));
+        row.addEventListener('mouseleave', () => row.classList.remove('bg-light', 'shadow-sm'));
+    });
+
+    window.sortTable = sortTable;
+});
+</script>
+{% endblock %}
